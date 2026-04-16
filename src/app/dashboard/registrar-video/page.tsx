@@ -551,6 +551,17 @@ export default function RegistrarVideoPage() {
                 </h2>
               </div>
 
+              {/* Video thumbnail */}
+              {chosen && (
+                <div className="mb-4 overflow-hidden rounded-lg border border-gray-700">
+                  <img
+                    src={`https://img.youtube.com/vi/${chosen.id}/hqdefault.jpg`}
+                    alt={result.titulo}
+                    className="w-full object-cover"
+                  />
+                </div>
+              )}
+
               <p className="mb-2 text-sm text-white">{result.titulo}</p>
               <p className="mb-4 text-sm text-gray-400">
                 {result.vistas} vistas en YouTube
@@ -559,16 +570,14 @@ export default function RegistrarVideoPage() {
               {result.campana_creada ? (
                 <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-4">
                   <p className="text-sm text-green-300">
-                    Primera campana lanzada. Tu video ya esta en la cola de
-                    intercambios.
+                    Tu campana esta activa. Ya puedes recibir intercambios.
                   </p>
                 </div>
               ) : (
                 <div className="rounded-lg border border-[#E87722]/30 bg-[#E87722]/10 p-4">
                   <p className="text-sm text-[#f0a964]">
                     Tu video se activara automaticamente cuando alcance 10
-                    vistas en YouTube. Mientras tanto, puedes participar en
-                    intercambios de otros creadores.
+                    vistas en YouTube.
                   </p>
                 </div>
               )}

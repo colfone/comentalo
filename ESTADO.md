@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.8.
 
-## Version actual: v1.8 — 16 de abril de 2026
+## Version actual: v1.9 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -20,6 +20,7 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 | v1.6 | Fix multi-canal | 16 abril 2026 | Soporte para cuentas Google con multiples canales YouTube — pagina de seleccion de canal |
 | v1.7 | Refactor auth | 16 abril 2026 | Eliminado scope youtube.readonly — verificacion de canal por codigo en descripcion |
 | v1.8 | Fix reputacion | 16 abril 2026 | Badge de reputacion muestra "Sin activar" con contador X/20 hasta alcanzar 20 intercambios calificados |
+| v1.9 | Fix registro video | 16 abril 2026 | Thumbnail en confirmacion de registro + mensaje de campana correcto segun vistas |
 
 ## Stack confirmado
 
