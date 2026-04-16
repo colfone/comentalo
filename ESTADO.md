@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.8.
 
-## Version actual: v1.9 — 16 de abril de 2026
+## Version actual: v2.0 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -21,6 +21,7 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 | v1.7 | Refactor auth | 16 abril 2026 | Eliminado scope youtube.readonly — verificacion de canal por codigo en descripcion |
 | v1.8 | Fix reputacion | 16 abril 2026 | Badge de reputacion muestra "Sin activar" con contador X/20 hasta alcanzar 20 intercambios calificados |
 | v1.9 | Fix registro video | 16 abril 2026 | Thumbnail en confirmacion de registro + mensaje de campana correcto segun vistas |
+| v2.0 | Eliminar video | 16 abril 2026 | Opcion de eliminar video sin intercambios verificados desde el dashboard |
 
 ## Stack confirmado
 
@@ -480,6 +481,7 @@ RLS habilitado. Politicas: `verificaciones_canal_select_own`, `verificaciones_ca
 | `/api/videos/registrar` | POST | Registra video: valida propiedad, inserta en DB, crea campana si vistas >= 10 |
 | `/api/videos/verificar-canal` | GET | Verifica que un videoId pertenece al canal del usuario autenticado |
 | `/api/videos/reactivar` | POST | Reactiva video suspendido (bloquea si suspensiones_count >= 2) |
+| `/api/videos/eliminar` | DELETE | Elimina video sin intercambios verificados (cascade a campanas e intercambios) |
 | `/api/videos/mis-videos-youtube` | GET | Lista ultimos 8 videos del canal con cache de 60 min |
 | `/api/intercambios/asignar` | GET | Llama RPC asignar_intercambio + retorna datos completos del video |
 | `/api/intercambios/copiar` | POST | Guarda texto_comentario, timestamp_copia, duracion_video_segundos |

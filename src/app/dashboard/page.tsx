@@ -43,7 +43,11 @@ export default async function DashboardPage() {
         .eq("video_id", video.id)
         .order("created_at", { ascending: false });
 
-      return { ...video, campanas: campanas || [] };
+      const tieneVerificados = (campanas || []).some(
+        (c) => c.intercambios_completados > 0
+      );
+
+      return { ...video, campanas: campanas || [], puede_eliminar: !tieneVerificados };
     })
   );
 
