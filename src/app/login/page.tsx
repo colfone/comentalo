@@ -41,8 +41,18 @@ export default function LoginPage() {
             <span className="text-[#E87722]">lo</span>
           </h1>
           <p className="mt-3 text-gray-400">
-            Comunidad de intercambio de comentarios reales entre creadores de
-            YouTube
+            Comunidad colaborativa de creadores de YouTube en Latinoamerica
+          </p>
+        </div>
+
+        {/* Manifiesto — seccion 1 del PROYECTO.md */}
+        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6 text-center shadow-xl">
+          <p className="text-sm leading-relaxed text-gray-300">
+            Creemos que los creadores merecen crecer con apoyo real.
+            No vendemos comentarios. No tenemos bots. No hay atajos.
+          </p>
+          <p className="mt-3 text-sm font-medium text-[#c4a6e8]">
+            Tu comentas. Ellos comentan. Asi crecemos todos.
           </p>
         </div>
 
