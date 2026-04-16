@@ -63,8 +63,37 @@ export default function IntercambiarPage() {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Verification result
+  // Cancel + verification
+  const [cancelando, setCancelando] = useState(false);
   const [resultMessage, setResultMessage] = useState("");
+
+  // --- Cancel intercambio ---
+
+  async function handleCancelar() {
+    if (!intercambioId) return;
+    setCancelando(true);
+
+    try {
+      const res = await fetch("/api/intercambios/cancelar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intercambio_id: intercambioId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        alert(data.error || "Error al cancelar.");
+        return;
+      }
+
+      window.location.href = "/dashboard";
+    } catch {
+      alert("Error de conexion.");
+    } finally {
+      setCancelando(false);
+    }
+  }
 
   // --- Supabase Realtime subscription (seccion 6F.3) ---
 
@@ -380,12 +409,15 @@ export default function IntercambiarPage() {
                 Escribir comentario
               </button>
 
-              <a
-                href="/dashboard"
-                className="mt-3 block text-center text-sm text-gray-500 hover:text-gray-300"
+              <button
+                onClick={handleCancelar}
+                disabled={cancelando}
+                className="mt-3 w-full text-center text-sm text-gray-500 hover:text-red-400 disabled:opacity-50"
               >
-                Volver al dashboard
-              </a>
+                {cancelando
+                  ? "Cancelando..."
+                  : "No puedo comentar este video"}
+              </button>
             </>
           )}
 
@@ -488,12 +520,15 @@ export default function IntercambiarPage() {
                 Volver
               </button>
 
-              <a
-                href="/dashboard"
-                className="mt-2 block text-center text-sm text-gray-600 hover:text-gray-400"
+              <button
+                onClick={handleCancelar}
+                disabled={cancelando}
+                className="mt-2 w-full text-center text-sm text-gray-600 hover:text-red-400 disabled:opacity-50"
               >
-                Cancelar y volver al dashboard
-              </a>
+                {cancelando
+                  ? "Cancelando..."
+                  : "No puedo comentar este video"}
+              </button>
             </>
           )}
 

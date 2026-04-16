@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.9.
 
-## Version actual: v2.6 — 16 de abril de 2026
+## Version actual: v2.7 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -28,6 +28,7 @@ Para la vision del producto, ver PROYECTO.md v3.9.
 | v2.4 | Fix asignar video | 16 abril 2026 | /api/intercambios/asignar usa service client para leer video de otro usuario (RLS bloqueaba select_own) |
 | v2.5 | UX intercambiar | 16 abril 2026 | Textarea readonly como fallback de clipboard, boton YouTube destacado, selector de emojis |
 | v2.6 | UX navegacion | 16 abril 2026 | Boton volver al dashboard en todos los estados del flujo intercambiar (write, copied, verificando) |
+| v2.7 | Cancelar intercambio | 16 abril 2026 | Boton "No puedo comentar este video" + POST /api/intercambios/cancelar — elimina intercambio pendiente y libera slot |
 
 ## Stack confirmado
 
@@ -493,6 +494,7 @@ RLS habilitado. Politicas: `verificaciones_canal_select_own`, `verificaciones_ca
 | `/api/intercambios/asignar` | GET | Llama RPC asignar_intercambio + retorna datos completos del video |
 | `/api/intercambios/copiar` | POST | Guarda texto_comentario, timestamp_copia, duracion_video_segundos |
 | `/api/intercambios/verificar` | POST | Verifica comentario en YouTube, marca verificado/pendiente, suspension de video |
+| `/api/intercambios/cancelar` | POST | Cancela intercambio pendiente — elimina la fila y libera slot en la campana |
 | `/api/intercambios/calificar` | GET/POST | GET: lista intercambios de una campana. POST: aplica calificacion 👍/👎 |
 | `/api/usuarios/reputacion` | GET | Calcula y retorna reputacion del usuario autenticado |
 
