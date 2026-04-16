@@ -262,10 +262,21 @@ export async function POST(request: Request) {
         .gte("created_at", twentyFourHoursAgo);
 
       if ((pendingCount ?? 0) >= 3) {
-        // Suspend the video (seccion 6D.4)
+        // Suspend the video and increment counter (seccion 6D.4, 6D.6)
+        const { data: currentVideo } = await serviceClient
+          .from("videos")
+          .select("suspensiones_count")
+          .eq("id", video.id)
+          .single();
+
+        const newCount = ((currentVideo?.suspensiones_count as number) || 0) + 1;
+
         await serviceClient
           .from("videos")
-          .update({ estado: "suspendido" })
+          .update({
+            estado: "suspendido",
+            suspensiones_count: newCount,
+          })
           .eq("id", video.id);
       }
     }

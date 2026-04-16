@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.8.
 
-## Version actual: v1.3 — 16 de abril de 2026
+## Version actual: v1.4 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -15,6 +15,7 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 | v1.1 | Sesion 4 (bloques 1 y 2) | 16 abril 2026 | Registro de video, grid de seleccion, cache YouTube, flujo comentarista, bug fix canal ajeno |
 | v1.2 | Sesion 4 (bloque 3) | 16 abril 2026 | Verificacion automatica via YouTube API, Realtime, suspension de video, flujo pendientes |
 | v1.3 | Sesion 5 | 16 abril 2026 | Dashboard del creador con campanas, calificacion 👍/👎, auto-calificacion 72h, reputacion con niveles |
+| v1.4 | Sesion 6 | 16 abril 2026 | Dashboard Realtime, suspension con reactivacion, reincidencia, Realtime en campanas y videos |
 
 ## Stack confirmado
 
@@ -219,6 +220,43 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 **Archivos modificados en sesion 5:**
 - `src/app/dashboard/page.tsx` — reescrito con campanas por video, badge reputacion, boton calificar
 
+### Sesion 6 — Realtime en dashboard, suspension con reactivacion
+
+#### Bloque 1 — Dashboard Realtime
+
+- Dashboard dividido en server component (carga datos) + client component (Realtime)
+- `src/app/dashboard/page.tsx` → server: carga usuario, videos, campanas, reputacion
+- `src/app/dashboard/dashboard-client.tsx` → client: renderiza UI + suscripcion Realtime
+- Suscripcion a cambios en tabla `campanas` → dashboard se refresca cuando llegan intercambios
+- Suscripcion a cambios en tabla `videos` → dashboard se refresca cuando un video cambia de estado
+- Realtime habilitado en tablas `campanas` y `videos` via `supabase_realtime` publication
+
+#### Bloque 2 — Suspension automatica con reactivacion
+
+- Banner rojo en dashboard cuando un video esta suspendido (seccion 6D.4)
+- Mensaje exacto del PROYECTO.md: "Detectamos que 3 intercambios de tu video no se estan verificando..."
+- Boton "Reactivar video" en el banner (primera suspension)
+- `POST /api/videos/reactivar`: verifica propiedad, estado suspendido, permite reactivar
+- Reincidencia (seccion 6D.6): si `suspensiones_count >= 2` → mensaje "Requiere revision manual del equipo. Contacta a soporte." sin boton de reactivar
+- Campo `suspensiones_count` agregado a tabla `videos` (INTEGER, DEFAULT 0)
+- `POST /api/intercambios/verificar` actualizado: incrementa `suspensiones_count` al suspender
+- RLS habilitado en tablas `videos` (select_own, insert_own) y `campanas` (select_creador)
+
+#### Bloque 3 — Pruebas end-to-end
+
+- Build exitoso con 0 errores de TypeScript
+- 19 rutas registradas (8 paginas + 11 API routes)
+- Flujo completo verificado: registro → intercambiar → copiar → verificar → calificar → reputacion
+
+**Archivos creados en sesion 6:**
+- `src/app/dashboard/dashboard-client.tsx` — client component con Realtime + suspension UI
+- `src/app/api/videos/reactivar/route.ts` — POST: reactiva video suspendido
+- `supabase/migrations/20260416202115_sesion6_suspension_realtime.sql`
+
+**Archivos modificados en sesion 6:**
+- `src/app/dashboard/page.tsx` — convertido a server loader que pasa datos a client component
+- `src/app/api/intercambios/verificar/route.ts` — incrementa suspensiones_count al suspender
+
 ## Estado actual del esquema de base de datos
 
 ### Tabla: usuarios
@@ -256,6 +294,9 @@ RLS habilitado. Politicas: `usuarios_select_own`, `usuarios_insert_own`.
 | tipo_intercambio | TEXT | nullable, CHECK IN ('opinion', 'pregunta', 'experiencia') (sesion 4) |
 | tono | TEXT | nullable, CHECK IN ('casual', 'entusiasta', 'reflexivo') (sesion 4) |
 | duracion_segundos | INTEGER | nullable (sesion 4) |
+| suspensiones_count | INTEGER | NOT NULL, DEFAULT 0 (sesion 6) |
+
+RLS habilitado (sesion 6). Politicas: `videos_select_own`, `videos_insert_own`. Realtime habilitado via `supabase_realtime` publication.
 
 ### Tabla: campanas
 
@@ -267,6 +308,8 @@ RLS habilitado. Politicas: `usuarios_select_own`, `usuarios_insert_own`.
 | intercambios_completados | INTEGER | NOT NULL, DEFAULT 0 |
 | created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
 | closed_at | TIMESTAMPTZ | nullable |
+
+RLS habilitado (sesion 6). Politicas: `campanas_select_creador`. Realtime habilitado via `supabase_realtime` publication.
 
 ### Tabla: intercambios
 
@@ -342,6 +385,7 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 | `/api/cron/verificaciones` | GET | Ejecuta RPC procesar_verificaciones_pendientes (protegido con CRON_SECRET) |
 | `/api/videos/registrar` | POST | Registra video: valida propiedad, inserta en DB, crea campana si vistas >= 10 |
 | `/api/videos/verificar-canal` | GET | Verifica que un videoId pertenece al canal del usuario autenticado |
+| `/api/videos/reactivar` | POST | Reactiva video suspendido (bloquea si suspensiones_count >= 2) |
 | `/api/videos/mis-videos-youtube` | GET | Lista ultimos 8 videos del canal con cache de 60 min |
 | `/api/intercambios/asignar` | GET | Llama RPC asignar_intercambio + retorna datos completos del video |
 | `/api/intercambios/copiar` | POST | Guarda texto_comentario, timestamp_copia, duracion_video_segundos |
@@ -389,10 +433,11 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 | `20260416183919_agregar_cache_videos_youtube.sql` | Tabla cache_videos_youtube con TTL 60 min + RLS | Aplicada |
 | `20260416200413_habilitar_realtime_intercambios.sql` | Realtime en intercambios + RLS con 2 politicas | Aplicada |
 | `20260416201256_sesion5_calificacion_reputacion.sql` | RPCs auto_calificar + calcular_reputacion + pg_cron cada hora | Aplicada |
+| `20260416202115_sesion6_suspension_realtime.sql` | suspensiones_count en videos + Realtime en campanas/videos + RLS | Aplicada |
 
 ## Sesion siguiente
 
-Sesion 6 — Pulido pre-lanzamiento
+Sesion 7 — Pulido pre-lanzamiento
 Pendiente: pagina de perfil publico, logout, navegacion entre paginas, manejo de errores globales, deploy a Vercel.
 
 ---
