@@ -5,13 +5,14 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.8.
 
-## Version actual: v1.0 — 16 de abril de 2026
+## Version actual: v1.1 — 16 de abril de 2026
 
 ## Registro de versiones
 
 | Version | Sesion | Fecha | Descripcion |
 | --- | --- | --- | --- |
 | v1.0 | Sesion 1 + 2 + 3 | 16 abril 2026 | Documento inicial — cubre las 3 primeras sesiones de desarrollo |
+| v1.1 | Sesion 4 (bloques 1 y 2) | 16 abril 2026 | Registro de video, grid de seleccion, cache YouTube, flujo comentarista, bug fix canal ajeno |
 
 ## Stack confirmado
 
@@ -93,6 +94,55 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 7. Si pasa: insert en tabla `usuarios` → redirige a `/dashboard`
 8. Si no pasa: sign out → redirige a `/registro-rechazado?reason=...`
 
+### Sesion 4 — Flujo del intercambio (Bloques 1 y 2)
+
+#### Bloque 1 — Registro de video
+
+- Formulario de registro segun seccion 5.3 del PROYECTO.md
+- Grid de 2 columnas con ultimos 8 videos del canal del usuario (via YouTube API)
+- Cache de videos de YouTube por usuario con TTL de 60 minutos (tabla `cache_videos_youtube`)
+- Opcion de link manual siempre visible como fallback debajo del grid
+- Videos ya registrados en Comentalo marcados como "Ya registrado" (no seleccionables)
+- Formulario paso 2: descripcion (max 300 chars), tipo de intercambio (3 opciones), tono (3 opciones)
+- Aviso de moderacion de YouTube Studio (seccion 5.6)
+- Regla de vistas (seccion 5C.4): si vistas >= 10 → crea campana; si no → video queda sin campana
+- Limite de 2 videos activos simultaneos (seccion 5.5)
+
+**Bug corregido:** Validacion de propiedad del canal — el sistema ahora verifica que `snippet.channelId` del video coincida con `canal_youtube_id` del usuario en dos puntos:
+1. En el Paso 1 via `GET /api/videos/verificar-canal` (bloquea antes de mostrar el formulario)
+2. En el registro via `POST /api/videos/registrar` (defensa en profundidad)
+
+#### Bloque 2 — Flujo del comentarista
+
+- Pagina `/dashboard/intercambiar` con flujo completo de participacion
+- Llama al RPC `asignar_intercambio` para obtener video de la cola
+- Muestra video asignado: thumbnail, titulo, descripcion del creador, tipo de intercambio y tono
+- Textarea para redactar comentario (minimo 20 caracteres)
+- Boton Copiar: copia al portapapeles + guarda en DB (texto, timestamp, duracion)
+- Enlace directo al video en YouTube despues de copiar
+- Contador regresivo visible (MM:SS) segun tabla de tiempos de seccion 5.4:
+  - < 2 min → 60s
+  - 2-5 min → 120s
+  - 5-10 min → 180s
+  - 10+ min → 300s (techo maximo)
+- Boton "Ya publique" deshabilitado durante countdown, se habilita al llegar a 00:00
+- Verificacion real pendiente (Bloque 3) — actualmente muestra placeholder "Verificando..."
+- Casos especiales manejados: 3 pendientes simultaneos, usuario sin video activo, cola vacia
+
+**Archivos creados en sesion 4:**
+- `src/app/dashboard/registrar-video/page.tsx` — formulario registro de video con grid
+- `src/app/dashboard/intercambiar/page.tsx` — flujo completo del comentarista
+- `src/app/api/videos/registrar/route.ts` — POST: registra video + crea campana
+- `src/app/api/videos/verificar-canal/route.ts` — GET: verifica propiedad del video
+- `src/app/api/videos/mis-videos-youtube/route.ts` — GET: lista videos recientes con cache
+- `src/app/api/intercambios/asignar/route.ts` — GET: llama RPC + retorna datos del video
+- `src/app/api/intercambios/copiar/route.ts` — POST: guarda texto, timestamp, duracion
+- `supabase/migrations/20260416162846_agregar_columnas_sesion4.sql`
+- `supabase/migrations/20260416183919_agregar_cache_videos_youtube.sql`
+
+**Archivos modificados en sesion 4:**
+- `src/app/dashboard/page.tsx` — agregado boton "Intercambiar" + lista de videos del usuario
+
 ## Estado actual del esquema de base de datos
 
 ### Tabla: usuarios
@@ -106,13 +156,13 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 | antiguedad | DATE | NOT NULL |
 | reputacion | NUMERIC(5,2) | NOT NULL, DEFAULT 100.00 |
 | created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
-| auth_id | UUID | UNIQUE (agregado en sesion 3) |
-| email | TEXT | nullable (agregado en sesion 3) |
-| nombre | TEXT | nullable (agregado en sesion 3) |
-| avatar_url | TEXT | nullable (agregado en sesion 3) |
-| videos_al_registro | INTEGER | NOT NULL, DEFAULT 0 (agregado en sesion 3) |
+| auth_id | UUID | UNIQUE (sesion 3) |
+| email | TEXT | nullable (sesion 3) |
+| nombre | TEXT | nullable (sesion 3) |
+| avatar_url | TEXT | nullable (sesion 3) |
+| videos_al_registro | INTEGER | NOT NULL, DEFAULT 0 (sesion 3) |
 
-RLS habilitado. Politicas: `usuarios_select_own` (SELECT where auth.uid() = auth_id), `usuarios_insert_own` (INSERT with check auth.uid() = auth_id).
+RLS habilitado. Politicas: `usuarios_select_own`, `usuarios_insert_own`.
 
 ### Tabla: videos
 
@@ -126,6 +176,10 @@ RLS habilitado. Politicas: `usuarios_select_own` (SELECT where auth.uid() = auth
 | estado | TEXT | NOT NULL, DEFAULT 'activo', CHECK IN ('activo', 'suspendido', 'completado') |
 | intercambios_disponibles | INTEGER | NOT NULL, DEFAULT 10 |
 | created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
+| descripcion | TEXT | nullable (sesion 4) |
+| tipo_intercambio | TEXT | nullable, CHECK IN ('opinion', 'pregunta', 'experiencia') (sesion 4) |
+| tono | TEXT | nullable, CHECK IN ('casual', 'entusiasta', 'reflexivo') (sesion 4) |
+| duracion_segundos | INTEGER | nullable (sesion 4) |
 
 ### Tabla: campanas
 
@@ -150,6 +204,7 @@ RLS habilitado. Politicas: `usuarios_select_own` (SELECT where auth.uid() = auth
 | estado | TEXT | NOT NULL, DEFAULT 'pendiente', CHECK IN ('pendiente', 'verificado', 'rechazado') |
 | calificacion | TEXT | nullable, CHECK IN ('positiva', 'negativa') |
 | created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
+| duracion_video_segundos | INTEGER | nullable (sesion 4) |
 
 ### Tabla: verificaciones_pendientes
 
@@ -160,6 +215,18 @@ RLS habilitado. Politicas: `usuarios_select_own` (SELECT where auth.uid() = auth
 | proximo_intento_at | TIMESTAMPTZ | NOT NULL |
 | intentos | INTEGER | NOT NULL, DEFAULT 0 |
 | created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
+
+### Tabla: cache_videos_youtube (sesion 4)
+
+| Columna | Tipo | Restricciones |
+| --- | --- | --- |
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() |
+| usuario_id | UUID | NOT NULL, FK → usuarios(id) ON DELETE CASCADE, UNIQUE |
+| videos | JSONB | NOT NULL, DEFAULT '[]' |
+| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
+| expires_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() + 60 min |
+
+RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`, `cache_videos_update_own`, `cache_videos_delete_own`.
 
 ### Indices
 
@@ -172,6 +239,8 @@ RLS habilitado. Politicas: `usuarios_select_own` (SELECT where auth.uid() = auth
 - `idx_intercambios_estado` ON intercambios(estado)
 - `idx_verificaciones_proximo_intento` ON verificaciones_pendientes(proximo_intento_at)
 - `idx_usuarios_auth_id` ON usuarios(auth_id)
+- `idx_cache_videos_usuario_id` ON cache_videos_youtube(usuario_id)
+- `idx_cache_videos_expires_at` ON cache_videos_youtube(expires_at)
 
 ## Rutas existentes en el proyecto
 
@@ -182,14 +251,21 @@ RLS habilitado. Politicas: `usuarios_select_own` (SELECT where auth.uid() = auth
 | `/` | `src/app/page.tsx` | Dynamic (server) | Redirige a /login o /dashboard segun sesion |
 | `/login` | `src/app/login/page.tsx` | Static (client) | Login con Google OAuth |
 | `/auth/callback` | `src/app/auth/callback/route.ts` | Dynamic (route handler) | Callback OAuth + verificacion YouTube |
-| `/dashboard` | `src/app/dashboard/page.tsx` | Dynamic (server) | Dashboard minimo post-registro |
+| `/dashboard` | `src/app/dashboard/page.tsx` | Dynamic (server) | Dashboard con perfil, boton intercambiar y lista de videos |
+| `/dashboard/registrar-video` | `src/app/dashboard/registrar-video/page.tsx` | Static (client) | Grid de videos + formulario de registro |
+| `/dashboard/intercambiar` | `src/app/dashboard/intercambiar/page.tsx` | Static (client) | Flujo completo del comentarista |
 | `/registro-rechazado` | `src/app/registro-rechazado/page.tsx` | Static (client) | Motivos de rechazo del canal |
 
 ### API Routes
 
-| Ruta | Archivo | Metodo | Descripcion |
-| --- | --- | --- | --- |
-| `/api/cron/verificaciones` | `src/app/api/cron/verificaciones/route.ts` | GET | Ejecuta RPC procesar_verificaciones_pendientes (protegido con CRON_SECRET) |
+| Ruta | Metodo | Descripcion |
+| --- | --- | --- |
+| `/api/cron/verificaciones` | GET | Ejecuta RPC procesar_verificaciones_pendientes (protegido con CRON_SECRET) |
+| `/api/videos/registrar` | POST | Registra video: valida propiedad, inserta en DB, crea campana si vistas >= 10 |
+| `/api/videos/verificar-canal` | GET | Verifica que un videoId pertenece al canal del usuario autenticado |
+| `/api/videos/mis-videos-youtube` | GET | Lista ultimos 8 videos del canal con cache de 60 min |
+| `/api/intercambios/asignar` | GET | Llama RPC asignar_intercambio + retorna datos completos del video |
+| `/api/intercambios/copiar` | POST | Guarda texto_comentario, timestamp_copia, duracion_video_segundos |
 
 ## RPCs en Supabase
 
@@ -224,11 +300,13 @@ RLS habilitado. Politicas: `usuarios_select_own` (SELECT where auth.uid() = auth
 | `20260416022010_create_rpc_procesar_verificaciones.sql` | RPC procesar_verificaciones_pendientes | Aplicada |
 | `20260416024639_migrate_cron_to_pg_cron.sql` | pg_cron job cada 5 minutos | Aplicada |
 | `20260416030000_add_auth_fields_to_usuarios.sql` | Campos auth + RLS en usuarios | Aplicada |
+| `20260416162846_agregar_columnas_sesion4.sql` | Columnas descripcion, tipo_intercambio, tono, duracion en videos + duracion en intercambios | Aplicada |
+| `20260416183919_agregar_cache_videos_youtube.sql` | Tabla cache_videos_youtube con TTL 60 min + RLS | Aplicada |
 
 ## Sesion siguiente
 
-Sesion 4 — Flujo del intercambio
-Pendiente: registro de video, cola de intercambios, flujo de comentario con boton Copiar y Ya publique, verificacion automatica via API.
+Sesion 4 Bloque 3 — Verificacion automatica del comentario via YouTube API
+Pendiente: POST /api/intercambios/verificar que busca el texto exacto del comentario en el video via commentThreads API, actualiza estado del intercambio, e incrementa intercambios_completados en la campana.
 
 ---
 
