@@ -2,13 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-// --- YouTube channel verification (seccion 4B) ---
+// --- YouTube channel type ---
 
 interface YouTubeChannel {
   id: string;
   snippet: {
     title: string;
-    publishedAt: string; // ISO date — channel creation date
+    publishedAt: string;
     thumbnails: { default?: { url: string } };
     customUrl?: string;
   };
@@ -20,27 +20,17 @@ interface YouTubeChannel {
   };
 }
 
-interface VerificationResult {
-  ok: true;
-  channel: YouTubeChannel;
-}
-
-interface VerificationError {
-  ok: false;
-  reason: string;
-}
+// --- Channel verification (seccion 4B) ---
 
 function verifyChannelRequirements(
   channel: YouTubeChannel
-): VerificationResult | VerificationError {
+): { ok: true; channel: YouTubeChannel } | { ok: false; reason: string } {
   const errors: string[] = [];
 
-  // 1. Canal publico — hiddenSubscriberCount indica canal privado
   if (channel.statistics.hiddenSubscriberCount) {
     errors.push("Tu canal debe ser publico para registrarte en Comentalo.");
   }
 
-  // 2. Antiguedad minima: 3 meses
   const createdAt = new Date(channel.snippet.publishedAt);
   const threeMonthsAgo = new Date();
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
@@ -52,15 +42,11 @@ function verifyChannelRequirements(
     );
   }
 
-  // 3. Minimo 1 video publico
   const videoCount = parseInt(channel.statistics.videoCount, 10);
   if (videoCount < 1) {
-    errors.push(
-      "Tu canal debe tener al menos 1 video publico."
-    );
+    errors.push("Tu canal debe tener al menos 1 video publico.");
   }
 
-  // 4. Minimo 20 suscriptores
   const subscriberCount = parseInt(channel.statistics.subscriberCount, 10);
   if (subscriberCount < 20) {
     errors.push(
@@ -85,7 +71,6 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=no_code`);
   }
 
-  // Create Supabase client with cookie access for this route handler
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -115,25 +100,32 @@ export async function GET(request: Request) {
 
   const session = sessionData.session;
   const providerToken = session.provider_token;
+  const user = session.user;
 
   if (!providerToken) {
     console.error("No provider_token returned from Google OAuth");
     return NextResponse.redirect(`${origin}/login?error=no_provider_token`);
   }
 
-  // --- Call YouTube Data API to get channel info (seccion 4B.1) ---
-  // GET https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true
-  // Uses the user's OAuth token — cost: 1 quota unit
+  // Check if user is already registered
+  const { data: existingAccount } = await supabase
+    .from("usuarios")
+    .select("id")
+    .eq("auth_id", user.id)
+    .maybeSingle();
 
-  let channelData: YouTubeChannel | null = null;
+  if (existingAccount) {
+    return NextResponse.redirect(`${origin}/dashboard`);
+  }
+
+  // --- Fetch ALL YouTube channels for this account ---
+  let channels: YouTubeChannel[] = [];
 
   try {
     const ytResponse = await fetch(
       "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true",
       {
-        headers: {
-          Authorization: `Bearer ${providerToken}`,
-        },
+        headers: { Authorization: `Bearer ${providerToken}` },
       }
     );
 
@@ -159,7 +151,7 @@ export async function GET(request: Request) {
       );
     }
 
-    channelData = ytData.items[0] as YouTubeChannel;
+    channels = ytData.items as YouTubeChannel[];
   } catch (err) {
     console.error("YouTube API fetch error:", err);
     return NextResponse.redirect(
@@ -170,26 +162,39 @@ export async function GET(request: Request) {
     );
   }
 
-  // --- Verify channel requirements (seccion 4B) ---
+  // --- Multiple channels: redirect to selection page ---
+  if (channels.length > 1) {
+    // Encode minimal channel data for the selection page
+    const channelSummaries = channels.map((ch) => ({
+      id: ch.id,
+      title: ch.snippet.title,
+      thumbnail: ch.snippet.thumbnails?.default?.url || "",
+      subscribers: parseInt(ch.statistics.subscriberCount, 10),
+      videos: parseInt(ch.statistics.videoCount, 10),
+      publishedAt: ch.snippet.publishedAt,
+      customUrl: ch.snippet.customUrl || "",
+      hiddenSubscriberCount: ch.statistics.hiddenSubscriberCount,
+    }));
 
-  const verification = verifyChannelRequirements(channelData);
+    const encoded = encodeURIComponent(JSON.stringify(channelSummaries));
+    return NextResponse.redirect(
+      `${origin}/seleccionar-canal?channels=${encoded}`
+    );
+  }
+
+  // --- Single channel: verify and register directly ---
+  const channel = channels[0];
+  const verification = verifyChannelRequirements(channel);
 
   if (!verification.ok) {
-    // Sign out — the user cannot register yet
     await supabase.auth.signOut();
-
     return NextResponse.redirect(
       `${origin}/registro-rechazado?reason=` +
         encodeURIComponent(verification.reason)
     );
   }
 
-  // --- Channel passes all checks — save to usuarios table (seccion 6F.5, 9.1) ---
-
-  const channel = verification.channel;
-  const user = session.user;
-
-  // Check if this YouTube channel is already linked to another account (seccion 9.1 — permanent binding)
+  // Check if channel is already linked to another account
   const { data: existingUser } = await supabase
     .from("usuarios")
     .select("id, auth_id")
@@ -198,11 +203,8 @@ export async function GET(request: Request) {
 
   if (existingUser) {
     if (existingUser.auth_id === user.id) {
-      // Same user logging in again — redirect to dashboard
       return NextResponse.redirect(`${origin}/dashboard`);
     }
-
-    // Different auth user trying to register the same channel — blocked
     await supabase.auth.signOut();
     return NextResponse.redirect(
       `${origin}/registro-rechazado?reason=` +
@@ -212,23 +214,10 @@ export async function GET(request: Request) {
     );
   }
 
-  // Check if this auth user already has a linked channel
-  const { data: existingAccount } = await supabase
-    .from("usuarios")
-    .select("id")
-    .eq("auth_id", user.id)
-    .maybeSingle();
-
-  if (existingAccount) {
-    // User already registered — just go to dashboard
-    return NextResponse.redirect(`${origin}/dashboard`);
-  }
-
-  // Insert new user with channel data — seccion 6F.5 campos
-  const channelUrl =
-    channel.snippet.customUrl
-      ? `https://www.youtube.com/${channel.snippet.customUrl}`
-      : `https://www.youtube.com/channel/${channel.id}`;
+  // Insert user
+  const channelUrl = channel.snippet.customUrl
+    ? `https://www.youtube.com/${channel.snippet.customUrl}`
+    : `https://www.youtube.com/channel/${channel.id}`;
 
   const { error: insertError } = await supabase.from("usuarios").insert({
     auth_id: user.id,
@@ -244,7 +233,7 @@ export async function GET(request: Request) {
       channel.statistics.subscriberCount,
       10
     ),
-    antiguedad: channel.snippet.publishedAt.split("T")[0], // DATE format YYYY-MM-DD
+    antiguedad: channel.snippet.publishedAt.split("T")[0],
     videos_al_registro: parseInt(channel.statistics.videoCount, 10),
     reputacion: 100.0,
   });
@@ -259,6 +248,5 @@ export async function GET(request: Request) {
     );
   }
 
-  // Success — redirect to dashboard
   return NextResponse.redirect(`${origin}/dashboard`);
 }

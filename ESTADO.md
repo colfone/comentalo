@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.8.
 
-## Version actual: v1.5 — 16 de abril de 2026
+## Version actual: v1.6 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -17,6 +17,7 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 | v1.3 | Sesion 5 | 16 abril 2026 | Dashboard del creador con campanas, calificacion 👍/👎, auto-calificacion 72h, reputacion con niveles |
 | v1.4 | Sesion 6 | 16 abril 2026 | Dashboard Realtime, suspension con reactivacion, reincidencia, Realtime en campanas y videos |
 | v1.5 | Sesion 7 | 16 abril 2026 | Deploy a Vercel, pulido visual, manifiesto en login, 404, metadata, vocabulario auditado |
+| v1.6 | Fix multi-canal | 16 abril 2026 | Soporte para cuentas Google con multiples canales YouTube — pagina de seleccion de canal |
 
 ## Stack confirmado
 
@@ -292,6 +293,26 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 - `src/app/login/page.tsx` — manifiesto agregado, subtitulo actualizado
 - `src/app/layout.tsx` — metadata y lang="es"
 
+### Fix: Soporte para cuentas con multiples canales de YouTube
+
+**Problema:** Una cuenta de Google puede tener multiples canales de YouTube. El flujo original tomaba el primer canal sin preguntar. Si el usuario tenia 2+ canales, podia vincular el canal incorrecto a su cuenta de Comentalo de forma permanente.
+
+**Solucion implementada:**
+- `/auth/callback` ahora verifica si la cuenta tiene mas de 1 canal
+- Si 1 canal → flujo directo sin cambios (fast path)
+- Si 2+ canales → redirige a `/seleccionar-canal` con los datos de todos los canales
+- `/seleccionar-canal` muestra grid con nombre, foto, suscriptores y videos de cada canal
+- Aviso de vinculacion permanente visible (seccion 9.1)
+- Al seleccionar, llama a `POST /api/auth/registrar-canal` que verifica requisitos 4B y registra
+- Si el canal no cumple requisitos → redirige a `/registro-rechazado` con motivos
+
+**Archivos creados:**
+- `src/app/seleccionar-canal/page.tsx` — pagina de seleccion de canal
+- `src/app/api/auth/registrar-canal/route.ts` — POST: verifica requisitos 4B + registra usuario
+
+**Archivos modificados:**
+- `src/app/auth/callback/route.ts` — detecta multiples canales, redirige si > 1
+
 ## Estado actual del esquema de base de datos
 
 ### Tabla: usuarios
@@ -411,6 +432,7 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 | `/dashboard/registrar-video` | `src/app/dashboard/registrar-video/page.tsx` | Static (client) | Grid de videos + formulario de registro |
 | `/dashboard/intercambiar` | `src/app/dashboard/intercambiar/page.tsx` | Static (client) | Flujo completo del comentarista |
 | `/dashboard/calificar/[campanaId]` | `src/app/dashboard/calificar/[campanaId]/page.tsx` | Dynamic (client) | Calificacion de intercambios por campana |
+| `/seleccionar-canal` | `src/app/seleccionar-canal/page.tsx` | Static (client) | Seleccion de canal para cuentas con multiples canales |
 | `/registro-rechazado` | `src/app/registro-rechazado/page.tsx` | Static (client) | Motivos de rechazo del canal |
 | `404` | `src/app/not-found.tsx` | Static | Pagina 404 personalizada (sesion 7) |
 
@@ -418,6 +440,7 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 
 | Ruta | Metodo | Descripcion |
 | --- | --- | --- |
+| `/api/auth/registrar-canal` | POST | Registra usuario con canal seleccionado — verifica requisitos 4B, vincula canal |
 | `/api/cron/verificaciones` | GET | Ejecuta RPC procesar_verificaciones_pendientes (protegido con CRON_SECRET) |
 | `/api/videos/registrar` | POST | Registra video: valida propiedad, inserta en DB, crea campana si vistas >= 10 |
 | `/api/videos/verificar-canal` | GET | Verifica que un videoId pertenece al canal del usuario autenticado |
