@@ -17,11 +17,6 @@ export default function LoginPage() {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        scopes: "https://www.googleapis.com/auth/youtube.readonly",
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
-        },
       },
     });
 
@@ -59,29 +54,12 @@ export default function LoginPage() {
         {/* Card de login */}
         <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 shadow-xl">
           <h2 className="mb-2 text-xl font-semibold text-white">
-            Conecta tu canal de YouTube
+            Inicia sesion con Google
           </h2>
           <p className="mb-6 text-sm text-gray-400">
-            Usamos tu cuenta de Google para verificar que eres el propietario
-            real del canal.
+            Solo necesitamos tu email para crear tu cuenta. La verificacion de
+            tu canal de YouTube se hace en el siguiente paso.
           </p>
-
-          {/* Aviso de vinculacion permanente — seccion 9.1 */}
-          <div className="mb-4 rounded-lg border border-[#6B3FA0]/30 bg-[#6B3FA0]/10 p-4">
-            <p className="text-sm text-[#c4a6e8]">
-              Tu canal de YouTube quedara vinculado permanentemente a tu cuenta
-              de Comentalo.
-            </p>
-          </div>
-
-          {/* Advertencia de cuenta correcta */}
-          <div className="mb-6 rounded-lg border border-[#E87722]/30 bg-[#E87722]/10 p-4">
-            <p className="text-sm font-medium text-[#f0a964]">
-              Importante: Usa la cuenta de Google vinculada a tu canal de
-              YouTube. Si usas una cuenta diferente no podremos verificar tu
-              canal.
-            </p>
-          </div>
 
           <button
             onClick={handleLoginWithGoogle}

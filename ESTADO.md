@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.8.
 
-## Version actual: v1.6 — 16 de abril de 2026
+## Version actual: v1.7 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -18,6 +18,7 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 | v1.4 | Sesion 6 | 16 abril 2026 | Dashboard Realtime, suspension con reactivacion, reincidencia, Realtime en campanas y videos |
 | v1.5 | Sesion 7 | 16 abril 2026 | Deploy a Vercel, pulido visual, manifiesto en login, 404, metadata, vocabulario auditado |
 | v1.6 | Fix multi-canal | 16 abril 2026 | Soporte para cuentas Google con multiples canales YouTube — pagina de seleccion de canal |
+| v1.7 | Refactor auth | 16 abril 2026 | Eliminado scope youtube.readonly — verificacion de canal por codigo en descripcion |
 
 ## Stack confirmado
 
@@ -89,15 +90,18 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 - `src/app/page.tsx` — redirige a /login o /dashboard segun sesion
 - `supabase/migrations/20260416030000_add_auth_fields_to_usuarios.sql`
 
-**Flujo de autenticacion implementado:**
-1. Usuario visita `/login` → ve avisos de vinculacion permanente y cuenta correcta
-2. Click "Continuar con Google" → Supabase redirige a Google con scope `youtube.readonly`
-3. Google retorna a `/auth/callback` con code
-4. Callback intercambia code por sesion → obtiene `provider_token`
-5. Llama a `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true`
-6. Verifica 4 requisitos de seccion 4B
-7. Si pasa: insert en tabla `usuarios` → redirige a `/dashboard`
-8. Si no pasa: sign out → redirige a `/registro-rechazado?reason=...`
+**Flujo de autenticacion implementado (refactorizado en v1.7):**
+1. Usuario visita `/login` → ve manifiesto + boton "Continuar con Google"
+2. Click → Supabase redirige a Google con scope basico (email + perfil, sin youtube.readonly)
+3. Google retorna a `/auth/callback` → crea sesion
+4. Si ya tiene canal vinculado → redirige a `/dashboard`
+5. Si no tiene canal → redirige a `/verificar-canal`
+6. Usuario pega link de su canal → API publica verifica requisitos 4B
+7. Si cumple → genera codigo `COMENTALO-XXXX` → redirige a `/verificar-codigo`
+8. Usuario pega codigo en descripcion del canal en YouTube Studio
+9. Click "Ya lo pegue" → API lee descripcion publica del canal
+10. Si encuentra el codigo → registra usuario → redirige a `/dashboard`
+11. Si no cumple requisitos → redirige a `/registro-rechazado?reason=...`
 
 ### Sesion 4 — Flujo del intercambio (Bloques 1 y 2)
 
@@ -293,25 +297,35 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 - `src/app/login/page.tsx` — manifiesto agregado, subtitulo actualizado
 - `src/app/layout.tsx` — metadata y lang="es"
 
-### Fix: Soporte para cuentas con multiples canales de YouTube
+### Refactor: Verificacion de canal por codigo en descripcion
 
-**Problema:** Una cuenta de Google puede tener multiples canales de YouTube. El flujo original tomaba el primer canal sin preguntar. Si el usuario tenia 2+ canales, podia vincular el canal incorrecto a su cuenta de Comentalo de forma permanente.
+**Problema:** El flujo anterior pedia el scope `youtube.readonly` en el login de Google, lo que generaba desconfianza en los usuarios al ver que la app pedia acceso a su canal de YouTube. Ademas, el soporte multi-canal complicaba el callback.
 
-**Solucion implementada:**
-- `/auth/callback` ahora verifica si la cuenta tiene mas de 1 canal
-- Si 1 canal → flujo directo sin cambios (fast path)
-- Si 2+ canales → redirige a `/seleccionar-canal` con los datos de todos los canales
-- `/seleccionar-canal` muestra grid con nombre, foto, suscriptores y videos de cada canal
-- Aviso de vinculacion permanente visible (seccion 9.1)
-- Al seleccionar, llama a `POST /api/auth/registrar-canal` que verifica requisitos 4B y registra
-- Si el canal no cumple requisitos → redirige a `/registro-rechazado` con motivos
+**Solucion implementada — flujo nuevo:**
+1. Login con Google pide solo perfil basico (email + nombre + foto) — sin scope `youtube.readonly`
+2. Callback simplificado: solo crea sesion y redirige a `/verificar-canal` si no tiene canal vinculado
+3. `/verificar-canal`: el usuario pega el link de su canal, la API publica verifica requisitos 4B
+4. Si cumple requisitos → se genera codigo `COMENTALO-XXXX` y se redirige a `/verificar-codigo`
+5. `/verificar-codigo`: el usuario pega el codigo en la descripcion de su canal en YouTube Studio
+6. Al presionar "Ya lo pegue" → la API lee la descripcion publica del canal y busca el codigo
+7. Si lo encuentra → registro completo, el usuario puede borrar el codigo despues
+8. Si no lo encuentra → mensaje claro para reintentar
+
+**Archivos eliminados:**
+- `src/app/seleccionar-canal/page.tsx` — ya no necesaria
+- `src/app/api/auth/registrar-canal/route.ts` — ya no necesaria
 
 **Archivos creados:**
-- `src/app/seleccionar-canal/page.tsx` — pagina de seleccion de canal
-- `src/app/api/auth/registrar-canal/route.ts` — POST: verifica requisitos 4B + registra usuario
+- `src/app/verificar-canal/page.tsx` — pagina para ingresar link del canal
+- `src/app/verificar-codigo/page.tsx` — pagina para verificar codigo en descripcion
+- `src/app/api/canal/verificar-requisitos/route.ts` — POST: resuelve canal, verifica 4B, genera codigo
+- `src/app/api/canal/verificar-codigo/route.ts` — POST: lee descripcion publica, busca codigo, registra usuario
+- `supabase/migrations/20260416212103_verificacion_codigo_canal.sql` — tabla `verificaciones_canal`
 
 **Archivos modificados:**
-- `src/app/auth/callback/route.ts` — detecta multiples canales, redirige si > 1
+- `src/app/login/page.tsx` — eliminado scope youtube.readonly, simplificado texto
+- `src/app/auth/callback/route.ts` — simplificado: solo sesion + redirige a /verificar-canal o /dashboard
+- `src/app/dashboard/page.tsx` — redirige a /verificar-canal si usuario autenticado sin canal
 
 ## Estado actual del esquema de base de datos
 
@@ -405,6 +419,21 @@ RLS habilitado (sesion 4). Politicas: `intercambios_select_comentarista` (coment
 
 RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`, `cache_videos_update_own`, `cache_videos_delete_own`.
 
+### Tabla: verificaciones_canal (refactor auth)
+
+| Columna | Tipo | Restricciones |
+| --- | --- | --- |
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() |
+| auth_id | UUID | NOT NULL |
+| codigo | TEXT | NOT NULL, UNIQUE |
+| canal_youtube_id | TEXT | NOT NULL |
+| canal_data | JSONB | NOT NULL |
+| verificado | BOOLEAN | NOT NULL, DEFAULT false |
+| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
+| expires_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() + 24 hours |
+
+RLS habilitado. Politicas: `verificaciones_canal_select_own`, `verificaciones_canal_insert_own`.
+
 ### Indices
 
 - `idx_videos_usuario_id` ON videos(usuario_id)
@@ -418,6 +447,8 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 - `idx_usuarios_auth_id` ON usuarios(auth_id)
 - `idx_cache_videos_usuario_id` ON cache_videos_youtube(usuario_id)
 - `idx_cache_videos_expires_at` ON cache_videos_youtube(expires_at)
+- `idx_verificaciones_canal_auth_id` ON verificaciones_canal(auth_id)
+- `idx_verificaciones_canal_codigo` ON verificaciones_canal(codigo)
 
 ## Rutas existentes en el proyecto
 
@@ -432,7 +463,8 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 | `/dashboard/registrar-video` | `src/app/dashboard/registrar-video/page.tsx` | Static (client) | Grid de videos + formulario de registro |
 | `/dashboard/intercambiar` | `src/app/dashboard/intercambiar/page.tsx` | Static (client) | Flujo completo del comentarista |
 | `/dashboard/calificar/[campanaId]` | `src/app/dashboard/calificar/[campanaId]/page.tsx` | Dynamic (client) | Calificacion de intercambios por campana |
-| `/seleccionar-canal` | `src/app/seleccionar-canal/page.tsx` | Static (client) | Seleccion de canal para cuentas con multiples canales |
+| `/verificar-canal` | `src/app/verificar-canal/page.tsx` | Static (client) | Ingreso de link del canal + verificacion de requisitos |
+| `/verificar-codigo` | `src/app/verificar-codigo/page.tsx` | Static (client) | Verificacion de codigo en descripcion del canal |
 | `/registro-rechazado` | `src/app/registro-rechazado/page.tsx` | Static (client) | Motivos de rechazo del canal |
 | `404` | `src/app/not-found.tsx` | Static | Pagina 404 personalizada (sesion 7) |
 
@@ -440,7 +472,8 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 
 | Ruta | Metodo | Descripcion |
 | --- | --- | --- |
-| `/api/auth/registrar-canal` | POST | Registra usuario con canal seleccionado — verifica requisitos 4B, vincula canal |
+| `/api/canal/verificar-requisitos` | POST | Resuelve link de canal, verifica requisitos 4B, genera codigo COMENTALO-XXXX |
+| `/api/canal/verificar-codigo` | POST | Lee descripcion publica del canal, busca codigo, registra usuario |
 | `/api/cron/verificaciones` | GET | Ejecuta RPC procesar_verificaciones_pendientes (protegido con CRON_SECRET) |
 | `/api/videos/registrar` | POST | Registra video: valida propiedad, inserta en DB, crea campana si vistas >= 10 |
 | `/api/videos/verificar-canal` | GET | Verifica que un videoId pertenece al canal del usuario autenticado |
@@ -493,6 +526,7 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 | `20260416200413_habilitar_realtime_intercambios.sql` | Realtime en intercambios + RLS con 2 politicas | Aplicada |
 | `20260416201256_sesion5_calificacion_reputacion.sql` | RPCs auto_calificar + calcular_reputacion + pg_cron cada hora | Aplicada |
 | `20260416202115_sesion6_suspension_realtime.sql` | suspensiones_count en videos + Realtime en campanas/videos + RLS | Aplicada |
+| `20260416212103_verificacion_codigo_canal.sql` | Tabla verificaciones_canal para flujo de codigo en descripcion | Aplicada |
 
 ## Deploy en produccion
 

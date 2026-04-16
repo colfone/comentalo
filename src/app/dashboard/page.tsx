@@ -22,7 +22,7 @@ export default async function DashboardPage() {
     .single();
 
   if (!usuario) {
-    redirect("/login");
+    redirect("/verificar-canal");
   }
 
   // Fetch videos
