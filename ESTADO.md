@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.8.
 
-## Version actual: v1.4 — 16 de abril de 2026
+## Version actual: v1.5 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -16,6 +16,7 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 | v1.2 | Sesion 4 (bloque 3) | 16 abril 2026 | Verificacion automatica via YouTube API, Realtime, suspension de video, flujo pendientes |
 | v1.3 | Sesion 5 | 16 abril 2026 | Dashboard del creador con campanas, calificacion 👍/👎, auto-calificacion 72h, reputacion con niveles |
 | v1.4 | Sesion 6 | 16 abril 2026 | Dashboard Realtime, suspension con reactivacion, reincidencia, Realtime en campanas y videos |
+| v1.5 | Sesion 7 | 16 abril 2026 | Deploy a Vercel, pulido visual, manifiesto en login, 404, metadata, vocabulario auditado |
 
 ## Stack confirmado
 
@@ -257,6 +258,40 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 - `src/app/dashboard/page.tsx` — convertido a server loader que pasa datos a client component
 - `src/app/api/intercambios/verificar/route.ts` — incrementa suspensiones_count al suspender
 
+### Sesion 7 — Deploy a produccion y pulido pre-lanzamiento
+
+#### Bloque 1 — Deploy a Vercel
+
+- Proyecto desplegado en `https://comentalo.vercel.app`
+- 6 variables de entorno configuradas en Production + Preview + Development:
+  - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
+  - `YOUTUBE_API_KEY`, `GOOGLE_CLIENT_ID`, `CRON_SECRET`
+- Vercel Cron Job activo: `/api/cron/verificaciones` a las 00:00 UTC diario (respaldo de pg_cron)
+- Auto-deploy desde GitHub master branch habilitado
+
+#### Bloque 2 — Pulido visual y UX
+
+- Login: manifiesto de Comentalo agregado (seccion 1 del PROYECTO.md)
+- Layout: metadata actualizada — titulo "Comentalo — Comunidad de creadores de YouTube", descripcion con manifiesto, lang="es"
+- Pagina 404 personalizada con colores de marca y enlace al dashboard
+- Auditoria de vocabulario oficial (seccion 3): sin violaciones encontradas en textos visibles al usuario
+  - No se usa "comentarista", "tarea", "comprar", "cola de espera" en ningun string de UI
+
+#### Bloque 3 — Checklist de lanzamiento
+
+- Build exitoso con 0 errores TypeScript
+- 20 rutas registradas (9 paginas + 11 API routes)
+- Deploy a Vercel verificado en produccion
+- pg_cron jobs activos en Supabase: `procesar-verificaciones-pendientes` (cada 5 min), `auto-calificar-intercambios-vencidos` (cada hora)
+- Supabase Realtime habilitado en tablas: intercambios, campanas, videos
+
+**Archivos creados en sesion 7:**
+- `src/app/not-found.tsx` — pagina 404 personalizada
+
+**Archivos modificados en sesion 7:**
+- `src/app/login/page.tsx` — manifiesto agregado, subtitulo actualizado
+- `src/app/layout.tsx` — metadata y lang="es"
+
 ## Estado actual del esquema de base de datos
 
 ### Tabla: usuarios
@@ -377,6 +412,7 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 | `/dashboard/intercambiar` | `src/app/dashboard/intercambiar/page.tsx` | Static (client) | Flujo completo del comentarista |
 | `/dashboard/calificar/[campanaId]` | `src/app/dashboard/calificar/[campanaId]/page.tsx` | Dynamic (client) | Calificacion de intercambios por campana |
 | `/registro-rechazado` | `src/app/registro-rechazado/page.tsx` | Static (client) | Motivos de rechazo del canal |
+| `404` | `src/app/not-found.tsx` | Static | Pagina 404 personalizada (sesion 7) |
 
 ### API Routes
 
@@ -435,10 +471,18 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 | `20260416201256_sesion5_calificacion_reputacion.sql` | RPCs auto_calificar + calcular_reputacion + pg_cron cada hora | Aplicada |
 | `20260416202115_sesion6_suspension_realtime.sql` | suspensiones_count en videos + Realtime en campanas/videos + RLS | Aplicada |
 
+## Deploy en produccion
+
+| Componente | URL | Estado |
+| --- | --- | --- |
+| Frontend + API | https://comentalo.vercel.app | Activo |
+| Base de datos | gpisnpodapdxmdjztvou.supabase.co | Activo |
+| OAuth redirect | https://gpisnpodapdxmdjztvou.supabase.co/auth/v1/callback | Configurado en Google Cloud |
+
 ## Sesion siguiente
 
-Sesion 7 — Pulido pre-lanzamiento
-Pendiente: pagina de perfil publico, logout, navegacion entre paginas, manejo de errores globales, deploy a Vercel.
+Sesion 8 — Beta cerrada con fundadores
+Pendiente: programa de fundadores (seccion 8.3), badge de fundador, expansion basica al completar primer ciclo, programa de referidos (seccion 8.4), logout, perfil publico.
 
 ---
 
