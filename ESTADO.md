@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.9.
 
-## Version actual: v2.9 — 16 de abril de 2026
+## Version actual: v3.0 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -31,6 +31,7 @@ Para la vision del producto, ver PROYECTO.md v3.9.
 | v2.7 | Cancelar intercambio | 16 abril 2026 | Boton "No puedo comentar este video" + POST /api/intercambios/cancelar — elimina intercambio pendiente y libera slot |
 | v2.8 | Fix copiar/verificar | 16 abril 2026 | /api/intercambios/copiar usa service client (RLS bloqueaba UPDATE), frontend bloquea si save falla |
 | v2.9 | Fixes + detalle campana | 16 abril 2026 | Fix countdown timer, texto "Ya publique mi comentario", detalle de campana con calificacion inline |
+| v3.0 | UX ver detalle | 16 abril 2026 | Enlace "Ver detalle" visible en cada fila de campana del dashboard |
 
 ## Stack confirmado
 

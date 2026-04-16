@@ -435,24 +435,32 @@ export default function DashboardClient({
                               </p>
                             </a>
 
-                            {esperaCalificacion ? (
+                            <div className="flex items-center gap-2">
+                              {esperaCalificacion && (
+                                <a
+                                  href={`/dashboard/calificar/${campana.id}`}
+                                  className="rounded-lg bg-[#E87722] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#d06a1a]"
+                                >
+                                  Calificar
+                                </a>
+                              )}
+                              {calificada && (
+                                <span className="text-xs text-green-400">
+                                  Calificada
+                                </span>
+                              )}
+                              {!esperaCalificacion && !calificada && (
+                                <span className="text-xs text-gray-500">
+                                  En curso
+                                </span>
+                              )}
                               <a
-                                href={`/dashboard/calificar/${campana.id}`}
-                                className="rounded-lg bg-[#E87722] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#d06a1a]"
+                                href={`/dashboard/campana/${campana.id}`}
+                                className="text-xs text-[#c4a6e8] hover:underline"
                               >
-                                Calificar
+                                Ver detalle
                               </a>
-                            ) : calificada ? (
-                              <span className="text-xs text-green-400">
-                                Calificada
-                              </span>
-                            ) : (
-                              <span className="text-xs text-gray-500">
-                                {campana.estado === "abierta"
-                                  ? "En curso"
-                                  : campana.estado}
-                              </span>
-                            )}
+                            </div>
                           </div>
                         );
                       })}
