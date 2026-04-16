@@ -2,7 +2,7 @@
 
 Documento Maestro del Proyecto
 
-Versión 3.8 — Abril 2026
+Versión 3.9 — Abril 2026
 
 *Comunidad de intercambio de comentarios reales entre creadores de YouTube en Latinoamérica*
 
@@ -39,6 +39,7 @@ Versión 3.8 — Abril 2026
 | 3.6 | Abril 2026 | Auditoria interna — 6 hallazgos corregidos: infoBox fundadores, tiempos 24h vs 48h, tabla referidos, lenguaje pago en 5.1, tabla competencia 2.3 |
 | 3.7 | Abril 2026 | Auditoria exhaustiva — 6 hallazgos residuales corregidos: premium→Expansion Basica, tabla referidos 3 columnas, 6C.5 48h→24h, 2.3 pagos→modelo colaborativo, infoBox 6C 2h→24h |
 | 3.8 | Abril 2026 | Auditoria final — corregido vocabulario en 5C.6: intercambios por video→intercambios por campana. Documento certificado al 100% |
+| 3.9 | Abril 2026 | Nuevo flujo de verificacion de canal por codigo en descripcion (seccion 9.5). Regla de eliminacion de videos (seccion 4C.5). Login sin scope youtube.readonly |
 
 # **1. Visión General del Proyecto**
 
@@ -159,9 +160,9 @@ Para registrarse en Comentalo el usuario debe conectar su canal de YouTube via l
 
 ## **4B.1 Como se Verifica**
 
-Al registrarse con login de Google, Comentalo realiza una sola llamada a la API de YouTube que devuelve todos los datos necesarios en un solo request:
+Cuando el usuario ingresa el link de su canal durante el proceso de verificacion (seccion 9.5), Comentalo consulta la API publica de YouTube con el ID del canal:
 
-| **Llamada a la API al registrarse** GET https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true — Costo: 1 unidad de cuota. Devuelve: fecha de creacion, conteo de videos, conteo de suscriptores y estado publico del canal. |
+| **Llamada a la API al registrarse** GET https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id={CHANNEL_ID}&key={API_KEY} — Costo: 1 unidad de cuota. Devuelve: fecha de creacion, conteo de videos, conteo de suscriptores y estado publico del canal. No requiere OAuth — usa la API key propia de la plataforma. |
 | --- |
 
 Si el canal no cumple alguno de los requisitos — el sistema muestra un mensaje claro indicando cual condicion no se cumple y por que. El usuario puede volver cuando su canal cumpla los requisitos.
@@ -209,6 +210,21 @@ Esta regla existe para dos razones:
 
 - Protege al usuario de acumular intercambios que probablemente no se verificaran — si tiene 3 pendientes seguidos, es una senal de que algo esta mal con su cuenta o con los videos que esta comentando.
 
+## **4C.5 Eliminacion de Videos**
+
+Un creador puede eliminar un video registrado en Comentalo solo si ese video no tiene intercambios verificados. Si el video ya recibio al menos 1 intercambio verificado — no se puede eliminar.
+
+| **Regla de eliminacion** Un video solo puede eliminarse si no tiene intercambios verificados. Una vez que un creador colaborador completo un intercambio real en ese video, el video queda permanente en la plataforma. |
+| --- |
+
+Esta regla existe por dos razones:
+
+- Protege al creador colaborador — si alguien ya comento un video y gano su intercambio, eliminar el video no debe afectar el historial de ese intercambio.
+
+- Evita el abuso — un creador no puede registrar un video, recibir intercambios y luego eliminarlo para registrar uno nuevo burlando los limites.
+
+Al eliminar un video se eliminan automaticamente todas sus campanas e intercambios pendientes asociados. Solo los intercambios que nunca fueron verificados se pierden — y esos no afectan a nadie.
+
 ## **4C.4 Resumen de Todas las Reglas Anti-Fraude**
 
 | **Escenario** | **Regla** | **Seccion de referencia** |
@@ -221,6 +237,7 @@ Esta regla existe para dos razones:
 | Usuario con 3 intercambios pendientes simultaneos | Acceso a la cola bloqueado hasta resolver al menos 1 pendiente | Seccion 4C.3b |
 | Patron de comentarios rechazados repetidos | Monitoreo del equipo — decision caso a caso | Seccion 6C.5 |
 | Canal baneado en Comentalo | Canal de YouTube bloqueado permanentemente en la plataforma | Seccion 6.3 |
+| Video eliminado con intercambios verificados | Bloqueado — el video no puede eliminarse | Seccion 4C.5 |
 
 # **5. Mecánica Core del Intercambio**
 
@@ -529,7 +546,7 @@ Paso 6 — Si no existe → intercambio rechazado ❌ y se notifica al usuario.
 
 ## **6B.5 Impacto en el Registro**
 
-El login con Google es obligatorio al registrarse — es la unica forma segura de verificar que el usuario es el propietario real del canal vinculado. Sin embargo, una vez registrado, la verificacion de cada intercambio es automatica via API key propia de la plataforma, sin necesidad de permisos OAuth adicionales.
+El login con Google es obligatorio al registrarse — pero solo pide el scope basico de perfil (email y nombre). La verificacion de propiedad del canal se realiza mediante codigo en la descripcion (ver seccion 9.5). Una vez registrado, la verificacion de cada intercambio es automatica via API key propia de la plataforma, sin necesidad de permisos OAuth adicionales.
 
 | **Método** | **¿Viable?** | **Razón** |
 | --- | --- | --- |
@@ -936,7 +953,7 @@ Si alguien hace trampa y es baneado — el canal queda baneado. No puede crear u
 
 ### **Verificacion obligatoria al registrarse**
 
-Como el canal es la identidad permanente, la verificacion al registrarse es critica. La unica forma segura es con login con Google — que confirma que el usuario es el propietario real del canal. Sin esto, alguien podria vincular el canal de otro creador y suplantar su identidad.
+Como el canal es la identidad permanente, la verificacion al registrarse es critica. Comentalo utiliza un sistema de verificacion por codigo en la descripcion del canal — ver seccion 9.5 para el flujo completo. Esto confirma que el usuario tiene acceso real al canal sin necesidad de permisos especiales de YouTube.
 
 ## **9.3 Proceso de Cambio de Canal**
 
@@ -961,14 +978,48 @@ En V1 con pocos usuarios estos casos van a ser rarisimos. No justifica construir
 | Canal abandonado voluntariamente | El usuario empieza de cero con el nuevo canal via soporte |
 | Canal suspendido por YouTube | Soporte verifica y transfiere el historial al nuevo canal |
 | Error al vincularlo al registrarse | Soporte corrige el canal vinculado |
-| Intento de fraude con canal ajeno | Bloqueado — login con Google verifica la propiedad |
+| Intento de fraude con canal ajeno | Bloqueado — verificacion por codigo en descripcion del canal (seccion 9.5) |
 | Canal baneado en Comentalo | No se puede re-registrar con ese canal nunca |
+
+## **9.5 Verificacion de Propiedad del Canal**
+
+El login con Google solo pide el scope basico de perfil (email, nombre y foto). No se pide acceso al canal de YouTube. Esto elimina la desconfianza que genera pedir permisos especiales durante el registro.
+
+La verificacion de propiedad del canal se realiza mediante un codigo unico en la descripcion del canal:
+
+### **Flujo completo de verificacion**
+
+Paso 1 — El usuario inicia sesion con Google. Comentalo solo pide email y perfil basico.
+
+Paso 2 — El usuario ingresa el link de su canal de YouTube manualmente en la pagina de verificacion.
+
+Paso 3 — Comentalo consulta la API publica de YouTube para verificar que el canal cumple los requisitos minimos de la seccion 4B (antiguedad, videos, suscriptores, canal publico).
+
+Paso 4 — Si el canal cumple los requisitos, Comentalo genera un codigo unico tipo COMENTALO-XXXX y se lo muestra al usuario.
+
+Paso 5 — El usuario va a YouTube Studio, abre Personalizacion → Informacion basica, y pega el codigo en la descripcion de su canal.
+
+Paso 6 — El usuario regresa a Comentalo y presiona el boton "Ya lo pegue".
+
+Paso 7 — Comentalo consulta la API publica de YouTube y busca el codigo en la descripcion del canal. Si lo encuentra → registro completo. Si no lo encuentra → el usuario puede reintentar.
+
+Paso 8 — Despues de verificar, el usuario puede borrar el codigo de la descripcion de su canal.
+
+| **Por que este metodo y no login con Google + scope de YouTube** Este metodo no requiere ningun permiso especial sobre el canal del usuario. El login con Google solo pide email y perfil. La verificacion es 100% via API publica. Esto elimina la pantalla de permisos de YouTube que genera desconfianza — el usuario nunca siente que Comentalo tiene acceso a su canal. |
+| --- |
+
+### **Seguridad del sistema de codigos**
+
+- Cada codigo es unico y esta vinculado a un usuario especifico
+- Los codigos expiran en 24 horas
+- Solo un codigo activo por usuario a la vez
+- El codigo solo se puede verificar por el usuario que lo genero
 
 # **10. Temas Pendientes por Definir**
 
 ## **10.1 Registro y Acceso**
 
-✅ Resuelto en seccion 4B — Requisitos minimos del canal: 3 meses de antiguedad, 1 video publicado, 20 suscriptores, canal publico. Login con Google obligatorio definido en seccion 9.2.
+✅ Resuelto en seccion 4B — Requisitos minimos del canal: 3 meses de antiguedad, 1 video publicado, 20 suscriptores, canal publico. Login con Google con scope basico definido en seccion 9.5. Verificacion de propiedad por codigo en descripcion del canal.
 
 ## **10.2 Mecanica de la Cola**
 
