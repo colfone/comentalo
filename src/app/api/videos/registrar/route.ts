@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -255,7 +256,12 @@ export async function POST(request: Request) {
   let campanaCreada = false;
 
   if (vistas >= VISTAS_PRIMERA_CAMPANA) {
-    const { error: campanaError } = await supabase.from("campanas").insert({
+    const serviceClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SECRET_KEY!
+    );
+
+    const { error: campanaError } = await serviceClient.from("campanas").insert({
       video_id: nuevoVideo.id,
       estado: "abierta",
       intercambios_completados: 0,

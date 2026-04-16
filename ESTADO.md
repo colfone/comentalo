@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.9.
 
-## Version actual: v2.2 — 16 de abril de 2026
+## Version actual: v2.3 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -24,6 +24,7 @@ Para la vision del producto, ver PROYECTO.md v3.9.
 | v2.0 | Eliminar video | 16 abril 2026 | Opcion de eliminar video sin intercambios verificados desde el dashboard |
 | v2.1 | PROYECTO.md v3.9 | 16 abril 2026 | Documentado flujo verificacion por codigo (9.5), regla eliminacion videos (4C.5), actualizado 4B.1/6B.5/9.2/10.1 |
 | v2.2 | Fix estado campanas | 16 abril 2026 | Dashboard muestra estado correcto de campanas, boton lanzar campana, API POST /api/campanas/lanzar |
+| v2.3 | Fix RLS campanas | 16 abril 2026 | INSERT/UPDATE policies en campanas, registrar usa service client para crear campana |
 
 ## Stack confirmado
 
@@ -384,7 +385,7 @@ RLS habilitado (sesion 6). Politicas: `videos_select_own`, `videos_insert_own`. 
 | created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
 | closed_at | TIMESTAMPTZ | nullable |
 
-RLS habilitado (sesion 6). Politicas: `campanas_select_creador`. Realtime habilitado via `supabase_realtime` publication.
+RLS habilitado (sesion 6). Politicas: `campanas_select_creador`, `campanas_insert_creador`, `campanas_update_creador`. Realtime habilitado via `supabase_realtime` publication.
 
 ### Tabla: intercambios
 
@@ -534,6 +535,7 @@ RLS habilitado. Politicas: `verificaciones_canal_select_own`, `verificaciones_ca
 | `20260416201256_sesion5_calificacion_reputacion.sql` | RPCs auto_calificar + calcular_reputacion + pg_cron cada hora | Aplicada |
 | `20260416202115_sesion6_suspension_realtime.sql` | suspensiones_count en videos + Realtime en campanas/videos + RLS | Aplicada |
 | `20260416212103_verificacion_codigo_canal.sql` | Tabla verificaciones_canal para flujo de codigo en descripcion | Aplicada |
+| `20260416220953_fix_campanas_insert_policy.sql` | INSERT y UPDATE policies en campanas | Aplicada |
 
 ## Deploy en produccion
 
