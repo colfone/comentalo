@@ -456,7 +456,7 @@ export default function DashboardClient({
                               )}
                               <a
                                 href={`/dashboard/campana/${campana.id}`}
-                                className="text-xs text-[#c4a6e8] hover:underline"
+                                className="rounded-lg bg-gray-700 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-600"
                               >
                                 Ver detalle
                               </a>
