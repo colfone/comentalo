@@ -71,12 +71,66 @@ export default function DashboardClient({
   const [eliminando, setEliminando] = useState<string | null>(null);
   const [lanzando, setLanzando] = useState<string | null>(null);
 
+  // Notifications
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notificaciones, setNotificaciones] = useState<
+    {
+      id: string;
+      tipo: string;
+      titulo: string;
+      mensaje: string;
+      leida: boolean;
+      url_destino: string | null;
+      created_at: string;
+    }[]
+  >([]);
+  const [noLeidas, setNoLeidas] = useState(0);
+
   const repLevel = getReputationLevel(reputacion.porcentaje, reputacion.activo);
   const videosActivos = videos.filter((v) => v.estado === "activo");
   const puedeRegistrar = videosActivos.length < 2;
 
-  // --- Supabase Realtime: listen for campaign and video changes ---
+  // --- Fetch notifications ---
+  async function fetchNotificaciones() {
+    try {
+      const res = await fetch("/api/notificaciones");
+      if (res.ok) {
+        const data = await res.json();
+        setNotificaciones(data.notificaciones || []);
+        setNoLeidas(data.no_leidas ?? 0);
+      }
+    } catch {
+      // silent
+    }
+  }
+
+  async function handleMarcarLeida(notifId: string) {
+    setNotificaciones((prev) =>
+      prev.map((n) => (n.id === notifId ? { ...n, leida: true } : n))
+    );
+    setNoLeidas((prev) => Math.max(0, prev - 1));
+
+    await fetch("/api/notificaciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notificacion_id: notifId }),
+    });
+  }
+
+  function tiempoRelativo(fecha: string): string {
+    const diff = Date.now() - new Date(fecha).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Ahora";
+    if (mins < 60) return `Hace ${mins} min`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `Hace ${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `Hace ${days}d`;
+  }
+
+  // --- Supabase Realtime: listen for campaign, video and notification changes ---
   useEffect(() => {
+    fetchNotificaciones();
     const supabase = createSupabaseBrowserClient();
 
     // Subscribe to campaign changes (new intercambios verified, campaign completed)
@@ -112,9 +166,26 @@ export default function DashboardClient({
       )
       .subscribe();
 
+    // Subscribe to new notifications
+    const notifChannel = supabase
+      .channel("dashboard-notificaciones")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notificaciones",
+        },
+        () => {
+          fetchNotificaciones();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(campanaChannel);
       supabase.removeChannel(videoChannel);
+      supabase.removeChannel(notifChannel);
     };
   }, [router]);
 
@@ -207,11 +278,89 @@ export default function DashboardClient({
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-950 px-4 py-12">
       <div className="w-full max-w-lg space-y-6">
-        <div className="text-center">
+        <div className="flex items-center justify-between">
+          <div />
           <h1 className="text-4xl font-bold text-white">
             <span className="text-[#6B3FA0]">Comenta</span>
             <span className="text-[#E87722]">lo</span>
           </h1>
+          {/* Bell icon */}
+          <div className="relative">
+            <button
+              onClick={() => setNotifOpen(!notifOpen)}
+              className="relative rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
+                />
+              </svg>
+              {noLeidas > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#E87722] text-[10px] font-bold text-white">
+                  {noLeidas > 9 ? "9+" : noLeidas}
+                </span>
+              )}
+            </button>
+
+            {/* Notification panel */}
+            {notifOpen && (
+              <div className="absolute right-0 top-12 z-50 w-80 rounded-xl border border-gray-700 bg-gray-900 shadow-2xl">
+                <div className="border-b border-gray-700 px-4 py-3">
+                  <p className="text-sm font-semibold text-white">
+                    Notificaciones
+                  </p>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {notificaciones.length === 0 ? (
+                    <p className="px-4 py-6 text-center text-xs text-gray-500">
+                      Sin notificaciones
+                    </p>
+                  ) : (
+                    notificaciones.map((n) => (
+                      <button
+                        key={n.id}
+                        onClick={() => {
+                          if (!n.leida) handleMarcarLeida(n.id);
+                          if (n.url_destino) {
+                            setNotifOpen(false);
+                            router.push(n.url_destino);
+                          }
+                        }}
+                        className={`block w-full border-b border-gray-800 px-4 py-3 text-left transition-colors hover:bg-gray-800 ${
+                          !n.leida ? "bg-gray-800/50" : ""
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          {!n.leida && (
+                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#E87722]" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-white">
+                              {n.titulo}
+                            </p>
+                            <p className="mt-0.5 text-xs text-gray-400">
+                              {n.mensaje}
+                            </p>
+                            <p className="mt-1 text-[10px] text-gray-600">
+                              {tiempoRelativo(n.created_at)}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* User info + reputation */}

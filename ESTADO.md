@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.9.
 
-## Version actual: v3.1 — 16 de abril de 2026
+## Version actual: v3.2 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -33,6 +33,7 @@ Para la vision del producto, ver PROYECTO.md v3.9.
 | v2.9 | Fixes + detalle campana | 16 abril 2026 | Fix countdown timer, texto "Ya publique mi comentario", detalle de campana con calificacion inline |
 | v3.0 | UX ver detalle | 16 abril 2026 | Enlace "Ver detalle" visible en cada fila de campana del dashboard |
 | v3.1 | UX boton detalle | 16 abril 2026 | "Ver detalle" cambiado de link texto a boton con estilo (bg-gray-700, rounded-lg) |
+| v3.2 | Notificaciones | 16 abril 2026 | Sistema completo de notificaciones: tabla, 5 tipos, Realtime, campana con contador, panel desplegable |
 
 ## Stack confirmado
 
@@ -448,6 +449,21 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 
 RLS habilitado. Politicas: `verificaciones_canal_select_own`, `verificaciones_canal_insert_own`.
 
+### Tabla: notificaciones
+
+| Columna | Tipo | Restricciones |
+| --- | --- | --- |
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() |
+| usuario_id | UUID | NOT NULL, FK → usuarios(id) ON DELETE CASCADE |
+| tipo | TEXT | NOT NULL, CHECK IN ('intercambio_verificado', 'intercambio_pendiente', 'intercambio_recibido', 'campana_completa', 'video_suspendido') |
+| titulo | TEXT | NOT NULL |
+| mensaje | TEXT | NOT NULL |
+| leida | BOOLEAN | NOT NULL, DEFAULT false |
+| url_destino | TEXT | nullable |
+| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
+
+RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_own`. Realtime habilitado via `supabase_realtime` publication.
+
 ### Indices
 
 - `idx_videos_usuario_id` ON videos(usuario_id)
@@ -463,6 +479,8 @@ RLS habilitado. Politicas: `verificaciones_canal_select_own`, `verificaciones_ca
 - `idx_cache_videos_expires_at` ON cache_videos_youtube(expires_at)
 - `idx_verificaciones_canal_auth_id` ON verificaciones_canal(auth_id)
 - `idx_verificaciones_canal_codigo` ON verificaciones_canal(codigo)
+- `idx_notificaciones_usuario_id` ON notificaciones(usuario_id)
+- `idx_notificaciones_leida` ON notificaciones(usuario_id, leida)
 
 ## Rutas existentes en el proyecto
 
@@ -496,6 +514,7 @@ RLS habilitado. Politicas: `verificaciones_canal_select_own`, `verificaciones_ca
 | `/api/videos/eliminar` | DELETE | Elimina video sin intercambios verificados (cascade a campanas e intercambios) |
 | `/api/campanas/lanzar` | POST | Lanza nueva campana para un video — valida regla de vistas 5C.4 |
 | `/api/campanas/detalle` | GET | Detalle de campana con intercambios y nombres de comentaristas |
+| `/api/notificaciones` | GET/POST | GET: lista notificaciones del usuario. POST: marca como leida |
 | `/api/videos/mis-videos-youtube` | GET | Lista ultimos 8 videos del canal con cache de 60 min |
 | `/api/intercambios/asignar` | GET | Llama RPC asignar_intercambio + retorna datos completos del video |
 | `/api/intercambios/copiar` | POST | Guarda texto_comentario, timestamp_copia, duracion_video_segundos |
@@ -547,6 +566,7 @@ RLS habilitado. Politicas: `verificaciones_canal_select_own`, `verificaciones_ca
 | `20260416202115_sesion6_suspension_realtime.sql` | suspensiones_count en videos + Realtime en campanas/videos + RLS | Aplicada |
 | `20260416212103_verificacion_codigo_canal.sql` | Tabla verificaciones_canal para flujo de codigo en descripcion | Aplicada |
 | `20260416220953_fix_campanas_insert_policy.sql` | INSERT y UPDATE policies en campanas | Aplicada |
+| `20260416234737_notificaciones.sql` | Tabla notificaciones + RLS + Realtime | Aplicada |
 
 ## Deploy en produccion
 

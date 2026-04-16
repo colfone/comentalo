@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { crearNotificacion } from "@/lib/notificaciones";
 
 // Service-role client for operations that bypass RLS
 // (second commentator assignment, video suspension, campaign updates)
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
 
   const { data: video } = await serviceClient
     .from("videos")
-    .select("id, youtube_video_id")
+    .select("id, youtube_video_id, usuario_id, titulo")
     .eq("id", campana.video_id)
     .single();
 
@@ -205,6 +206,33 @@ export async function POST(request: Request) {
       .update(campanaUpdate)
       .eq("id", campana.id);
 
+    // Notifications
+    await crearNotificacion({
+      usuario_id: usuario.id,
+      tipo: "intercambio_verificado",
+      titulo: "Tu comentario fue verificado",
+      mensaje: `Tu intercambio en "${video.titulo}" fue verificado correctamente.`,
+      url_destino: "/dashboard",
+    });
+
+    await crearNotificacion({
+      usuario_id: video.usuario_id,
+      tipo: "intercambio_recibido",
+      titulo: "Nuevo comentario en tu video",
+      mensaje: `Tu video "${video.titulo}" recibio un nuevo intercambio verificado.`,
+      url_destino: `/dashboard/campana/${campana.id}`,
+    });
+
+    if (newCompleted >= 10) {
+      await crearNotificacion({
+        usuario_id: video.usuario_id,
+        tipo: "campana_completa",
+        titulo: "Campana completada",
+        mensaje: `Tu video "${video.titulo}" completo su campana de 10 intercambios. Califica los intercambios recibidos.`,
+        url_destino: `/dashboard/calificar/${campana.id}`,
+      });
+    }
+
     return NextResponse.json({
       ok: true,
       resultado: "verificado",
@@ -219,6 +247,15 @@ export async function POST(request: Request) {
     intercambio_id: intercambio.id,
     proximo_intento_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     intentos: 0,
+  });
+
+  // Notification: intercambio pendiente
+  await crearNotificacion({
+    usuario_id: usuario.id,
+    tipo: "intercambio_pendiente",
+    titulo: "Tu comentario esta en revision",
+    mensaje: "Tu intercambio esta siendo revisado por YouTube. Esto es normal y puede tardar hasta 24 horas.",
+    url_destino: "/dashboard",
   });
 
   // ACCION 1 (seccion 6C.3): The campaign slot remains open naturally.
@@ -278,6 +315,14 @@ export async function POST(request: Request) {
             suspensiones_count: newCount,
           })
           .eq("id", video.id);
+
+        await crearNotificacion({
+          usuario_id: video.usuario_id,
+          tipo: "video_suspendido",
+          titulo: "Tu video fue suspendido",
+          mensaje: `Tu video "${video.titulo}" fue suspendido porque 3 intercambios no se verificaron. Revisa la configuracion de comentarios en YouTube Studio.`,
+          url_destino: "/dashboard",
+        });
       }
     }
   }
