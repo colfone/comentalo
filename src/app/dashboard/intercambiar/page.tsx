@@ -487,6 +487,13 @@ export default function IntercambiarPage() {
               >
                 Volver
               </button>
+
+              <a
+                href="/dashboard"
+                className="mt-2 block text-center text-sm text-gray-600 hover:text-gray-400"
+              >
+                Cancelar y volver al dashboard
+              </a>
             </>
           )}
 
@@ -558,6 +565,13 @@ export default function IntercambiarPage() {
                   Ya publique
                 </button>
               )}
+
+              <a
+                href="/dashboard"
+                className="mt-4 block text-center text-sm text-gray-600 hover:text-gray-400"
+              >
+                Volver al dashboard
+              </a>
             </>
           )}
 
@@ -571,6 +585,12 @@ export default function IntercambiarPage() {
               <p className="text-xs text-gray-500">
                 Esto puede tardar unos segundos.
               </p>
+              <a
+                href="/dashboard"
+                className="mt-4 text-sm text-gray-600 hover:text-gray-400"
+              >
+                Volver al dashboard
+              </a>
             </div>
           )}
 

@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.9.
 
-## Version actual: v2.5 — 16 de abril de 2026
+## Version actual: v2.6 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -27,6 +27,7 @@ Para la vision del producto, ver PROYECTO.md v3.9.
 | v2.3 | Fix RLS campanas | 16 abril 2026 | INSERT/UPDATE policies en campanas, registrar usa service client para crear campana |
 | v2.4 | Fix asignar video | 16 abril 2026 | /api/intercambios/asignar usa service client para leer video de otro usuario (RLS bloqueaba select_own) |
 | v2.5 | UX intercambiar | 16 abril 2026 | Textarea readonly como fallback de clipboard, boton YouTube destacado, selector de emojis |
+| v2.6 | UX navegacion | 16 abril 2026 | Boton volver al dashboard en todos los estados del flujo intercambiar (write, copied, verificando) |
 
 ## Stack confirmado
 
