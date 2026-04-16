@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.9.
 
-## Version actual: v2.7 — 16 de abril de 2026
+## Version actual: v2.8 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -29,6 +29,7 @@ Para la vision del producto, ver PROYECTO.md v3.9.
 | v2.5 | UX intercambiar | 16 abril 2026 | Textarea readonly como fallback de clipboard, boton YouTube destacado, selector de emojis |
 | v2.6 | UX navegacion | 16 abril 2026 | Boton volver al dashboard en todos los estados del flujo intercambiar (write, copied, verificando) |
 | v2.7 | Cancelar intercambio | 16 abril 2026 | Boton "No puedo comentar este video" + POST /api/intercambios/cancelar — elimina intercambio pendiente y libera slot |
+| v2.8 | Fix copiar/verificar | 16 abril 2026 | /api/intercambios/copiar usa service client (RLS bloqueaba UPDATE), frontend bloquea si save falla |
 
 ## Stack confirmado
 

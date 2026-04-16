@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -73,7 +74,13 @@ export async function POST(request: Request) {
   }
 
   // Verify the intercambio belongs to this user and is in correct state
-  const { data: intercambio } = await supabase
+  // Use service client to avoid RLS issues on reads across users
+  const serviceClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!
+  );
+
+  const { data: intercambio } = await serviceClient
     .from("intercambios")
     .select("id, comentarista_id, estado, texto_comentario")
     .eq("id", body.intercambio_id)
@@ -109,7 +116,7 @@ export async function POST(request: Request) {
   }
 
   // Update intercambio with comment text, timestamp and video duration
-  const { error: updateError } = await supabase
+  const { error: updateError } = await serviceClient
     .from("intercambios")
     .update({
       texto_comentario: body.texto_comentario,

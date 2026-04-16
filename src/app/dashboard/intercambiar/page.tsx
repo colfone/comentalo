@@ -190,7 +190,7 @@ export default function IntercambiarPage() {
       // Fallback — still continue, user can copy manually
     }
 
-    // Save to backend
+    // Save to backend — must succeed before moving to next step
     try {
       const res = await fetch("/api/intercambios/copiar", {
         method: "POST",
@@ -204,13 +204,18 @@ export default function IntercambiarPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        console.error("Error saving copy:", data.error);
+        alert(
+          data.error ||
+            "Error al guardar el comentario. Intenta de nuevo."
+        );
+        return;
       }
     } catch {
-      console.error("Error calling copiar API");
+      alert("Error de conexion al guardar el comentario. Intenta de nuevo.");
+      return;
     }
 
-    // Start countdown
+    // Start countdown — only after backend confirmed save
     const waitSeconds = getMinWaitSeconds(video.duracion_segundos || 0);
     setCountdown(waitSeconds);
     setStep("copied");
