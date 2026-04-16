@@ -189,33 +189,44 @@ export default function DashboardClient({
 
           {/* Reputation badge */}
           <div className="mt-4 flex items-center justify-between rounded-lg border border-gray-700 bg-gray-800 px-4 py-3">
-            <div>
-              <p className="text-xs text-gray-500">Reputacion</p>
-              <p className="text-sm font-medium text-white">
-                {reputacion.porcentaje.toFixed(0)}% positiva
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`inline-block h-3 w-3 rounded-full ${
-                  repLevel.nivel === "verde"
-                    ? "bg-green-400"
-                    : repLevel.nivel === "amarillo"
-                    ? "bg-yellow-400"
-                    : repLevel.nivel === "naranja"
-                    ? "bg-orange-400"
-                    : repLevel.nivel === "rojo"
-                    ? "bg-red-400"
-                    : "bg-gray-500"
-                }`}
-              />
-              <span className="text-xs text-gray-400">{repLevel.label}</span>
-              {!reputacion.activo && (
-                <span className="text-[10px] text-gray-600">
-                  ({reputacion.total_calificados}/20)
+            {reputacion.activo ? (
+              <>
+                <div>
+                  <p className="text-xs text-gray-500">Reputacion</p>
+                  <p className="text-sm font-medium text-white">
+                    {reputacion.porcentaje.toFixed(0)}% positiva
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-block h-3 w-3 rounded-full ${
+                      repLevel.nivel === "verde"
+                        ? "bg-green-400"
+                        : repLevel.nivel === "amarillo"
+                        ? "bg-yellow-400"
+                        : repLevel.nivel === "naranja"
+                        ? "bg-orange-400"
+                        : "bg-red-400"
+                    }`}
+                  />
+                  <span className="text-xs text-gray-400">
+                    {repLevel.label}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <p className="text-xs text-gray-500">Reputacion</p>
+                  <p className="text-sm font-medium text-gray-400">
+                    Sin activar
+                  </p>
+                </div>
+                <span className="text-xs text-gray-500">
+                  {reputacion.total_calificados}/20 intercambios calificados
                 </span>
-              )}
-            </div>
+              </>
+            )}
           </div>
         </div>
 
