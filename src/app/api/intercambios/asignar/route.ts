@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -65,8 +66,14 @@ export async function GET() {
     });
   }
 
-  // Fetch video details for the UI
-  const { data: video } = await supabase
+  // Fetch video details for the UI — use service client because the video
+  // belongs to another user and RLS on videos only allows select_own
+  const serviceClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!
+  );
+
+  const { data: video, error: videoError } = await serviceClient
     .from("videos")
     .select(
       "id, youtube_video_id, titulo, descripcion, tipo_intercambio, tono, duracion_segundos, vistas"
@@ -74,7 +81,12 @@ export async function GET() {
     .eq("id", rpcResult.video_id)
     .single();
 
+  if (videoError) {
+    console.error("Error fetching assigned video:", videoError, "video_id:", rpcResult.video_id);
+  }
+
   if (!video) {
+    console.error("Video not found for id:", rpcResult.video_id);
     return NextResponse.json(
       { error: "Video asignado no encontrado." },
       { status: 500 }
