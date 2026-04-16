@@ -69,6 +69,7 @@ export default function DashboardClient({
   const [reactivando, setReactivando] = useState<string | null>(null);
   const [reactivarError, setReactivarError] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState<string | null>(null);
+  const [lanzando, setLanzando] = useState<string | null>(null);
 
   const repLevel = getReputationLevel(reputacion.porcentaje, reputacion.activo);
   const videosActivos = videos.filter((v) => v.estado === "activo");
@@ -174,6 +175,32 @@ export default function DashboardClient({
       alert("Error de conexion. Intenta de nuevo.");
     } finally {
       setEliminando(null);
+    }
+  }
+
+  // --- Launch campaign ---
+  async function handleLanzarCampana(videoId: string) {
+    setLanzando(videoId);
+
+    try {
+      const res = await fetch("/api/campanas/lanzar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ video_id: videoId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        alert(data.error || "Error al lanzar la campana.");
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      alert("Error de conexion. Intenta de nuevo.");
+    } finally {
+      setLanzando(null);
     }
   }
 
@@ -429,11 +456,59 @@ export default function DashboardClient({
                     </div>
                   )}
 
-                  {video.campanas.length === 0 && (
-                    <p className="mt-2 text-xs text-gray-500">
-                      Sin campana activa — necesita 10 vistas para activarse.
-                    </p>
-                  )}
+                  {/* No campaign or no open campaign — show launch option */}
+                  {!video.campanas.some((c) => c.estado === "abierta") &&
+                    video.estado === "activo" &&
+                    video.campanas.length > 0 && (() => {
+                      const totalPrevious = video.campanas.reduce(
+                        (sum, c) => sum + c.intercambios_completados, 0
+                      );
+                      const vistasRequeridas = totalPrevious + 10;
+                      if (video.vistas >= vistasRequeridas) {
+                        return (
+                          <div className="mt-2 flex items-center justify-between rounded-md bg-gray-900/50 px-3 py-2">
+                            <p className="text-xs text-green-400">
+                              Lista para lanzar nueva campana
+                            </p>
+                            <button
+                              onClick={() => handleLanzarCampana(video.id)}
+                              disabled={lanzando === video.id}
+                              className="rounded-lg bg-[#6B3FA0] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#5a3588] disabled:opacity-50"
+                            >
+                              {lanzando === video.id ? "Lanzando..." : "Lanzar campana"}
+                            </button>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                  {video.campanas.length === 0 &&
+                    video.estado === "activo" && (
+                      <div className="mt-3">
+                        {video.vistas >= 10 ? (
+                          <div className="flex items-center justify-between rounded-md bg-gray-900/50 px-3 py-2">
+                            <p className="text-xs text-green-400">
+                              Lista para lanzar campana
+                            </p>
+                            <button
+                              onClick={() => handleLanzarCampana(video.id)}
+                              disabled={lanzando === video.id}
+                              className="rounded-lg bg-[#6B3FA0] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#5a3588] disabled:opacity-50"
+                            >
+                              {lanzando === video.id
+                                ? "Lanzando..."
+                                : "Lanzar campana"}
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-500">
+                            Necesita {10 - video.vistas} vistas mas para
+                            activarse ({video.vistas}/10)
+                          </p>
+                        )}
+                      </div>
+                    )}
                 </li>
               ))}
             </ul>
