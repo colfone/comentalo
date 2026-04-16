@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 // --- Tabla de tiempos minimos (seccion 5.4 del PROYECTO.md) ---
 
@@ -33,7 +34,7 @@ const tonoLabels: Record<string, string> = {
 
 // --- Types ---
 
-type Step = "loading" | "blocked" | "empty" | "video" | "write" | "copied" | "done";
+type Step = "loading" | "blocked" | "empty" | "video" | "write" | "copied" | "verificando" | "done" | "pendiente";
 
 interface AssignedVideo {
   id: string;
@@ -62,8 +63,44 @@ export default function IntercambiarPage() {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Ya publique
-  const [verificando, setVerificando] = useState(false);
+  // Verification result
+  const [resultMessage, setResultMessage] = useState("");
+
+  // --- Supabase Realtime subscription (seccion 6F.3) ---
+
+  useEffect(() => {
+    if (!intercambioId) return;
+
+    const supabaseBrowser = createSupabaseBrowserClient();
+
+    const channel = supabaseBrowser
+      .channel(`intercambio-${intercambioId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "intercambios",
+          filter: `id=eq.${intercambioId}`,
+        },
+        (payload) => {
+          const newEstado = payload.new?.estado;
+          if (newEstado === "verificado") {
+            setStep("done");
+          } else if (newEstado === "rechazado") {
+            setResultMessage(
+              "Tu intercambio no pudo ser verificado tras 24 horas de reintentos."
+            );
+            setStep("blocked");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabaseBrowser.removeChannel(channel);
+    };
+  }, [intercambioId]);
 
   // --- Load: call RPC to get assigned video ---
 
@@ -171,16 +208,37 @@ export default function IntercambiarPage() {
     }
   }, [step, countdown > 0, tickCountdown]);
 
-  // --- Ya publique (placeholder for Bloque 3) ---
+  // --- Ya publique — calls POST /api/intercambios/verificar ---
 
   async function handleYaPublique() {
-    setVerificando(true);
-    // Bloque 3 will implement: POST /api/intercambios/verificar
-    // For now, just show verifying state
-    setTimeout(() => {
-      setStep("done");
-      setVerificando(false);
-    }, 2000);
+    if (!intercambioId) return;
+    setStep("verificando");
+
+    try {
+      const res = await fetch("/api/intercambios/verificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intercambio_id: intercambioId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setResultMessage(data.error || "Error al verificar.");
+        setStep("blocked");
+        return;
+      }
+
+      if (data.resultado === "verificado") {
+        setStep("done");
+      } else if (data.resultado === "pendiente") {
+        setResultMessage(data.mensaje);
+        setStep("pendiente");
+      }
+    } catch {
+      setResultMessage("Error de conexion al verificar. Intenta de nuevo.");
+      setStep("blocked");
+    }
   }
 
   // --- Render ---
@@ -225,7 +283,7 @@ export default function IntercambiarPage() {
                   />
                 </svg>
               </div>
-              <p className="text-sm text-gray-300">{blockedMessage}</p>
+              <p className="text-sm text-gray-300">{resultMessage || blockedMessage}</p>
               <a
                 href="/dashboard"
                 className="mt-6 inline-block text-sm text-[#E87722] hover:underline"
@@ -474,16 +532,73 @@ export default function IntercambiarPage() {
               ) : (
                 <button
                   onClick={handleYaPublique}
-                  disabled={verificando}
-                  className="w-full rounded-lg bg-[#E87722] py-3 text-sm font-medium text-white transition-colors hover:bg-[#d06a1a] disabled:opacity-50"
+                  className="w-full rounded-lg bg-[#E87722] py-3 text-sm font-medium text-white transition-colors hover:bg-[#d06a1a]"
                 >
-                  {verificando ? "Verificando..." : "Ya publique"}
+                  Ya publique
                 </button>
               )}
             </>
           )}
 
-          {/* ===== STEP 4: Done (placeholder) ===== */}
+          {/* ===== VERIFICANDO ===== */}
+          {step === "verificando" && (
+            <div className="flex flex-col items-center gap-4 py-12">
+              <div className="h-8 w-8 animate-spin rounded-full border-3 border-gray-600 border-t-[#E87722]" />
+              <p className="text-sm text-gray-400">
+                Verificando tu comentario en YouTube...
+              </p>
+              <p className="text-xs text-gray-500">
+                Esto puede tardar unos segundos.
+              </p>
+            </div>
+          )}
+
+          {/* ===== PENDIENTE (seccion 6C.4) ===== */}
+          {step === "pendiente" && (
+            <>
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E87722]/10">
+                  <svg
+                    className="h-6 w-6 text-[#E87722]"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                    />
+                  </svg>
+                </div>
+                <h2 className="text-lg font-semibold text-white">
+                  Intercambio en revision
+                </h2>
+              </div>
+
+              <div className="mb-4 rounded-lg border border-[#E87722]/30 bg-[#E87722]/10 p-4">
+                <p className="text-sm text-[#f0a964]">
+                  {resultMessage}
+                </p>
+              </div>
+
+              <p className="mb-6 text-sm text-gray-400">
+                Esta pagina se actualizara automaticamente cuando tu intercambio
+                sea verificado. Puedes cerrar esta pagina y continuar con otros
+                intercambios.
+              </p>
+
+              <a
+                href="/dashboard"
+                className="block w-full rounded-lg bg-[#6B3FA0] py-3 text-center text-sm font-medium text-white transition-colors hover:bg-[#5a3588]"
+              >
+                Volver al dashboard
+              </a>
+            </>
+          )}
+
+          {/* ===== DONE — Verified ===== */}
           {step === "done" && (
             <>
               <div className="mb-4 flex items-center gap-3">

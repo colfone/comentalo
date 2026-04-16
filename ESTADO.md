@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.8.
 
-## Version actual: v1.1 — 16 de abril de 2026
+## Version actual: v1.2 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -13,6 +13,7 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 | --- | --- | --- | --- |
 | v1.0 | Sesion 1 + 2 + 3 | 16 abril 2026 | Documento inicial — cubre las 3 primeras sesiones de desarrollo |
 | v1.1 | Sesion 4 (bloques 1 y 2) | 16 abril 2026 | Registro de video, grid de seleccion, cache YouTube, flujo comentarista, bug fix canal ajeno |
+| v1.2 | Sesion 4 (bloque 3) | 16 abril 2026 | Verificacion automatica via YouTube API, Realtime, suspension de video, flujo pendientes |
 
 ## Stack confirmado
 
@@ -126,19 +127,44 @@ Para la vision del producto, ver PROYECTO.md v3.8.
   - 5-10 min → 180s
   - 10+ min → 300s (techo maximo)
 - Boton "Ya publique" deshabilitado durante countdown, se habilita al llegar a 00:00
-- Verificacion real pendiente (Bloque 3) — actualmente muestra placeholder "Verificando..."
 - Casos especiales manejados: 3 pendientes simultaneos, usuario sin video activo, cola vacia
+
+#### Bloque 3 — Verificacion automatica del comentario
+
+- Endpoint `POST /api/intercambios/verificar` con flujo completo:
+  - Llama a YouTube commentThreads API con `searchTerms` + videoId (1 unidad de cuota)
+  - Busca coincidencia exacta de texto + canal del usuario (`authorChannelId`)
+  - Si encuentra: marca intercambio como `verificado`, incrementa `intercambios_completados` en campana
+  - Si campana llega a 10: cierra automaticamente con estado `completada` y `closed_at`
+  - Si NO encuentra: crea fila en `verificaciones_pendientes` con primer reintento a +30 min
+  - La campana queda con slot abierto para que el siguiente comentarista la tome naturalmente (seccion 6C.3 ACCION 1)
+- Suspension automatica de video (seccion 6D.1):
+  - Cuenta pendientes del mismo video en ultimas 24 horas
+  - Si >= 3: cambia estado del video a `suspendido`
+- Supabase Realtime habilitado en tabla `intercambios` (seccion 6F.3):
+  - Frontend se suscribe a cambios de estado del intercambio especifico
+  - Si estado cambia a `verificado` (por el cron de Exponential Backoff) → UI se actualiza sin recargar
+  - Si estado cambia a `rechazado` → muestra mensaje de error
+- UI actualizada con 3 estados nuevos:
+  - `verificando`: spinner mientras se consulta YouTube API
+  - `pendiente`: mensaje de revision con icono reloj (seccion 6C.4)
+  - `done`: confirmacion verde de intercambio verificado
+- RLS habilitado en tabla `intercambios` con 2 politicas:
+  - `intercambios_select_comentarista`: el comentarista ve sus propios intercambios
+  - `intercambios_select_creador`: el creador del video ve intercambios de sus campanas
 
 **Archivos creados en sesion 4:**
 - `src/app/dashboard/registrar-video/page.tsx` — formulario registro de video con grid
-- `src/app/dashboard/intercambiar/page.tsx` — flujo completo del comentarista
+- `src/app/dashboard/intercambiar/page.tsx` — flujo completo del comentarista con Realtime
 - `src/app/api/videos/registrar/route.ts` — POST: registra video + crea campana
 - `src/app/api/videos/verificar-canal/route.ts` — GET: verifica propiedad del video
 - `src/app/api/videos/mis-videos-youtube/route.ts` — GET: lista videos recientes con cache
 - `src/app/api/intercambios/asignar/route.ts` — GET: llama RPC + retorna datos del video
 - `src/app/api/intercambios/copiar/route.ts` — POST: guarda texto, timestamp, duracion
+- `src/app/api/intercambios/verificar/route.ts` — POST: verifica comentario en YouTube + pendientes + suspension
 - `supabase/migrations/20260416162846_agregar_columnas_sesion4.sql`
 - `supabase/migrations/20260416183919_agregar_cache_videos_youtube.sql`
+- `supabase/migrations/20260416200413_habilitar_realtime_intercambios.sql`
 
 **Archivos modificados en sesion 4:**
 - `src/app/dashboard/page.tsx` — agregado boton "Intercambiar" + lista de videos del usuario
@@ -206,6 +232,8 @@ RLS habilitado. Politicas: `usuarios_select_own`, `usuarios_insert_own`.
 | created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
 | duracion_video_segundos | INTEGER | nullable (sesion 4) |
 
+RLS habilitado (sesion 4). Politicas: `intercambios_select_comentarista` (comentarista ve sus propios), `intercambios_select_creador` (creador del video ve intercambios de sus campanas). Realtime habilitado via `supabase_realtime` publication.
+
 ### Tabla: verificaciones_pendientes
 
 | Columna | Tipo | Restricciones |
@@ -266,6 +294,7 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 | `/api/videos/mis-videos-youtube` | GET | Lista ultimos 8 videos del canal con cache de 60 min |
 | `/api/intercambios/asignar` | GET | Llama RPC asignar_intercambio + retorna datos completos del video |
 | `/api/intercambios/copiar` | POST | Guarda texto_comentario, timestamp_copia, duracion_video_segundos |
+| `/api/intercambios/verificar` | POST | Verifica comentario en YouTube, marca verificado/pendiente, suspension de video |
 
 ## RPCs en Supabase
 
@@ -302,11 +331,12 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 | `20260416030000_add_auth_fields_to_usuarios.sql` | Campos auth + RLS en usuarios | Aplicada |
 | `20260416162846_agregar_columnas_sesion4.sql` | Columnas descripcion, tipo_intercambio, tono, duracion en videos + duracion en intercambios | Aplicada |
 | `20260416183919_agregar_cache_videos_youtube.sql` | Tabla cache_videos_youtube con TTL 60 min + RLS | Aplicada |
+| `20260416200413_habilitar_realtime_intercambios.sql` | Realtime en intercambios + RLS con 2 politicas | Aplicada |
 
 ## Sesion siguiente
 
-Sesion 4 Bloque 3 — Verificacion automatica del comentario via YouTube API
-Pendiente: POST /api/intercambios/verificar que busca el texto exacto del comentario en el video via commentThreads API, actualiza estado del intercambio, e incrementa intercambios_completados en la campana.
+Sesion 5 — Calificacion de intercambios y dashboard del creador
+Pendiente: vista del creador con intercambios recibidos, calificacion con pulgar arriba/abajo (seccion 6.2), cierre de campana con calificacion (seccion 5C.3), sistema de reputacion (seccion 6.3).
 
 ---
 
