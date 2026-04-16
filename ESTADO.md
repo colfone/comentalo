@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.8.
 
-## Version actual: v1.2 — 16 de abril de 2026
+## Version actual: v1.3 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -14,6 +14,7 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 | v1.0 | Sesion 1 + 2 + 3 | 16 abril 2026 | Documento inicial — cubre las 3 primeras sesiones de desarrollo |
 | v1.1 | Sesion 4 (bloques 1 y 2) | 16 abril 2026 | Registro de video, grid de seleccion, cache YouTube, flujo comentarista, bug fix canal ajeno |
 | v1.2 | Sesion 4 (bloque 3) | 16 abril 2026 | Verificacion automatica via YouTube API, Realtime, suspension de video, flujo pendientes |
+| v1.3 | Sesion 5 | 16 abril 2026 | Dashboard del creador con campanas, calificacion 👍/👎, auto-calificacion 72h, reputacion con niveles |
 
 ## Stack confirmado
 
@@ -169,6 +170,55 @@ Para la vision del producto, ver PROYECTO.md v3.8.
 **Archivos modificados en sesion 4:**
 - `src/app/dashboard/page.tsx` — agregado boton "Intercambiar" + lista de videos del usuario
 
+### Sesion 5 — Calificacion y reputacion
+
+#### Bloque 1 — Dashboard del creador
+
+- Dashboard reescrito con vista de campanas por video
+- Cada video muestra sus campanas con progreso (X/10 intercambios)
+- Campanas completadas muestran boton naranja "Calificar" destacado
+- Campanas calificadas muestran badge verde "Calificada"
+- Campanas abiertas muestran "En curso"
+- Videos sin campana muestran mensaje de vistas insuficientes
+- Badge de reputacion visible: circulo de color + porcentaje + nivel
+- Contador de calificaciones hacia activacion (X/20) cuando el sistema no esta activo
+
+#### Bloque 2 — Sistema de calificacion
+
+- Pagina `/dashboard/calificar/[campanaId]` para calificar intercambios de una campana
+- Cada intercambio muestra el texto del comentario recibido
+- Botones 👍 / 👎 por intercambio — sin texto, sin explicaciones (seccion 6.2)
+- Calificacion se aplica con un solo clic y se refleja inmediatamente
+- Contador X/N calificados visible en la pagina
+- Al calificar todos los intercambios verificados de una campana completada → campana pasa a estado `calificada`
+- API route `GET /api/intercambios/calificar` para obtener intercambios de una campana
+- API route `POST /api/intercambios/calificar` para aplicar calificacion
+- Validacion: solo el creador del video puede calificar, solo intercambios verificados sin calificar
+- Auto-calificacion: RPC `auto_calificar_intercambios_vencidos` ejecutado cada hora via pg_cron
+  - Intercambios verificados sin calificacion despues de 72 horas → se autocalifican como `positiva`
+- Despues de cada calificacion se recalcula la reputacion del comentarista
+
+#### Bloque 3 — Sistema de reputacion
+
+- RPC `calcular_reputacion(p_comentarista_id)` calcula % de positivas sobre total calificados
+- Niveles segun seccion 6.3:
+  - Verde: >= 80% positivas — acceso completo
+  - Amarillo: 60-80% — acceso limitado, advertencia
+  - Naranja: 40-60% — suspension temporal 7 dias
+  - Rojo: < 40% — baneo permanente
+- Sistema solo se activa con >= 20 intercambios calificados (antes solo advertencias)
+- Dashboard muestra badge de reputacion con color, porcentaje y estado
+- API route `GET /api/usuarios/reputacion` para consultar reputacion del usuario autenticado
+
+**Archivos creados en sesion 5:**
+- `src/app/dashboard/calificar/[campanaId]/page.tsx` — pagina de calificacion por campana
+- `src/app/api/intercambios/calificar/route.ts` — GET: lista intercambios, POST: califica
+- `src/app/api/usuarios/reputacion/route.ts` — GET: consulta reputacion
+- `supabase/migrations/20260416201256_sesion5_calificacion_reputacion.sql`
+
+**Archivos modificados en sesion 5:**
+- `src/app/dashboard/page.tsx` — reescrito con campanas por video, badge reputacion, boton calificar
+
 ## Estado actual del esquema de base de datos
 
 ### Tabla: usuarios
@@ -282,6 +332,7 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 | `/dashboard` | `src/app/dashboard/page.tsx` | Dynamic (server) | Dashboard con perfil, boton intercambiar y lista de videos |
 | `/dashboard/registrar-video` | `src/app/dashboard/registrar-video/page.tsx` | Static (client) | Grid de videos + formulario de registro |
 | `/dashboard/intercambiar` | `src/app/dashboard/intercambiar/page.tsx` | Static (client) | Flujo completo del comentarista |
+| `/dashboard/calificar/[campanaId]` | `src/app/dashboard/calificar/[campanaId]/page.tsx` | Dynamic (client) | Calificacion de intercambios por campana |
 | `/registro-rechazado` | `src/app/registro-rechazado/page.tsx` | Static (client) | Motivos de rechazo del canal |
 
 ### API Routes
@@ -295,6 +346,8 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 | `/api/intercambios/asignar` | GET | Llama RPC asignar_intercambio + retorna datos completos del video |
 | `/api/intercambios/copiar` | POST | Guarda texto_comentario, timestamp_copia, duracion_video_segundos |
 | `/api/intercambios/verificar` | POST | Verifica comentario en YouTube, marca verificado/pendiente, suspension de video |
+| `/api/intercambios/calificar` | GET/POST | GET: lista intercambios de una campana. POST: aplica calificacion 👍/👎 |
+| `/api/usuarios/reputacion` | GET | Calcula y retorna reputacion del usuario autenticado |
 
 ## RPCs en Supabase
 
@@ -302,12 +355,15 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 | --- | --- | --- | --- |
 | `asignar_intercambio` | `p_comentarista_id UUID` | JSON `{ ok, intercambio_id, campana_id, video_id }` o `{ ok, error, mensaje }` | Asigna video de la cola al comentarista. Usa SELECT FOR UPDATE SKIP LOCKED. Valida: usuario tiene video activo, no tiene 3+ pendientes, cola no vacia |
 | `procesar_verificaciones_pendientes` | ninguno | JSON `{ ok, procesados, reprogramados, marcados_revision }` | Procesa reintentos con Exponential Backoff (30min, 2h, 8h, 24h). Marca como rechazado tras 4 intentos fallidos |
+| `auto_calificar_intercambios_vencidos` | ninguno | JSON `{ ok, autocalificados }` | Intercambios verificados sin calificacion despues de 72h → autocalifica como positiva (sesion 5) |
+| `calcular_reputacion` | `p_comentarista_id UUID` | JSON `{ ok, total_calificados, porcentaje, nivel, activo }` | Calcula % positivas, determina nivel, actualiza usuarios.reputacion. Activo solo con >= 20 calificados (sesion 5) |
 
 ## pg_cron Jobs en Supabase
 
 | Nombre | Schedule | Comando |
 | --- | --- | --- |
 | `procesar-verificaciones-pendientes` | `*/5 * * * *` (cada 5 minutos) | `SELECT procesar_verificaciones_pendientes()` |
+| `auto-calificar-intercambios-vencidos` | `0 * * * *` (cada hora) | `SELECT auto_calificar_intercambios_vencidos()` |
 
 ## Variables de entorno (.env.local)
 
@@ -332,11 +388,12 @@ RLS habilitado. Politicas: `cache_videos_select_own`, `cache_videos_insert_own`,
 | `20260416162846_agregar_columnas_sesion4.sql` | Columnas descripcion, tipo_intercambio, tono, duracion en videos + duracion en intercambios | Aplicada |
 | `20260416183919_agregar_cache_videos_youtube.sql` | Tabla cache_videos_youtube con TTL 60 min + RLS | Aplicada |
 | `20260416200413_habilitar_realtime_intercambios.sql` | Realtime en intercambios + RLS con 2 politicas | Aplicada |
+| `20260416201256_sesion5_calificacion_reputacion.sql` | RPCs auto_calificar + calcular_reputacion + pg_cron cada hora | Aplicada |
 
 ## Sesion siguiente
 
-Sesion 5 — Calificacion de intercambios y dashboard del creador
-Pendiente: vista del creador con intercambios recibidos, calificacion con pulgar arriba/abajo (seccion 6.2), cierre de campana con calificacion (seccion 5C.3), sistema de reputacion (seccion 6.3).
+Sesion 6 — Pulido pre-lanzamiento
+Pendiente: pagina de perfil publico, logout, navegacion entre paginas, manejo de errores globales, deploy a Vercel.
 
 ---
 
