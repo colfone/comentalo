@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v3.9.
 
-## Version actual: v2.8 — 16 de abril de 2026
+## Version actual: v2.9 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -30,6 +30,7 @@ Para la vision del producto, ver PROYECTO.md v3.9.
 | v2.6 | UX navegacion | 16 abril 2026 | Boton volver al dashboard en todos los estados del flujo intercambiar (write, copied, verificando) |
 | v2.7 | Cancelar intercambio | 16 abril 2026 | Boton "No puedo comentar este video" + POST /api/intercambios/cancelar — elimina intercambio pendiente y libera slot |
 | v2.8 | Fix copiar/verificar | 16 abril 2026 | /api/intercambios/copiar usa service client (RLS bloqueaba UPDATE), frontend bloquea si save falla |
+| v2.9 | Fixes + detalle campana | 16 abril 2026 | Fix countdown timer, texto "Ya publique mi comentario", detalle de campana con calificacion inline |
 
 ## Stack confirmado
 
@@ -474,6 +475,7 @@ RLS habilitado. Politicas: `verificaciones_canal_select_own`, `verificaciones_ca
 | `/dashboard/registrar-video` | `src/app/dashboard/registrar-video/page.tsx` | Static (client) | Grid de videos + formulario de registro |
 | `/dashboard/intercambiar` | `src/app/dashboard/intercambiar/page.tsx` | Static (client) | Flujo completo del comentarista |
 | `/dashboard/calificar/[campanaId]` | `src/app/dashboard/calificar/[campanaId]/page.tsx` | Dynamic (client) | Calificacion de intercambios por campana |
+| `/dashboard/campana/[campanaId]` | `src/app/dashboard/campana/[campanaId]/page.tsx` | Dynamic (client) | Detalle de campana con intercambios y calificacion inline |
 | `/verificar-canal` | `src/app/verificar-canal/page.tsx` | Static (client) | Ingreso de link del canal + verificacion de requisitos |
 | `/verificar-codigo` | `src/app/verificar-codigo/page.tsx` | Static (client) | Verificacion de codigo en descripcion del canal |
 | `/registro-rechazado` | `src/app/registro-rechazado/page.tsx` | Static (client) | Motivos de rechazo del canal |
@@ -491,6 +493,7 @@ RLS habilitado. Politicas: `verificaciones_canal_select_own`, `verificaciones_ca
 | `/api/videos/reactivar` | POST | Reactiva video suspendido (bloquea si suspensiones_count >= 2) |
 | `/api/videos/eliminar` | DELETE | Elimina video sin intercambios verificados (cascade a campanas e intercambios) |
 | `/api/campanas/lanzar` | POST | Lanza nueva campana para un video — valida regla de vistas 5C.4 |
+| `/api/campanas/detalle` | GET | Detalle de campana con intercambios y nombres de comentaristas |
 | `/api/videos/mis-videos-youtube` | GET | Lista ultimos 8 videos del canal con cache de 60 min |
 | `/api/intercambios/asignar` | GET | Llama RPC asignar_intercambio + retorna datos completos del video |
 | `/api/intercambios/copiar` | POST | Guarda texto_comentario, timestamp_copia, duracion_video_segundos |

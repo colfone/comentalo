@@ -422,7 +422,10 @@ export default function DashboardClient({
                                 : "bg-gray-900/50"
                             }`}
                           >
-                            <div>
+                            <a
+                              href={`/dashboard/campana/${campana.id}`}
+                              className="block hover:opacity-80"
+                            >
                               <p className="text-xs text-gray-400">
                                 Campana {video.campanas.length - idx}
                               </p>
@@ -430,7 +433,7 @@ export default function DashboardClient({
                                 {campana.intercambios_completados}/10
                                 intercambios
                               </p>
-                            </div>
+                            </a>
 
                             {esperaCalificacion ? (
                               <a

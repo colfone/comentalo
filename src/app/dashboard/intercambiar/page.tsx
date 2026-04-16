@@ -234,13 +234,14 @@ export default function IntercambiarPage() {
   }, []);
 
   useEffect(() => {
-    if (step === "copied" && countdown > 0) {
-      timerRef.current = setInterval(tickCountdown, 1000);
-      return () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-      };
-    }
-  }, [step, countdown > 0, tickCountdown]);
+    if (step !== "copied") return;
+
+    // Start interval when entering copied step
+    timerRef.current = setInterval(tickCountdown, 1000);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [step, tickCountdown]);
 
   // --- Ya publique — calls POST /api/intercambios/verificar ---
 
@@ -567,7 +568,7 @@ export default function IntercambiarPage() {
 
               <p className="mb-4 text-sm text-gray-400">
                 Abre el video, pega tu comentario y publicalo. Luego vuelve aqui
-                y presiona &ldquo;Ya publique&rdquo;.
+                y presiona &ldquo;Ya publique mi comentario&rdquo;.
               </p>
 
               {/* Prominent YouTube button */}
@@ -590,7 +591,7 @@ export default function IntercambiarPage() {
                     disabled
                     className="w-full rounded-lg bg-gray-800 py-3 text-sm font-medium text-gray-500 cursor-not-allowed"
                   >
-                    Ya publique ({formatCountdown(countdown)})
+                    Ya publique mi comentario ({formatCountdown(countdown)})
                   </button>
                   <p className="text-center text-xs text-gray-500">
                     El boton se habilitara cuando termine el tiempo minimo de
@@ -602,7 +603,7 @@ export default function IntercambiarPage() {
                   onClick={handleYaPublique}
                   className="w-full rounded-lg bg-[#E87722] py-3 text-sm font-medium text-white transition-colors hover:bg-[#d06a1a]"
                 >
-                  Ya publique
+                  Ya publique mi comentario
                 </button>
               )}
 
