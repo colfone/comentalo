@@ -433,7 +433,23 @@ export default function IntercambiarPage() {
                 className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-sm text-white placeholder-gray-500 outline-none focus:border-[#6B3FA0]"
               />
 
-              <div className="mt-1 flex items-center justify-between">
+              {/* Emoji selector */}
+              <div className="mt-2 flex flex-wrap gap-1">
+                {["👍", "🔥", "❤️", "💯", "🙌", "😊", "👏", "🎯", "💪", "✅"].map(
+                  (emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setComentario((prev) => prev + emoji)}
+                      className="rounded-md border border-gray-700 bg-gray-800 px-2 py-1 text-base transition-colors hover:border-gray-500 hover:bg-gray-700"
+                    >
+                      {emoji}
+                    </button>
+                  )
+                )}
+              </div>
+
+              <div className="mt-2 flex items-center justify-between">
                 <p
                   className={`text-xs ${
                     comentario.length < 20 ? "text-gray-500" : "text-green-400"
@@ -482,8 +498,20 @@ export default function IntercambiarPage() {
                 <p className="text-sm text-green-300">
                   {copied
                     ? "Comentario copiado al portapapeles."
-                    : "Comentario guardado."}
+                    : "Comentario guardado. Selecciona el texto y copialo manualmente."}
                 </p>
+              </div>
+
+              {/* Comment text — readonly fallback for manual copy */}
+              <div className="mb-4">
+                <p className="mb-1 text-xs text-gray-500">Tu comentario:</p>
+                <textarea
+                  readOnly
+                  value={comentario}
+                  rows={3}
+                  onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-sm text-gray-300 outline-none focus:border-[#6B3FA0]"
+                />
               </div>
 
               <h2 className="mb-2 text-lg font-semibold text-white">
@@ -495,24 +523,17 @@ export default function IntercambiarPage() {
                 y presiona &ldquo;Ya publique&rdquo;.
               </p>
 
-              {/* Link to video */}
+              {/* Prominent YouTube button */}
               <a
                 href={video.youtube_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mb-6 flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-800 p-3 transition-colors hover:border-gray-600"
+                className="mb-6 flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 py-3 text-sm font-medium text-white transition-colors hover:bg-red-700"
               >
-                <img
-                  src={video.thumbnail}
-                  alt={video.titulo}
-                  className="h-12 w-20 rounded object-cover"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-white">{video.titulo}</p>
-                  <p className="text-xs text-[#E87722]">
-                    Abrir en YouTube →
-                  </p>
-                </div>
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                </svg>
+                Ir al video en YouTube
               </a>
 
               {/* Countdown + Ya publique button */}
