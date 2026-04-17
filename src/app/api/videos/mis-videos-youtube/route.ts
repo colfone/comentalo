@@ -92,7 +92,7 @@ export async function GET(request: Request) {
   searchUrl.searchParams.set("channelId", usuario.canal_youtube_id);
   searchUrl.searchParams.set("type", "video");
   searchUrl.searchParams.set("order", "date");
-  searchUrl.searchParams.set("maxResults", "8");
+  searchUrl.searchParams.set("maxResults", "20");
   searchUrl.searchParams.set("part", "id");
 
   const searchRes = await fetch(searchUrl.toString());
