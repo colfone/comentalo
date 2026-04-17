@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import DashboardClient from "./dashboard-client";
@@ -24,6 +25,12 @@ export default async function DashboardPage() {
   if (!usuario) {
     redirect("/verificar-canal");
   }
+
+  // Service client for cross-user queries
+  const serviceClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!
+  );
 
   // Fetch videos
   const { data: videos } = await supabase
@@ -63,12 +70,55 @@ export default async function DashboardPage() {
     activo: false,
   };
 
+  // Stats: intercambios dados (where this user is the commentator, verified)
+  const { count: intercambiosDados } = await serviceClient
+    .from("intercambios")
+    .select("id", { count: "exact", head: true })
+    .eq("comentarista_id", usuario.id)
+    .eq("estado", "verificado");
+
+  // Stats: intercambios recibidos (verified intercambios in this user's campaigns)
+  const videoIds = (videos || []).map((v) => v.id);
+  let intercambiosRecibidos = 0;
+  if (videoIds.length > 0) {
+    const { data: userCampanas } = await serviceClient
+      .from("campanas")
+      .select("id")
+      .in("video_id", videoIds);
+
+    const campanaIds = (userCampanas || []).map((c: { id: string }) => c.id);
+    if (campanaIds.length > 0) {
+      const { count } = await serviceClient
+        .from("intercambios")
+        .select("id", { count: "exact", head: true })
+        .in("campana_id", campanaIds)
+        .eq("estado", "verificado");
+      intercambiosRecibidos = count ?? 0;
+    }
+  }
+
+  // Stats: campanas completadas
+  let campanasCompletadas = 0;
+  if (videoIds.length > 0) {
+    const { count } = await serviceClient
+      .from("campanas")
+      .select("id", { count: "exact", head: true })
+      .in("video_id", videoIds)
+      .in("estado", ["completada", "calificada"]);
+    campanasCompletadas = count ?? 0;
+  }
+
   return (
     <DashboardClient
       user={{ email: user.email || "" }}
       usuario={usuario}
       videosWithCampanas={videosWithCampanas}
       reputacion={reputacion}
+      stats={{
+        intercambiosDados: intercambiosDados ?? 0,
+        intercambiosRecibidos,
+        campanasCompletadas,
+      }}
     />
   );
 }
