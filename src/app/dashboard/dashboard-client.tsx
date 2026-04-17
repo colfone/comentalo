@@ -37,6 +37,7 @@ interface Usuario {
 
 interface Reputacion {
   total_calificados: number;
+  promedio_estrellas: number;
   porcentaje: number;
   nivel: string;
   activo: boolean;
@@ -56,11 +57,11 @@ interface Props {
   stats: Stats;
 }
 
-function getReputationLevel(porcentaje: number, activo: boolean) {
+function getReputationLevel(promedio: number, activo: boolean) {
   if (!activo) return { nivel: "sin_activar", label: "Sin activar" };
-  if (porcentaje >= 80) return { nivel: "verde", label: "Verde" };
-  if (porcentaje >= 60) return { nivel: "amarillo", label: "Amarillo" };
-  if (porcentaje >= 40) return { nivel: "naranja", label: "Naranja" };
+  if (promedio >= 4.0) return { nivel: "verde", label: "Verde" };
+  if (promedio >= 3.0) return { nivel: "amarillo", label: "Amarillo" };
+  if (promedio >= 2.0) return { nivel: "naranja", label: "Naranja" };
   return { nivel: "rojo", label: "Rojo" };
 }
 
@@ -110,7 +111,8 @@ export default function DashboardClient({
   >([]);
   const [noLeidas, setNoLeidas] = useState(0);
 
-  const repLevel = getReputationLevel(reputacion.porcentaje, reputacion.activo);
+  const repLevel = getReputationLevel(reputacion.promedio_estrellas, reputacion.activo);
+  const promedioEstrellas = Number(reputacion.promedio_estrellas || 0).toFixed(1);
   const videosActivos = videos.filter((v) => v.estado === "activo");
   const puedeRegistrar = videosActivos.length < 2;
   const initials = getInitials(usuario.nombre);
@@ -319,7 +321,7 @@ export default function DashboardClient({
                     : repLevel.nivel === "naranja" ? "bg-orange-100 text-orange-700"
                     : "bg-red-100 text-red-700"
                   }`}>
-                    {repLevel.label} — {Number(reputacion.porcentaje).toFixed(0)}%
+                    {promedioEstrellas}<span className="text-[#E87722]">★</span>
                   </span>
                 ) : (
                   <span className="text-xs text-[#595c5d]">Sin activar · {reputacion.total_calificados}/20</span>
@@ -373,7 +375,14 @@ export default function DashboardClient({
               </div>
               <p className="text-xs text-[#595c5d]">Reputacion</p>
               <p className="mt-1 font-headline text-2xl font-extrabold text-[#2c2f30]">
-                {reputacion.activo ? repLevel.label : "—"}
+                {reputacion.activo ? (
+                  <>
+                    {promedioEstrellas}
+                    <span className="text-[#E87722]">★</span>
+                  </>
+                ) : (
+                  "—"
+                )}
               </p>
               <p className="mt-0.5 text-xs text-[#595c5d]">
                 {reputacion.total_calificados}/20 intercambios calificados

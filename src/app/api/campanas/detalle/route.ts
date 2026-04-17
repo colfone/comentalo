@@ -88,7 +88,7 @@ export async function GET(request: Request) {
   // Get all intercambios for this campaign with commentator names
   const { data: intercambios } = await serviceClient
     .from("intercambios")
-    .select("id, comentarista_id, texto_comentario, estado, calificacion, created_at")
+    .select("id, comentarista_id, texto_comentario, estado, calificacion, estrellas, created_at")
     .eq("campana_id", campanaId)
     .order("created_at", { ascending: true });
 
@@ -117,6 +117,7 @@ export async function GET(request: Request) {
       texto_comentario: string;
       estado: string;
       calificacion: string | null;
+      estrellas: number | null;
       created_at: string;
     }) => ({
       ...i,

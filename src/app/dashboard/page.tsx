@@ -61,6 +61,7 @@ export default async function DashboardPage() {
   // Get reputation — wrapped in try/catch to prevent page crash
   let reputacion = {
     total_calificados: 0,
+    promedio_estrellas: 5,
     porcentaje: 100,
     nivel: "verde",
     activo: false,
@@ -74,6 +75,7 @@ export default async function DashboardPage() {
         ...reputacion,
         ...reputacionData,
         porcentaje: Number(reputacionData.porcentaje) || 100,
+        promedio_estrellas: Number(reputacionData.promedio_estrellas) || 5,
         total_calificados: Number(reputacionData.total_calificados) || 0,
       };
     }

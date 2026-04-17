@@ -10,8 +10,78 @@ interface Intercambio {
   comentarista_canal: string | null;
   texto_comentario: string;
   estado: string;
-  calificacion: "positiva" | "negativa" | null;
+  calificacion: "positiva" | "negativa" | "neutral" | null;
+  estrellas: number | null;
   created_at: string;
+}
+
+const STAR_LABELS: Record<number, string> = {
+  1: "Muy malo",
+  2: "Malo",
+  3: "Regular",
+  4: "Bueno",
+  5: "Excelente",
+};
+
+function StarRating({
+  value,
+  disabled,
+  onRate,
+}: {
+  value: number | null;
+  disabled: boolean;
+  onRate: (n: number) => void;
+}) {
+  const [hover, setHover] = useState(0);
+
+  if (value && value > 0) {
+    return (
+      <div className="inline-flex items-center gap-3 rounded-full bg-[#E87722]/10 px-4 py-2">
+        <div className="flex gap-0.5 text-xl leading-none text-[#E87722]">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <span key={n}>{n <= value ? "★" : "☆"}</span>
+          ))}
+        </div>
+        <span className="text-sm font-semibold text-[#E87722]">
+          Calificado — {value}/5 estrellas
+        </span>
+      </div>
+    );
+  }
+
+  const display = hover || 0;
+
+  return (
+    <div>
+      <div
+        className="flex gap-1"
+        onMouseLeave={() => setHover(0)}
+      >
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            disabled={disabled}
+            onMouseEnter={() => setHover(n)}
+            onFocus={() => setHover(n)}
+            onClick={() => onRate(n)}
+            aria-label={`${n} estrella${n > 1 ? "s" : ""} — ${STAR_LABELS[n]}`}
+            className="text-4xl leading-none transition-transform duration-150 hover:scale-110 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              color: display >= n ? "#E87722" : "#e0e3e4",
+            }}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-[#595c5d]">
+        {display > 0
+          ? STAR_LABELS[display]
+          : "Selecciona una calificación del 1 al 5"}
+      </p>
+    </div>
+  );
 }
 
 interface Campana {
@@ -88,25 +158,26 @@ export default function CampanaDetallePage() {
     }
   }
 
-  async function handleCalificar(
-    intercambioId: string,
-    calificacion: "positiva" | "negativa"
-  ) {
+  async function handleCalificar(intercambioId: string, estrellas: number) {
     setCalificando(intercambioId);
+    const calificacionDerivada: "positiva" | "negativa" | "neutral" =
+      estrellas >= 4 ? "positiva" : estrellas <= 2 ? "negativa" : "neutral";
     try {
       const res = await fetch("/api/intercambios/calificar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           intercambio_id: intercambioId,
-          calificacion,
+          estrellas,
         }),
       });
 
       if (res.ok) {
         setIntercambios((prev) =>
           prev.map((i) =>
-            i.id === intercambioId ? { ...i, calificacion } : i
+            i.id === intercambioId
+              ? { ...i, estrellas, calificacion: calificacionDerivada }
+              : i
           )
         );
       }
@@ -325,7 +396,6 @@ export default function CampanaDetallePage() {
                     const initials = getInitials(intercambio.comentarista_nombre);
                     const isVerified = intercambio.estado === "verificado";
                     const isPending = intercambio.estado === "pendiente";
-                    const hasRating = !!intercambio.calificacion;
 
                     return (
                       <li
@@ -399,54 +469,14 @@ export default function CampanaDetallePage() {
                             </p>
                           )}
 
-                          {isVerified && hasRating && (
-                            <div
-                              className={`inline-flex items-center gap-3 rounded-full px-4 py-2 text-sm font-semibold ${
-                                intercambio.calificacion === "positiva"
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-red-100 text-red-700"
-                              }`}
-                            >
-                              <span>
-                                {intercambio.calificacion === "positiva"
-                                  ? "✓ Calificado positivo"
-                                  : "✗ Calificado negativo"}
-                              </span>
-                              <span
-                                className={`text-[10px] font-bold uppercase tracking-widest ${
-                                  intercambio.calificacion === "positiva"
-                                    ? "text-green-700/60"
-                                    : "text-red-700/60"
-                                }`}
-                              >
-                                Action completed
-                              </span>
-                            </div>
-                          )}
-
-                          {isVerified && !hasRating && (
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                              <button
-                                onClick={() =>
-                                  handleCalificar(intercambio.id, "positiva")
-                                }
-                                disabled={calificando === intercambio.id}
-                                className="flex items-center justify-center gap-2 rounded-xl border-2 border-green-200 bg-white px-5 py-3 text-sm font-semibold text-green-700 transition-all duration-200 hover:scale-[1.02] hover:border-green-500 hover:bg-green-50 disabled:opacity-50"
-                              >
-                                <span className="text-lg">👍</span>
-                                <span>Buen intercambio</span>
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleCalificar(intercambio.id, "negativa")
-                                }
-                                disabled={calificando === intercambio.id}
-                                className="flex items-center justify-center gap-2 rounded-xl border-2 border-red-200 bg-white px-5 py-3 text-sm font-semibold text-red-700 transition-all duration-200 hover:scale-[1.02] hover:border-red-500 hover:bg-red-50 disabled:opacity-50"
-                              >
-                                <span className="text-lg">👎</span>
-                                <span>Mal intercambio</span>
-                              </button>
-                            </div>
+                          {isVerified && (
+                            <StarRating
+                              value={intercambio.estrellas}
+                              disabled={calificando === intercambio.id}
+                              onRate={(n) =>
+                                handleCalificar(intercambio.id, n)
+                              }
+                            />
                           )}
                         </div>
                       </li>

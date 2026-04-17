@@ -92,7 +92,7 @@ export async function GET(request: Request) {
   // Get verified intercambios for this campaign
   const { data: intercambios } = await serviceClient
     .from("intercambios")
-    .select("id, texto_comentario, calificacion, comentarista_id")
+    .select("id, texto_comentario, calificacion, estrellas, comentarista_id")
     .eq("campana_id", campanaId)
     .eq("estado", "verificado")
     .order("created_at", { ascending: true });
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
   // Parse body
   let body: {
     intercambio_id: string;
-    calificacion: "positiva" | "negativa";
+    estrellas: number;
   };
 
   try {
@@ -121,26 +121,31 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!body.intercambio_id || !body.calificacion) {
+  const estrellas = Number(body.estrellas);
+
+  if (!body.intercambio_id || !Number.isInteger(estrellas)) {
     return NextResponse.json(
-      { error: "intercambio_id y calificacion son obligatorios." },
+      { error: "intercambio_id y estrellas son obligatorios." },
       { status: 400 }
     );
   }
 
-  if (!["positiva", "negativa"].includes(body.calificacion)) {
+  if (estrellas < 1 || estrellas > 5) {
     return NextResponse.json(
-      { error: "calificacion debe ser 'positiva' o 'negativa'." },
+      { error: "estrellas debe estar entre 1 y 5." },
       { status: 400 }
     );
   }
+
+  const calificacionDerivada: "positiva" | "negativa" | "neutral" =
+    estrellas >= 4 ? "positiva" : estrellas <= 2 ? "negativa" : "neutral";
 
   const serviceClient = createServiceClient();
 
   // Get intercambio with campaign and video chain to verify ownership
   const { data: intercambio } = await serviceClient
     .from("intercambios")
-    .select("id, campana_id, estado, calificacion, comentarista_id")
+    .select("id, campana_id, estado, estrellas, comentarista_id")
     .eq("id", body.intercambio_id)
     .single();
 
@@ -158,7 +163,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (intercambio.calificacion) {
+  if (intercambio.estrellas) {
     return NextResponse.json(
       { error: "Este intercambio ya fue calificado." },
       { status: 409 }
@@ -192,10 +197,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // Apply calificacion
+  // Apply calificacion: estrellas es la fuente de verdad; calificacion se mantiene por compat
   await serviceClient
     .from("intercambios")
-    .update({ calificacion: body.calificacion })
+    .update({ estrellas, calificacion: calificacionDerivada })
     .eq("id", body.intercambio_id);
 
   // Check if all 10 verified intercambios in this campaign are now calificados
@@ -204,7 +209,7 @@ export async function POST(request: Request) {
     .select("id", { count: "exact", head: true })
     .eq("campana_id", campana.id)
     .eq("estado", "verificado")
-    .is("calificacion", null);
+    .is("estrellas", null);
 
   if ((sinCalificar ?? 0) === 0 && campana.estado === "completada") {
     // All calificados — move campaign to 'calificada'
