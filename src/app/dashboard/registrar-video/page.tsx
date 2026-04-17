@@ -51,15 +51,15 @@ interface RegistroResult {
 }
 
 const tiposIntercambio = [
-  { value: "opinion", label: "Opinion" },
-  { value: "pregunta", label: "Pregunta" },
-  { value: "experiencia", label: "Experiencia personal" },
+  { value: "opinion", label: "\u{1F4AC} Opinion" },
+  { value: "pregunta", label: "\u2753 Pregunta" },
+  { value: "experiencia", label: "\u2728 Experiencia personal" },
 ] as const;
 
 const tonos = [
-  { value: "casual", label: "Casual" },
-  { value: "entusiasta", label: "Entusiasta" },
-  { value: "reflexivo", label: "Reflexivo" },
+  { value: "casual", label: "\u{1F60A} Casual" },
+  { value: "entusiasta", label: "\u{1F525} Entusiasta" },
+  { value: "reflexivo", label: "\u{1F914} Reflexivo" },
 ] as const;
 
 export default function RegistrarVideoPage() {
@@ -381,10 +381,12 @@ export default function RegistrarVideoPage() {
               </fieldset>
 
               {/* Moderacion warning */}
-              <div className="mt-6 flex gap-3 rounded-xl border-l-[3px] border-[#E87722] bg-[#fff8f3] p-4">
-                <svg className="mt-0.5 h-5 w-5 shrink-0 text-[#E87722]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg>
-                <p className="text-xs font-medium leading-relaxed text-[#2c2f30]">
-                  Asegurate de que tu video tenga los comentarios en modo Ninguno o Basico en YouTube Studio.
+              <div className="mt-6 rounded-xl border-l-[3px] border-[#E87722] bg-[#fff8f3] p-4">
+                <p className="text-xs font-semibold text-[#2c2f30]">
+                  Antes de registrar — revisa tu configuracion en YouTube Studio
+                </p>
+                <p className="mt-1.5 text-xs font-medium leading-relaxed text-[#2c2f30]/80">
+                  Para que los intercambios se verifiquen automaticamente, asegurate de que los comentarios de tu video esten en modo &ldquo;Ninguno&rdquo; o &ldquo;Basico&rdquo;. Si tienes revision manual activada, los intercambios no podran verificarse.
                 </p>
               </div>
 
