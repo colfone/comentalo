@@ -38,12 +38,11 @@ interface YouTubeVideo {
   titulo: string;
   thumbnail: string;
   vistas: number;
-  likes: number | null;
+  likes: number;
   comentarios: number;
   duracion_segundos: number;
   ya_registrado: boolean;
   comentarios_desactivados: boolean;
-  restringido: boolean;
 }
 
 interface RegistroResult {
@@ -108,13 +107,13 @@ export default function RegistrarVideoPage() {
       const res = await fetch(`/api/videos/verificar-canal?videoId=${videoId}`);
       const data = await res.json();
       if (!data.valido) { setLinkError(data.error); return; }
-      setManualVideo({ id: videoId, titulo: data.titulo || "", thumbnail: data.thumbnail || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`, vistas: 0, likes: null, comentarios: 0, duracion_segundos: 0, ya_registrado: false, comentarios_desactivados: false, restringido: false });
+      setManualVideo({ id: videoId, titulo: data.titulo || "", thumbnail: data.thumbnail || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`, vistas: 0, likes: 0, comentarios: 0, duracion_segundos: 0, ya_registrado: false, comentarios_desactivados: false });
       setSelectedVideo(null);
     } catch { setLinkError("Error de conexion."); } finally { setVerificando(false); }
   }
 
   function handleSelectVideo(video: YouTubeVideo) {
-    if (video.ya_registrado || video.restringido) return;
+    if (video.ya_registrado || video.comentarios_desactivados) return;
     setSelectedVideo(video); setManualVideo(null); setYoutubeUrl(""); setLinkError(null);
   }
 
@@ -197,12 +196,10 @@ export default function RegistrarVideoPage() {
                     <button
                       key={video.id}
                       onClick={() => handleSelectVideo(video)}
-                      disabled={video.ya_registrado || video.restringido}
+                      disabled={video.ya_registrado || video.comentarios_desactivados}
                       className={`group relative rounded-2xl border bg-white text-left transition-all duration-200 ${
-                        video.ya_registrado
+                        video.ya_registrado || video.comentarios_desactivados
                           ? "cursor-not-allowed border-[rgba(171,173,174,0.15)] opacity-60"
-                          : video.restringido
-                          ? "cursor-not-allowed border-[rgba(171,173,174,0.15)] opacity-70"
                           : selectedVideo?.id === video.id
                           ? "border-[#6200EE] border-2 shadow-lg shadow-[#6200EE]/10"
                           : "border-[rgba(171,173,174,0.15)] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#6200EE]/10"
@@ -230,14 +227,14 @@ export default function RegistrarVideoPage() {
                             </span>
                           </div>
                         )}
-                        {/* Video restringido overlay */}
-                        {!video.ya_registrado && video.restringido && (
+                        {/* Comentarios desactivados overlay */}
+                        {!video.ya_registrado && video.comentarios_desactivados && (
                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
                             <span className="rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white">
-                              Video restringido
+                              Comentarios desactivados
                             </span>
                             <p className="mt-1.5 text-[10px] text-white/80">
-                              Comentarios o likes desactivados
+                              No se puede registrar en Comentalo
                             </p>
                           </div>
                         )}
@@ -266,7 +263,7 @@ export default function RegistrarVideoPage() {
                             {formatViews(video.vistas)}
                           </span>
                           <span>·</span>
-                          <span>👍 {video.likes != null ? formatViews(video.likes) : "—"}</span>
+                          <span>👍 {formatViews(video.likes || 0)}</span>
                           <span>·</span>
                           <span>💬 {formatViews(video.comentarios || 0)}</span>
                         </div>
@@ -305,7 +302,7 @@ export default function RegistrarVideoPage() {
                       </div>
                     )}
                     {linkError && <p className="mt-2 text-xs text-red-500">{linkError}</p>}
-                    <p className="mt-2 text-[10px] text-[#595c5d]/60">Videos con comentarios o likes desactivados no pueden registrarse.</p>
+                    <p className="mt-2 text-[10px] text-[#595c5d]/60">Videos con comentarios desactivados no pueden registrarse.</p>
                   </div>
                 </div>
 
@@ -345,7 +342,7 @@ export default function RegistrarVideoPage() {
                   <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-[#595c5d]">
                     <span>{formatViews(chosen.vistas || 0)} vistas</span>
                     <span>·</span>
-                    <span>👍 {chosen.likes != null ? formatViews(chosen.likes) : "—"} likes</span>
+                    <span>👍 {formatViews(chosen.likes || 0)} likes</span>
                     <span>·</span>
                     <span>💬 {formatViews(chosen.comentarios || 0)} comentarios</span>
                   </p>

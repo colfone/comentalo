@@ -18,12 +18,11 @@ interface VideoItem {
   titulo: string;
   thumbnail: string;
   vistas: number;
-  likes: number | null;
+  likes: number;
   comentarios: number;
   duracion_segundos: number;
   ya_registrado: boolean;
   comentarios_desactivados: boolean;
-  restringido: boolean;
 }
 
 export async function GET(request: Request) {
@@ -143,12 +142,11 @@ export async function GET(request: Request) {
         v.snippet?.thumbnails?.medium?.url ||
         `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`,
       vistas: parseInt(v.statistics?.viewCount || "0", 10),
-      likes: v.statistics?.likeCount != null ? parseInt(v.statistics.likeCount, 10) : null,
-      comentarios: v.statistics?.commentCount != null ? parseInt(v.statistics.commentCount, 10) : 0,
+      likes: parseInt(v.statistics?.likeCount || "0", 10),
+      comentarios: parseInt(v.statistics?.commentCount || "0", 10),
       duracion_segundos: parseDuration(v.contentDetails?.duration || "PT0S"),
       ya_registrado: false,
       comentarios_desactivados: v.statistics?.commentCount == null,
-      restringido: v.statistics?.commentCount == null || v.statistics?.likeCount == null,
     })
   );
 
