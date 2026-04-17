@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v3.8 — 16 de abril de 2026
+## Version actual: v4.3 — 17 de abril de 2026
 
 ## Registro de versiones
 
@@ -40,6 +40,11 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v3.6 | Simplificar landing | 16 abril 2026 | Eliminada seccion Fundadores de la landing — queda Nav, Hero, Como funciona, Footer |
 | v3.7 | Color primary | 16 abril 2026 | Primary actualizado de #6a1cf6 a #6200EE en globals.css y landing — color oficial definitivo |
 | v3.8 | Cierre de sesion | 16 abril 2026 | PROYECTO.md v4.1 con seccion 6H sistema de diseno. ESTADO.md consolidado |
+| v3.9 | Rediseno dashboard | 17 abril 2026 | Nuevo layout claro, header fijo, perfil con avatar, 4 stats sidebar, video cards con progress bar, El Manifiesto, footer |
+| v4.0 | Rediseno intercambiar | 17 abril 2026 | Layout dos columnas, thumbnail grande con overlay, card Tu Tarea y El Creador, estados write/copied/verificando, boton Cancelar visible |
+| v4.1 | Rediseno registrar-video | 17 abril 2026 | Grid 3 columnas, badge PASO 01/02, overlay YA REGISTRADO, card buscar URL, boton Seleccionar sobre thumbnail, paso 2 con preview tipo/tono/moderacion |
+| v4.2 | Mejoras registrar-video | 17 abril 2026 | Likes y comentarios en grid y preview, sentence case titulos, bloqueo videos sin comentarios, overlay comentarios desactivados |
+| v4.3 | Cierre sesion 17 abril | 17 abril 2026 | ESTADO.md actualizado, fix DB vacia en dashboard, maxResults 8 |
 
 ## Stack confirmado
 
@@ -597,8 +602,8 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 
 ## Sesion siguiente
 
-Sesion 8 — Beta cerrada con fundadores
-Pendiente: programa de fundadores (seccion 8.3), badge de fundador, expansion basica al completar primer ciclo, programa de referidos (seccion 8.4), perfil publico, aplicar sistema de diseno al dashboard.
+Sesion 8 — Rediseno vistas restantes + programa de fundadores
+Pendiente: rediseno /dashboard/campana/[campanaId], /dashboard/calificar/[campanaId], /verificar-canal, /verificar-codigo. Luego programa de fundadores (seccion 8.3), badge de fundador, expansion basica al completar primer ciclo, programa de referidos (seccion 8.4).
 
 ---
 
