@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.0.
 
-## Version actual: v3.4 — 16 de abril de 2026
+## Version actual: v3.5 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -36,6 +36,7 @@ Para la vision del producto, ver PROYECTO.md v4.0.
 | v3.2 | Notificaciones | 16 abril 2026 | Sistema completo de notificaciones: tabla, 5 tipos, Realtime, campana con contador, panel desplegable |
 | v3.3 | PROYECTO.md v4.0 | 16 abril 2026 | Documentada seccion 6G — Sistema de notificaciones en PROYECTO.md |
 | v3.4 | Logout | 16 abril 2026 | Boton cerrar sesion en header del dashboard junto al icono de campana |
+| v3.5 | Landing page | 16 abril 2026 | /login reemplazado por landing profesional — hero, como funciona, fundadores, footer. Nuevo sistema de diseno |
 
 ## Stack confirmado
 
