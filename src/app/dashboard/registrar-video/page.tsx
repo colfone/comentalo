@@ -328,18 +328,6 @@ export default function RegistrarVideoPage() {
               <label className="mb-1 block text-sm font-semibold text-[#2c2f30]">
                 ¿De que trata tu video? <span className="font-normal text-[#595c5d]">(opcional)</span>
               </label>
-              <div className="mb-2 flex flex-wrap gap-1">
-                {["😊", "🔥", "👏", "💡", "❤️", "🎯", "🙌", "✨", "👍", "🤔"].map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => setDescripcion((prev) => (prev + emoji).slice(0, 300))}
-                    className="cursor-pointer rounded-lg p-1 text-lg transition-colors hover:bg-[#eff1f2]"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
               <div className="relative">
                 <textarea
                   value={descripcion}
