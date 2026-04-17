@@ -281,6 +281,19 @@ export default function IntercambiarPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-950 px-4 py-12">
       <div className="w-full max-w-lg space-y-8">
+        {/* Back to dashboard — visible only before video is assigned */}
+        {(step === "loading" || step === "blocked" || step === "empty") && (
+          <a
+            href="/dashboard"
+            className="inline-flex items-center gap-1 text-sm text-[#595c5d] transition-colors hover:text-white"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+            </svg>
+            Volver al dashboard
+          </a>
+        )}
+
         <div className="text-center">
           <h1 className="text-4xl font-bold text-white">
             <span className="text-[#6B3FA0]">Comenta</span>
@@ -418,11 +431,12 @@ export default function IntercambiarPage() {
               <button
                 onClick={handleCancelar}
                 disabled={cancelando}
-                className="mt-3 w-full text-center text-sm text-gray-500 hover:text-red-400 disabled:opacity-50"
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[#595c5d] py-3 text-sm font-medium text-[#595c5d] transition-colors hover:border-red-400 hover:text-red-400 disabled:opacity-50"
               >
-                {cancelando
-                  ? "Cancelando..."
-                  : "No puedo comentar este video"}
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+                {cancelando ? "Cancelando..." : "Cancelar intercambio"}
               </button>
             </>
           )}
@@ -529,11 +543,12 @@ export default function IntercambiarPage() {
               <button
                 onClick={handleCancelar}
                 disabled={cancelando}
-                className="mt-2 w-full text-center text-sm text-gray-600 hover:text-red-400 disabled:opacity-50"
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-[#595c5d] py-3 text-sm font-medium text-[#595c5d] transition-colors hover:border-red-400 hover:text-red-400 disabled:opacity-50"
               >
-                {cancelando
-                  ? "Cancelando..."
-                  : "No puedo comentar este video"}
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+                {cancelando ? "Cancelando..." : "Cancelar intercambio"}
               </button>
             </>
           )}
