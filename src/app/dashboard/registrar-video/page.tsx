@@ -43,6 +43,7 @@ interface YouTubeVideo {
   duracion_segundos: number;
   ya_registrado: boolean;
   comentarios_desactivados: boolean;
+  restringido: boolean;
 }
 
 interface RegistroResult {
@@ -107,13 +108,13 @@ export default function RegistrarVideoPage() {
       const res = await fetch(`/api/videos/verificar-canal?videoId=${videoId}`);
       const data = await res.json();
       if (!data.valido) { setLinkError(data.error); return; }
-      setManualVideo({ id: videoId, titulo: data.titulo || "", thumbnail: data.thumbnail || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`, vistas: 0, likes: null, comentarios: 0, duracion_segundos: 0, ya_registrado: false, comentarios_desactivados: false });
+      setManualVideo({ id: videoId, titulo: data.titulo || "", thumbnail: data.thumbnail || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`, vistas: 0, likes: null, comentarios: 0, duracion_segundos: 0, ya_registrado: false, comentarios_desactivados: false, restringido: false });
       setSelectedVideo(null);
     } catch { setLinkError("Error de conexion."); } finally { setVerificando(false); }
   }
 
   function handleSelectVideo(video: YouTubeVideo) {
-    if (video.ya_registrado || video.comentarios_desactivados) return;
+    if (video.ya_registrado || video.restringido) return;
     setSelectedVideo(video); setManualVideo(null); setYoutubeUrl(""); setLinkError(null);
   }
 
@@ -196,10 +197,12 @@ export default function RegistrarVideoPage() {
                     <button
                       key={video.id}
                       onClick={() => handleSelectVideo(video)}
-                      disabled={video.ya_registrado || video.comentarios_desactivados}
+                      disabled={video.ya_registrado || video.restringido}
                       className={`group relative rounded-2xl border bg-white text-left transition-all duration-200 ${
-                        video.ya_registrado || video.comentarios_desactivados
+                        video.ya_registrado
                           ? "cursor-not-allowed border-[rgba(171,173,174,0.15)] opacity-60"
+                          : video.restringido
+                          ? "cursor-not-allowed border-[rgba(171,173,174,0.15)] opacity-70"
                           : selectedVideo?.id === video.id
                           ? "border-[#6200EE] border-2 shadow-lg shadow-[#6200EE]/10"
                           : "border-[rgba(171,173,174,0.15)] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#6200EE]/10"
@@ -227,12 +230,15 @@ export default function RegistrarVideoPage() {
                             </span>
                           </div>
                         )}
-                        {/* Comentarios desactivados overlay */}
-                        {!video.ya_registrado && video.comentarios_desactivados && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        {/* Video restringido overlay */}
+                        {!video.ya_registrado && video.restringido && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
                             <span className="rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white">
-                              COMENTARIOS DESACTIVADOS
+                              Video restringido
                             </span>
+                            <p className="mt-1.5 text-[10px] text-white/80">
+                              Comentarios o likes desactivados
+                            </p>
                           </div>
                         )}
                         {/* Selected check + overlay button */}
@@ -299,6 +305,7 @@ export default function RegistrarVideoPage() {
                       </div>
                     )}
                     {linkError && <p className="mt-2 text-xs text-red-500">{linkError}</p>}
+                    <p className="mt-2 text-[10px] text-[#595c5d]/60">Videos con comentarios o likes desactivados no pueden registrarse.</p>
                   </div>
                 </div>
 

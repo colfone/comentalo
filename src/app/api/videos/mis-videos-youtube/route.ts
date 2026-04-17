@@ -23,6 +23,7 @@ interface VideoItem {
   duracion_segundos: number;
   ya_registrado: boolean;
   comentarios_desactivados: boolean;
+  restringido: boolean;
 }
 
 export async function GET(request: Request) {
@@ -147,6 +148,7 @@ export async function GET(request: Request) {
       duracion_segundos: parseDuration(v.contentDetails?.duration || "PT0S"),
       ya_registrado: false,
       comentarios_desactivados: v.statistics?.commentCount == null,
+      restringido: v.statistics?.commentCount == null || v.statistics?.likeCount == null,
     })
   );
 
