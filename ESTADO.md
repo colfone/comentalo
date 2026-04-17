@@ -3,9 +3,9 @@
 Control de versiones interno del estado tecnico del proyecto.
 
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
-Para la vision del producto, ver PROYECTO.md v3.9.
+Para la vision del producto, ver PROYECTO.md v4.0.
 
-## Version actual: v3.2 — 16 de abril de 2026
+## Version actual: v3.3 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -34,6 +34,7 @@ Para la vision del producto, ver PROYECTO.md v3.9.
 | v3.0 | UX ver detalle | 16 abril 2026 | Enlace "Ver detalle" visible en cada fila de campana del dashboard |
 | v3.1 | UX boton detalle | 16 abril 2026 | "Ver detalle" cambiado de link texto a boton con estilo (bg-gray-700, rounded-lg) |
 | v3.2 | Notificaciones | 16 abril 2026 | Sistema completo de notificaciones: tabla, 5 tipos, Realtime, campana con contador, panel desplegable |
+| v3.3 | PROYECTO.md v4.0 | 16 abril 2026 | Documentada seccion 6G — Sistema de notificaciones en PROYECTO.md |
 
 ## Stack confirmado
 

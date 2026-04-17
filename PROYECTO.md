@@ -2,7 +2,7 @@
 
 Documento Maestro del Proyecto
 
-Versión 3.9 — Abril 2026
+Versión 4.0 — Abril 2026
 
 *Comunidad de intercambio de comentarios reales entre creadores de YouTube en Latinoamérica*
 
@@ -40,6 +40,7 @@ Versión 3.9 — Abril 2026
 | 3.7 | Abril 2026 | Auditoria exhaustiva — 6 hallazgos residuales corregidos: premium→Expansion Basica, tabla referidos 3 columnas, 6C.5 48h→24h, 2.3 pagos→modelo colaborativo, infoBox 6C 2h→24h |
 | 3.8 | Abril 2026 | Auditoria final — corregido vocabulario en 5C.6: intercambios por video→intercambios por campana. Documento certificado al 100% |
 | 3.9 | Abril 2026 | Nuevo flujo de verificacion de canal por codigo en descripcion (seccion 9.5). Regla de eliminacion de videos (seccion 4C.5). Login sin scope youtube.readonly |
+| 4.0 | Abril 2026 | Agregada seccion 6G — Sistema de notificaciones con 5 tipos, panel de campana en dashboard, Realtime |
 
 # **1. Visión General del Proyecto**
 
@@ -677,6 +678,44 @@ Su intercambio original queda anulado sin consecuencias para su reputacion — e
 
 Si el mismo video es suspendido por segunda vez despues de ser reactivado — el equipo de Comentalo lo revisa manualmente antes de permitir una segunda reactivacion. El creador debe demostrar que corrigio la configuracion.
 
+# **6G. Sistema de Notificaciones**
+
+Comentalo notifica a los usuarios en tiempo real cuando ocurren eventos relevantes para sus videos o intercambios. Las notificaciones aparecen en un panel accesible desde un icono de campana en el dashboard, con un contador de notificaciones no leidas.
+
+## **6G.1 Tipos de Notificacion**
+
+| **Tipo** | **Titulo** | **Destinatario** | **Cuando se crea** |
+| --- | --- | --- | --- |
+| intercambio_verificado | Tu comentario fue verificado | Creador colaborador | Cuando su comentario es encontrado por la API de YouTube |
+| intercambio_pendiente | Tu comentario esta en revision | Creador colaborador | Cuando su comentario no se encuentra en el primer intento (seccion 6C) |
+| intercambio_recibido | Nuevo comentario en tu video | Creador del video | Cuando un intercambio en su video es verificado exitosamente |
+| campana_completa | Campana completada | Creador del video | Cuando su campana alcanza 10 intercambios verificados |
+| video_suspendido | Tu video fue suspendido | Creador del video | Cuando su video es suspendido por patron de moderacion (seccion 6D) |
+
+## **6G.2 Panel de Notificaciones en el Dashboard**
+
+El dashboard muestra un icono de campana en la esquina superior con un contador naranja de notificaciones no leidas. Al hacer clic se despliega un panel con la lista de notificaciones ordenadas por fecha — las mas recientes primero.
+
+Cada notificacion muestra:
+
+- Titulo del evento
+- Mensaje descriptivo con contexto (nombre del video, etc.)
+- Tiempo relativo (hace 5 minutos, hace 2 horas, hace 1 dia)
+- Indicador visual de no leida (punto naranja)
+
+Al hacer clic en una notificacion:
+
+- Se marca automaticamente como leida
+- Navega a la pagina relevante (dashboard, detalle de campana, pagina de calificacion)
+
+## **6G.3 Actualizacion en Tiempo Real**
+
+Las notificaciones se actualizan en tiempo real via Supabase Realtime. Cuando el sistema crea una nueva notificacion — por ejemplo, al verificar un intercambio — el panel del dashboard del usuario destinatario se actualiza automaticamente sin necesidad de recargar la pagina.
+
+## **6G.4 Politica de Retencion**
+
+El panel muestra las ultimas 30 notificaciones del usuario. Las notificaciones mas antiguas se conservan en la base de datos pero no se muestran en el panel. No hay eliminacion automatica de notificaciones en V1.
+
 # **6E. Riesgos Residuales Identificados**
 
 Antes del desarrollo del MVP se identificaron dos riesgos residuales criticos que deben estar mapeados desde el inicio.
@@ -1063,4 +1102,4 @@ Movido al Backlog V2. No es un pendiente del MVP. Se define en Fase 2 basado en 
 
 - Perfil y reputación
 
-comentalo.com — Documento Maestro V3.8 — Abril 2026
+comentalo.com — Documento Maestro V4.0 — Abril 2026
