@@ -58,17 +58,28 @@ export default async function DashboardPage() {
     })
   );
 
-  // Get reputation
-  const { data: reputacionData } = await supabase.rpc("calcular_reputacion", {
-    p_comentarista_id: usuario.id,
-  });
-
-  const reputacion = reputacionData || {
+  // Get reputation — wrapped in try/catch to prevent page crash
+  let reputacion = {
     total_calificados: 0,
     porcentaje: 100,
     nivel: "verde",
     activo: false,
   };
+  try {
+    const { data: reputacionData } = await supabase.rpc("calcular_reputacion", {
+      p_comentarista_id: usuario.id,
+    });
+    if (reputacionData) {
+      reputacion = {
+        ...reputacion,
+        ...reputacionData,
+        porcentaje: Number(reputacionData.porcentaje) || 100,
+        total_calificados: Number(reputacionData.total_calificados) || 0,
+      };
+    }
+  } catch (e) {
+    console.error("Error calling calcular_reputacion:", e);
+  }
 
   // Stats: intercambios dados (where this user is the commentator, verified)
   const { count: intercambiosDados } = await serviceClient
@@ -100,12 +111,12 @@ export default async function DashboardPage() {
   // Stats: campanas completadas
   let campanasCompletadas = 0;
   if (videoIds.length > 0) {
-    const { count } = await serviceClient
+    const { data: completedCampanas } = await serviceClient
       .from("campanas")
-      .select("id", { count: "exact", head: true })
+      .select("id")
       .in("video_id", videoIds)
-      .in("estado", ["completada", "calificada"]);
-    campanasCompletadas = count ?? 0;
+      .or("estado.eq.completada,estado.eq.calificada");
+    campanasCompletadas = completedCampanas?.length ?? 0;
   }
 
   return (

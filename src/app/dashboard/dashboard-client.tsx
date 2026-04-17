@@ -319,7 +319,7 @@ export default function DashboardClient({
                     : repLevel.nivel === "naranja" ? "bg-orange-100 text-orange-700"
                     : "bg-red-100 text-red-700"
                   }`}>
-                    {repLevel.label} — {reputacion.porcentaje.toFixed(0)}%
+                    {repLevel.label} — {Number(reputacion.porcentaje).toFixed(0)}%
                   </span>
                 ) : (
                   <span className="text-xs text-[#595c5d]">Sin activar · {reputacion.total_calificados}/20</span>
