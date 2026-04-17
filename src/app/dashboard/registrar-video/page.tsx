@@ -113,7 +113,7 @@ export default function RegistrarVideoPage() {
   }
 
   function handleSelectVideo(video: YouTubeVideo) {
-    if (video.ya_registrado || video.comentarios_desactivados) return;
+    if (video.ya_registrado || video.comentarios_desactivados || video.comentarios === 0) return;
     setSelectedVideo(video); setManualVideo(null); setYoutubeUrl(""); setLinkError(null);
   }
 
@@ -196,9 +196,9 @@ export default function RegistrarVideoPage() {
                     <button
                       key={video.id}
                       onClick={() => handleSelectVideo(video)}
-                      disabled={video.ya_registrado || video.comentarios_desactivados}
+                      disabled={video.ya_registrado || video.comentarios_desactivados || (!video.comentarios_desactivados && video.comentarios === 0)}
                       className={`group relative rounded-2xl border bg-white text-left transition-all duration-200 ${
-                        video.ya_registrado || video.comentarios_desactivados
+                        video.ya_registrado || video.comentarios_desactivados || video.comentarios === 0
                           ? "cursor-not-allowed border-[rgba(171,173,174,0.15)] opacity-60"
                           : selectedVideo?.id === video.id
                           ? "border-[#6200EE] border-2 shadow-lg shadow-[#6200EE]/10"
@@ -238,6 +238,14 @@ export default function RegistrarVideoPage() {
                             </p>
                           </div>
                         )}
+                        {/* Sin comentarios overlay */}
+                        {!video.ya_registrado && !video.comentarios_desactivados && video.comentarios === 0 && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                            <span className="rounded-full bg-[#E87722] px-3 py-1 text-xs font-bold text-white">
+                              Sin comentarios
+                            </span>
+                          </div>
+                        )}
                         {/* Selected check + overlay button */}
                         {selectedVideo?.id === video.id && (
                           <>
@@ -257,16 +265,22 @@ export default function RegistrarVideoPage() {
                       {/* Info */}
                       <div className="p-4">
                         <p className="line-clamp-2 text-sm font-bold text-[#2c2f30]" style={{ textTransform: "none", fontFamily: "var(--font-body)" }}>{video.titulo}</p>
-                        <div className="mt-2 flex items-center gap-1 text-xs text-[#595c5d]">
-                          <span className="flex items-center gap-1">
-                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                            {formatViews(video.vistas)}
-                          </span>
-                          <span>·</span>
-                          <span>👍 {formatViews(video.likes || 0)}</span>
-                          <span>·</span>
-                          <span>💬 {formatViews(video.comentarios || 0)}</span>
-                        </div>
+                        {!video.ya_registrado && !video.comentarios_desactivados && video.comentarios === 0 ? (
+                          <p className="mt-2 text-xs text-[#E87722]">
+                            Agrega al menos 1 comentario en YouTube para habilitar este video
+                          </p>
+                        ) : (
+                          <div className="mt-2 flex items-center gap-1 text-xs text-[#595c5d]">
+                            <span className="flex items-center gap-1">
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                              {formatViews(video.vistas)}
+                            </span>
+                            <span>·</span>
+                            <span>👍 {formatViews(video.likes || 0)}</span>
+                            <span>·</span>
+                            <span>💬 {formatViews(video.comentarios || 0)}</span>
+                          </div>
+                        )}
                       </div>
                     </button>
                   ))}
