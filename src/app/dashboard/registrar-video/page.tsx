@@ -38,6 +38,8 @@ interface YouTubeVideo {
   titulo: string;
   thumbnail: string;
   vistas: number;
+  likes: number;
+  comentarios: number;
   duracion_segundos: number;
   ya_registrado: boolean;
 }
@@ -104,7 +106,7 @@ export default function RegistrarVideoPage() {
       const res = await fetch(`/api/videos/verificar-canal?videoId=${videoId}`);
       const data = await res.json();
       if (!data.valido) { setLinkError(data.error); return; }
-      setManualVideo({ id: videoId, titulo: data.titulo || "", thumbnail: data.thumbnail || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`, vistas: 0, duracion_segundos: 0, ya_registrado: false });
+      setManualVideo({ id: videoId, titulo: data.titulo || "", thumbnail: data.thumbnail || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`, vistas: 0, likes: 0, comentarios: 0, duracion_segundos: 0, ya_registrado: false });
       setSelectedVideo(null);
     } catch { setLinkError("Error de conexion."); } finally { setVerificando(false); }
   }
@@ -320,7 +322,11 @@ export default function RegistrarVideoPage() {
                 <img src={chosen.thumbnail} alt="" className="h-14 w-20 shrink-0 rounded-xl object-cover" />
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-[#2c2f30]">{chosen.titulo}</p>
-                  {chosen.vistas > 0 && <p className="mt-0.5 text-xs text-[#595c5d]">{formatViews(chosen.vistas)} vistas</p>}
+                  <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-[#595c5d]">
+                    {chosen.vistas > 0 && <span>{formatViews(chosen.vistas)} vistas</span>}
+                    {chosen.likes > 0 && <><span>·</span><span>👍 {formatViews(chosen.likes)} likes</span></>}
+                    {chosen.comentarios > 0 && <><span>·</span><span>💬 {formatViews(chosen.comentarios)} comentarios</span></>}
+                  </p>
                 </div>
               </div>
 

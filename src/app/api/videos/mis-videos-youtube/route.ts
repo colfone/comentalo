@@ -18,6 +18,8 @@ interface VideoItem {
   titulo: string;
   thumbnail: string;
   vistas: number;
+  likes: number;
+  comentarios: number;
   duracion_segundos: number;
   ya_registrado: boolean;
 }
@@ -131,7 +133,7 @@ export async function GET(request: Request) {
       id: string;
       snippet?: { title?: string; thumbnails?: { medium?: { url?: string } } };
       contentDetails?: { duration?: string };
-      statistics?: { viewCount?: string };
+      statistics?: { viewCount?: string; likeCount?: string; commentCount?: string };
     }) => ({
       id: v.id,
       titulo: v.snippet?.title || "",
@@ -139,6 +141,8 @@ export async function GET(request: Request) {
         v.snippet?.thumbnails?.medium?.url ||
         `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`,
       vistas: parseInt(v.statistics?.viewCount || "0", 10),
+      likes: parseInt(v.statistics?.likeCount || "0", 10),
+      comentarios: parseInt(v.statistics?.commentCount || "0", 10),
       duracion_segundos: parseDuration(v.contentDetails?.duration || "PT0S"),
       ya_registrado: false, // will be enriched below
     })
