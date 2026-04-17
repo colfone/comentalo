@@ -55,7 +55,7 @@ export default function LandingPage() {
             <button
               onClick={scrollToLogin}
               className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-transform hover:scale-105"
-              style={{ background: "linear-gradient(135deg, #6a1cf6, #ac8eff)" }}
+              style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
             >
               Unirse
             </button>
