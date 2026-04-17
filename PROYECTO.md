@@ -2,7 +2,7 @@
 
 Documento Maestro del Proyecto
 
-Versión 4.0 — Abril 2026
+Versión 4.1 — Abril 2026
 
 *Comunidad de intercambio de comentarios reales entre creadores de YouTube en Latinoamérica*
 
@@ -41,6 +41,7 @@ Versión 4.0 — Abril 2026
 | 3.8 | Abril 2026 | Auditoria final — corregido vocabulario en 5C.6: intercambios por video→intercambios por campana. Documento certificado al 100% |
 | 3.9 | Abril 2026 | Nuevo flujo de verificacion de canal por codigo en descripcion (seccion 9.5). Regla de eliminacion de videos (seccion 4C.5). Login sin scope youtube.readonly |
 | 4.0 | Abril 2026 | Agregada seccion 6G — Sistema de notificaciones con 5 tipos, panel de campana en dashboard, Realtime |
+| 4.1 | Abril 2026 | Landing page profesional con sistema de diseno oficial. Color primary #6200EE. Seccion 6H — Sistema de diseno |
 
 # **1. Visión General del Proyecto**
 
@@ -716,6 +717,44 @@ Las notificaciones se actualizan en tiempo real via Supabase Realtime. Cuando el
 
 El panel muestra las ultimas 30 notificaciones del usuario. Las notificaciones mas antiguas se conservan en la base de datos pero no se muestran en el panel. No hay eliminacion automatica de notificaciones en V1.
 
+# **6H. Sistema de Diseno Visual**
+
+La plataforma utiliza un sistema de diseno unificado que se aplica a la landing page, el dashboard y todas las pantallas internas.
+
+## **6H.1 Tipografia**
+
+| **Uso** | **Fuente** | **Variable CSS** |
+| --- | --- | --- |
+| Titulos y headlines | Plus Jakarta Sans | `--font-headline` |
+| Cuerpo de texto y UI | Inter | `--font-body` |
+
+## **6H.2 Colores**
+
+| **Token** | **Valor** | **Uso** |
+| --- | --- | --- |
+| primary | #6200EE | Color principal — botones, enlaces, badges, gradientes |
+| primary-light | #ac8eff | Gradiente editorial, acentos secundarios |
+| surface | #f5f6f7 | Fondo de secciones alternadas, tarjetas |
+| ghost-border | rgba(171, 173, 174, 0.15) | Bordes sutiles en tarjetas y separadores |
+
+## **6H.3 Componentes Clave**
+
+- **Editorial gradient:** `linear-gradient(135deg, #6200EE, #ac8eff)` — usado en botones principales de la landing
+- **Nav fija:** `backdrop-blur-xl` con fondo semitransparente
+- **Tarjetas:** `rounded-xl`, borde `ghost-border`, `hover:scale-[1.02]`
+- **Botones:** `rounded-lg`, font-semibold, transiciones de color y escala
+- **Footer:** links en `uppercase tracking-widest`
+- **Espaciado:** secciones con `py-20`, contenido centrado con `max-w-6xl`
+
+## **6H.4 Landing Page**
+
+La landing page (`/login`) es la primera impresion de la plataforma. Estructura:
+
+- **Nav:** Logo "Comentalo" + link "Como funciona" + botones "Iniciar sesion" y "Unirse"
+- **Hero:** Dos columnas — headline + manifiesto (izquierda) | formulario login con Google (derecha)
+- **Como funciona:** 3 tarjetas con los pasos: Registra tu video → Comenta → Recibe intercambios
+- **Footer:** Copyright + links Terminos y Contacto
+
 # **6E. Riesgos Residuales Identificados**
 
 Antes del desarrollo del MVP se identificaron dos riesgos residuales criticos que deben estar mapeados desde el inicio.
@@ -1102,4 +1141,4 @@ Movido al Backlog V2. No es un pendiente del MVP. Se define en Fase 2 basado en 
 
 - Perfil y reputación
 
-comentalo.com — Documento Maestro V4.0 — Abril 2026
+comentalo.com — Documento Maestro V4.1 — Abril 2026

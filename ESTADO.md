@@ -3,9 +3,9 @@
 Control de versiones interno del estado tecnico del proyecto.
 
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
-Para la vision del producto, ver PROYECTO.md v4.0.
+Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v3.7 — 16 de abril de 2026
+## Version actual: v3.8 — 16 de abril de 2026
 
 ## Registro de versiones
 
@@ -39,6 +39,7 @@ Para la vision del producto, ver PROYECTO.md v4.0.
 | v3.5 | Landing page | 16 abril 2026 | /login reemplazado por landing profesional — hero, como funciona, fundadores, footer. Nuevo sistema de diseno |
 | v3.6 | Simplificar landing | 16 abril 2026 | Eliminada seccion Fundadores de la landing — queda Nav, Hero, Como funciona, Footer |
 | v3.7 | Color primary | 16 abril 2026 | Primary actualizado de #6a1cf6 a #6200EE en globals.css y landing — color oficial definitivo |
+| v3.8 | Cierre de sesion | 16 abril 2026 | PROYECTO.md v4.1 con seccion 6H sistema de diseno. ESTADO.md consolidado |
 
 ## Stack confirmado
 
@@ -47,6 +48,7 @@ Para la vision del producto, ver PROYECTO.md v4.0.
 | Frontend | Next.js (App Router, Turbopack) | 16.2.4 |
 | React | React + React DOM | 19.2.4 |
 | CSS | Tailwind CSS | 4.x |
+| Fuentes | Plus Jakarta Sans (headlines) + Inter (body) | Google Fonts |
 | Backend | Next.js API Routes (serverless) | 16.2.4 |
 | Base de datos | Supabase (PostgreSQL) | remoto |
 | Auth | Supabase Auth + Google OAuth | @supabase/ssr 0.10.2, @supabase/supabase-js 2.103.2 |
@@ -494,7 +496,7 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 | Ruta | Archivo | Tipo | Descripcion |
 | --- | --- | --- | --- |
 | `/` | `src/app/page.tsx` | Dynamic (server) | Redirige a /login o /dashboard segun sesion |
-| `/login` | `src/app/login/page.tsx` | Static (client) | Login con Google OAuth |
+| `/login` | `src/app/login/page.tsx` | Static (client) | Landing page con hero, como funciona, footer + login con Google |
 | `/auth/callback` | `src/app/auth/callback/route.ts` | Dynamic (route handler) | Callback OAuth + verificacion YouTube |
 | `/dashboard` | `src/app/dashboard/page.tsx` | Dynamic (server) | Dashboard con perfil, boton intercambiar y lista de videos |
 | `/dashboard/registrar-video` | `src/app/dashboard/registrar-video/page.tsx` | Static (client) | Grid de videos + formulario de registro |
@@ -581,10 +583,22 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 | Base de datos | gpisnpodapdxmdjztvou.supabase.co | Activo |
 | OAuth redirect | https://gpisnpodapdxmdjztvou.supabase.co/auth/v1/callback | Configurado en Google Cloud |
 
+## Sistema de diseno
+
+| Token | Valor | Uso |
+| --- | --- | --- |
+| primary | #6200EE | Color principal |
+| primary-light | #ac8eff | Gradiente editorial, acentos |
+| surface | #f5f6f7 | Fondos alternados |
+| ghost-border | rgba(171,173,174,0.15) | Bordes sutiles |
+| editorial-gradient | linear-gradient(135deg, #6200EE, #ac8eff) | Botones CTA landing |
+| font-headline | Plus Jakarta Sans | Titulos |
+| font-body | Inter | Texto y UI |
+
 ## Sesion siguiente
 
 Sesion 8 — Beta cerrada con fundadores
-Pendiente: programa de fundadores (seccion 8.3), badge de fundador, expansion basica al completar primer ciclo, programa de referidos (seccion 8.4), logout, perfil publico.
+Pendiente: programa de fundadores (seccion 8.3), badge de fundador, expansion basica al completar primer ciclo, programa de referidos (seccion 8.4), perfil publico, aplicar sistema de diseno al dashboard.
 
 ---
 
