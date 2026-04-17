@@ -38,10 +38,11 @@ interface YouTubeVideo {
   titulo: string;
   thumbnail: string;
   vistas: number;
-  likes: number;
+  likes: number | null;
   comentarios: number;
   duracion_segundos: number;
   ya_registrado: boolean;
+  comentarios_desactivados: boolean;
 }
 
 interface RegistroResult {
@@ -106,13 +107,13 @@ export default function RegistrarVideoPage() {
       const res = await fetch(`/api/videos/verificar-canal?videoId=${videoId}`);
       const data = await res.json();
       if (!data.valido) { setLinkError(data.error); return; }
-      setManualVideo({ id: videoId, titulo: data.titulo || "", thumbnail: data.thumbnail || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`, vistas: 0, likes: 0, comentarios: 0, duracion_segundos: 0, ya_registrado: false });
+      setManualVideo({ id: videoId, titulo: data.titulo || "", thumbnail: data.thumbnail || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`, vistas: 0, likes: null, comentarios: 0, duracion_segundos: 0, ya_registrado: false, comentarios_desactivados: false });
       setSelectedVideo(null);
     } catch { setLinkError("Error de conexion."); } finally { setVerificando(false); }
   }
 
   function handleSelectVideo(video: YouTubeVideo) {
-    if (video.ya_registrado) return;
+    if (video.ya_registrado || video.comentarios_desactivados) return;
     setSelectedVideo(video); setManualVideo(null); setYoutubeUrl(""); setLinkError(null);
   }
 
@@ -195,9 +196,9 @@ export default function RegistrarVideoPage() {
                     <button
                       key={video.id}
                       onClick={() => handleSelectVideo(video)}
-                      disabled={video.ya_registrado}
+                      disabled={video.ya_registrado || video.comentarios_desactivados}
                       className={`group relative rounded-2xl border bg-white text-left transition-all duration-200 ${
-                        video.ya_registrado
+                        video.ya_registrado || video.comentarios_desactivados
                           ? "cursor-not-allowed border-[rgba(171,173,174,0.15)] opacity-60"
                           : selectedVideo?.id === video.id
                           ? "border-[#6200EE] border-2 shadow-lg shadow-[#6200EE]/10"
@@ -226,6 +227,14 @@ export default function RegistrarVideoPage() {
                             </span>
                           </div>
                         )}
+                        {/* Comentarios desactivados overlay */}
+                        {!video.ya_registrado && video.comentarios_desactivados && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                            <span className="rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white">
+                              COMENTARIOS DESACTIVADOS
+                            </span>
+                          </div>
+                        )}
                         {/* Selected check + overlay button */}
                         {selectedVideo?.id === video.id && (
                           <>
@@ -251,7 +260,7 @@ export default function RegistrarVideoPage() {
                             {formatViews(video.vistas)}
                           </span>
                           <span>·</span>
-                          <span>👍 {formatViews(video.likes || 0)}</span>
+                          <span>👍 {video.likes != null ? formatViews(video.likes) : "—"}</span>
                           <span>·</span>
                           <span>💬 {formatViews(video.comentarios || 0)}</span>
                         </div>
@@ -329,7 +338,7 @@ export default function RegistrarVideoPage() {
                   <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-[#595c5d]">
                     <span>{formatViews(chosen.vistas || 0)} vistas</span>
                     <span>·</span>
-                    <span>👍 {formatViews(chosen.likes || 0)} likes</span>
+                    <span>👍 {chosen.likes != null ? formatViews(chosen.likes) : "—"} likes</span>
                     <span>·</span>
                     <span>💬 {formatViews(chosen.comentarios || 0)} comentarios</span>
                   </p>
