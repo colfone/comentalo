@@ -51,15 +51,15 @@ interface RegistroResult {
 }
 
 const tiposIntercambio = [
-  { value: "opinion", label: "\u{1F4AC} Opinion" },
-  { value: "pregunta", label: "\u2753 Pregunta" },
-  { value: "experiencia", label: "\u2728 Experiencia personal" },
+  { value: "opinion", label: "Opinion" },
+  { value: "pregunta", label: "Pregunta" },
+  { value: "experiencia", label: "Experiencia personal" },
 ] as const;
 
 const tonos = [
-  { value: "casual", label: "\u{1F60A} Casual" },
-  { value: "entusiasta", label: "\u{1F525} Entusiasta" },
-  { value: "reflexivo", label: "\u{1F914} Reflexivo" },
+  { value: "casual", label: "Casual" },
+  { value: "entusiasta", label: "Entusiasta" },
+  { value: "reflexivo", label: "Reflexivo" },
 ] as const;
 
 export default function RegistrarVideoPage() {
@@ -328,6 +328,18 @@ export default function RegistrarVideoPage() {
               <label className="mb-1 block text-sm font-semibold text-[#2c2f30]">
                 ¿De que trata tu video? <span className="font-normal text-[#595c5d]">(opcional)</span>
               </label>
+              <div className="mb-2 flex flex-wrap gap-1">
+                {["😊", "🔥", "👏", "💡", "❤️", "🎯", "🙌", "✨", "👍", "🤔"].map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setDescripcion((prev) => (prev + emoji).slice(0, 300))}
+                    className="cursor-pointer rounded-lg p-1 text-lg transition-colors hover:bg-[#eff1f2]"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
               <div className="relative">
                 <textarea
                   value={descripcion}
