@@ -25,6 +25,30 @@ interface VideoInfo {
   youtube_video_id: string;
 }
 
+type TabFilter = "todos" | "verificados" | "pendientes";
+
+function getInitials(name: string | null): string {
+  if (!name) return "C";
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function tiempoRelativo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Hace instantes";
+  if (mins < 60) return `Hace ${mins} min`;
+  const horas = Math.floor(mins / 60);
+  if (horas < 24) return `Hace ${horas} h`;
+  const dias = Math.floor(horas / 24);
+  if (dias < 30) return `Hace ${dias} d`;
+  return new Date(iso).toLocaleDateString("es");
+}
+
 export default function CampanaDetallePage() {
   const params = useParams();
   const router = useRouter();
@@ -36,9 +60,11 @@ export default function CampanaDetallePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [calificando, setCalificando] = useState<string | null>(null);
+  const [tab, setTab] = useState<TabFilter>("todos");
 
   useEffect(() => {
     fetchDetalle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campanaId]);
 
   async function fetchDetalle() {
@@ -93,201 +119,368 @@ export default function CampanaDetallePage() {
 
   const verificados = intercambios.filter((i) => i.estado === "verificado");
   const pendientes = intercambios.filter((i) => i.estado === "pendiente");
-  const sinCalificar = verificados.filter((i) => !i.calificacion);
+
+  const filtered =
+    tab === "verificados"
+      ? verificados
+      : tab === "pendientes"
+      ? pendientes
+      : intercambios;
+
+  const progreso = campana?.intercambios_completados ?? 0;
+  const progresoPct = Math.min(100, (progreso / 10) * 100);
+
+  const campanaLabel =
+    campana?.estado === "abierta"
+      ? "CAMPAÑA ACTIVA"
+      : campana?.estado === "completada"
+      ? "CAMPAÑA COMPLETADA"
+      : campana?.estado === "calificada"
+      ? "CAMPAÑA CALIFICADA"
+      : "CAMPAÑA";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-950 px-4 py-12">
-      <div className="w-full max-w-lg space-y-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-white">
-            <span className="text-[#6B3FA0]">Comenta</span>
-            <span className="text-[#E87722]">lo</span>
-          </h1>
-          <p className="mt-2 text-gray-400">Detalle de campana</p>
+    <div className="min-h-screen bg-[#f5f6f7]">
+      {/* ===== HEADER ===== */}
+      <header className="fixed top-0 z-50 w-full border-b border-black/5 bg-white/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+          <div className="flex items-center gap-6">
+            <a
+              href="/dashboard"
+              className="font-headline text-xl font-bold tracking-tighter text-[#2c2f30]"
+            >
+              Comentalo<span className="text-[#E87722]">.</span>
+            </a>
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-[#595c5d] transition-colors hover:bg-[#eff1f2] hover:text-[#2c2f30]"
+            >
+              <span aria-hidden>←</span>
+              <span>Volver al dashboard</span>
+            </button>
+          </div>
         </div>
+      </header>
 
-        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 shadow-xl">
-          {loading && (
-            <div className="flex items-center justify-center gap-3 py-12">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-600 border-t-[#6B3FA0]" />
-              <p className="text-sm text-gray-400">Cargando...</p>
-            </div>
-          )}
+      <main className="mx-auto max-w-7xl px-6 pt-24 pb-12">
+        {/* ===== LOADING / ERROR ===== */}
+        {loading && (
+          <div className="flex items-center justify-center gap-3 py-24">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#ac8eff]/40 border-t-[#6200EE]" />
+            <p className="text-sm text-[#595c5d]">Cargando campaña…</p>
+          </div>
+        )}
 
-          {error && (
-            <div className="py-8 text-center">
-              <p className="text-sm text-red-400">{error}</p>
-              <a
-                href="/dashboard"
-                className="mt-4 inline-block text-sm text-[#E87722] hover:underline"
-              >
-                Volver al dashboard
-              </a>
-            </div>
-          )}
+        {error && !loading && (
+          <div className="rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-10 text-center">
+            <p className="text-sm text-red-600">{error}</p>
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="mt-4 rounded-full bg-[#6200EE] px-5 py-2 text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
+            >
+              Volver al dashboard
+            </button>
+          </div>
+        )}
 
-          {!loading && !error && campana && video && (
-            <>
-              {/* Video header */}
-              <div className="mb-4 flex items-center gap-3">
-                <img
-                  src={`https://img.youtube.com/vi/${video.youtube_video_id}/default.jpg`}
-                  alt={video.titulo}
-                  className="h-12 w-20 rounded object-cover"
-                />
-                <div>
-                  <p className="text-sm font-medium text-white">
-                    {video.titulo}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {campana.intercambios_completados}/10 intercambios
-                    <span
-                      className={`ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                        campana.estado === "abierta"
-                          ? "bg-[#6B3FA0]/10 text-[#c4a6e8]"
-                          : campana.estado === "completada"
-                          ? "bg-[#E87722]/10 text-[#f0a964]"
-                          : "bg-green-500/10 text-green-400"
+        {!loading && !error && campana && video && (
+          <>
+            {/* ===== HERO ===== */}
+            <section className="mb-10 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-center">
+              {/* Thumbnail */}
+              <div className="lg:col-span-5">
+                <a
+                  href={`https://www.youtube.com/watch?v=${video.youtube_video_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative block aspect-video overflow-hidden rounded-2xl border border-[rgba(171,173,174,0.15)] bg-black shadow-sm"
+                >
+                  <img
+                    src={`https://img.youtube.com/vi/${video.youtube_video_id}/maxresdefault.jpg`}
+                    alt={video.titulo}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-300 group-hover:bg-black/40">
+                    <svg
+                      className="h-16 w-16 text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
+                    </svg>
+                  </div>
+                </a>
+              </div>
+
+              {/* Info + stats */}
+              <div className="lg:col-span-7">
+                <span className="inline-block rounded-full bg-[#6200EE]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#6200EE]">
+                  {campanaLabel}
+                </span>
+                <h1 className="mt-4 font-headline text-4xl font-extrabold tracking-tight text-[#2c2f30]">
+                  {video.titulo}
+                </h1>
+
+                <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {/* Progreso */}
+                  <div className="rounded-2xl border border-[rgba(171,173,174,0.15)] bg-white p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#595c5d]">
+                      Progreso
+                    </p>
+                    <p className="mt-1 font-headline text-3xl font-extrabold text-[#6200EE]">
+                      {progreso}
+                      <span className="text-base font-bold text-[#595c5d]">
+                        /10
+                      </span>
+                    </p>
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#f5f6f7]">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${progresoPct}%`,
+                          background:
+                            "linear-gradient(90deg, #6200EE, #ac8eff)",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Verificados */}
+                  <div className="rounded-2xl border border-[rgba(171,173,174,0.15)] bg-white p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#595c5d]">
+                      Verificados
+                    </p>
+                    <p className="mt-1 font-headline text-3xl font-extrabold text-green-600">
+                      {verificados.length}
+                    </p>
+                    <p className="mt-3 text-xs text-[#595c5d]">
+                      Intercambios confirmados
+                    </p>
+                  </div>
+
+                  {/* Pendientes */}
+                  <div className="rounded-2xl border border-[rgba(171,173,174,0.15)] bg-white p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#595c5d]">
+                      Pendientes
+                    </p>
+                    <p className="mt-1 font-headline text-3xl font-extrabold text-[#E87722]">
+                      {pendientes.length}
+                    </p>
+                    <p className="mt-3 text-xs text-[#595c5d]">
+                      En verificación
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* ===== INTERCAMBIOS ===== */}
+            <section>
+              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <h2 className="font-headline text-2xl font-extrabold tracking-tight text-[#2c2f30]">
+                  Intercambios recibidos
+                </h2>
+
+                {/* Tabs */}
+                <div className="inline-flex rounded-full border border-[rgba(171,173,174,0.15)] bg-white p-1 text-sm">
+                  {(
+                    [
+                      { key: "todos", label: `Todos (${intercambios.length})` },
+                      {
+                        key: "verificados",
+                        label: `Verificados (${verificados.length})`,
+                      },
+                      {
+                        key: "pendientes",
+                        label: `Pendientes (${pendientes.length})`,
+                      },
+                    ] as { key: TabFilter; label: string }[]
+                  ).map((t) => (
+                    <button
+                      key={t.key}
+                      onClick={() => setTab(t.key)}
+                      className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                        tab === t.key
+                          ? "bg-[#6200EE] text-white shadow-sm"
+                          : "text-[#595c5d] hover:text-[#2c2f30]"
                       }`}
                     >
-                      {campana.estado === "abierta"
-                        ? "En curso"
-                        : campana.estado === "completada"
-                        ? "Esperando calificacion"
-                        : "Calificada"}
-                    </span>
-                  </p>
+                      {t.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Pending calificacion banner */}
-              {sinCalificar.length > 0 && campana.estado === "completada" && (
-                <div className="mb-4 rounded-lg border border-[#E87722]/30 bg-[#E87722]/5 p-3">
-                  <p className="text-xs text-[#f0a964]">
-                    {sinCalificar.length} intercambio
-                    {sinCalificar.length > 1 ? "s" : ""} pendiente
-                    {sinCalificar.length > 1 ? "s" : ""} de calificacion.
+              {filtered.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-[rgba(171,173,174,0.3)] bg-white py-16 text-center">
+                  <p className="text-sm text-[#595c5d]">
+                    {intercambios.length === 0
+                      ? "Aún no hay intercambios en esta campaña."
+                      : "No hay intercambios en este filtro."}
                   </p>
                 </div>
-              )}
+              ) : (
+                <ul className="space-y-4">
+                  {filtered.map((intercambio) => {
+                    const initials = getInitials(intercambio.comentarista_nombre);
+                    const isVerified = intercambio.estado === "verificado";
+                    const isPending = intercambio.estado === "pendiente";
+                    const hasRating = !!intercambio.calificacion;
 
-              {/* Intercambios list */}
-              <ul className="space-y-3">
-                {intercambios.map((intercambio, idx) => (
-                  <li
-                    key={intercambio.id}
-                    className="rounded-lg border border-gray-700 bg-gray-800 p-4"
-                  >
-                    <div className="mb-2 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-gray-400">
-                          #{idx + 1}
-                        </span>
-                        {intercambio.comentarista_canal ? (
-                          <a
-                            href={intercambio.comentarista_canal}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-[#E87722] hover:underline"
+                    return (
+                      <li
+                        key={intercambio.id}
+                        className="group rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-12px_rgba(44,47,48,0.15)]"
+                      >
+                        {/* Header row */}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            {/* Avatar */}
+                            <div
+                              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                              style={{
+                                background:
+                                  "linear-gradient(135deg, #6200EE, #ac8eff)",
+                              }}
+                            >
+                              {initials}
+                            </div>
+                            <div>
+                              {intercambio.comentarista_canal ? (
+                                <a
+                                  href={intercambio.comentarista_canal}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-bold text-[#2c2f30] hover:text-[#6200EE]"
+                                >
+                                  {intercambio.comentarista_nombre}
+                                </a>
+                              ) : (
+                                <p className="font-bold text-[#2c2f30]">
+                                  {intercambio.comentarista_nombre}
+                                </p>
+                              )}
+                              <p className="text-xs text-[#595c5d]">
+                                {tiempoRelativo(intercambio.created_at)}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* State badge */}
+                          <span
+                            className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                              isVerified
+                                ? "bg-green-100 text-green-700"
+                                : isPending
+                                ? "bg-[#E87722]/10 text-[#E87722]"
+                                : "bg-red-100 text-red-700"
+                            }`}
                           >
-                            {intercambio.comentarista_nombre}
-                          </a>
-                        ) : (
-                          <span className="text-xs text-gray-300">
-                            {intercambio.comentarista_nombre}
+                            {intercambio.estado}
                           </span>
-                        )}
-                      </div>
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                          intercambio.estado === "verificado"
-                            ? "bg-green-500/10 text-green-400"
-                            : intercambio.estado === "pendiente"
-                            ? "bg-yellow-500/10 text-yellow-400"
-                            : "bg-red-500/10 text-red-400"
-                        }`}
-                      >
-                        {intercambio.estado}
-                      </span>
-                    </div>
-
-                    {intercambio.texto_comentario && (
-                      <p className="mb-3 text-sm text-gray-300">
-                        &ldquo;{intercambio.texto_comentario}&rdquo;
-                      </p>
-                    )}
-
-                    {!intercambio.texto_comentario &&
-                      intercambio.estado === "pendiente" && (
-                        <p className="mb-3 text-xs text-gray-500 italic">
-                          Comentario aun no redactado
-                        </p>
-                      )}
-
-                    {/* Calificacion display or buttons */}
-                    {intercambio.calificacion && (
-                      <span
-                        className={`text-xs font-medium ${
-                          intercambio.calificacion === "positiva"
-                            ? "text-green-400"
-                            : "text-red-400"
-                        }`}
-                      >
-                        {intercambio.calificacion === "positiva"
-                          ? "👍 Buen intercambio"
-                          : "👎 Mal intercambio"}
-                      </span>
-                    )}
-
-                    {!intercambio.calificacion &&
-                      intercambio.estado === "verificado" && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() =>
-                              handleCalificar(intercambio.id, "positiva")
-                            }
-                            disabled={calificando === intercambio.id}
-                            className="flex-1 rounded-lg border border-green-500/30 bg-green-500/10 py-2 text-sm font-medium text-green-400 transition-colors hover:bg-green-500/20 disabled:opacity-50"
-                          >
-                            👍
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleCalificar(intercambio.id, "negativa")
-                            }
-                            disabled={calificando === intercambio.id}
-                            className="flex-1 rounded-lg border border-red-500/30 bg-red-500/10 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
-                          >
-                            👎
-                          </button>
                         </div>
-                      )}
-                  </li>
-                ))}
-              </ul>
 
-              {intercambios.length === 0 && (
-                <p className="py-4 text-center text-sm text-gray-500">
-                  Aun no hay intercambios en esta campana.
-                </p>
+                        {/* Comment text */}
+                        {intercambio.texto_comentario ? (
+                          <blockquote className="mt-5 rounded-2xl bg-[#f5f6f7] p-4 text-base leading-relaxed text-[#2c2f30]">
+                            “{intercambio.texto_comentario}”
+                          </blockquote>
+                        ) : isPending ? (
+                          <p className="mt-5 text-sm italic text-[#595c5d]">
+                            Comentario aún no redactado
+                          </p>
+                        ) : null}
+
+                        {/* Rating state */}
+                        <div className="mt-5">
+                          {isPending && (
+                            <p className="text-sm italic text-[#595c5d]">
+                              Verificación en curso…
+                            </p>
+                          )}
+
+                          {isVerified && hasRating && (
+                            <div
+                              className={`inline-flex items-center gap-3 rounded-full px-4 py-2 text-sm font-semibold ${
+                                intercambio.calificacion === "positiva"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              <span>
+                                {intercambio.calificacion === "positiva"
+                                  ? "✓ Calificado positivo"
+                                  : "✗ Calificado negativo"}
+                              </span>
+                              <span
+                                className={`text-[10px] font-bold uppercase tracking-widest ${
+                                  intercambio.calificacion === "positiva"
+                                    ? "text-green-700/60"
+                                    : "text-red-700/60"
+                                }`}
+                              >
+                                Action completed
+                              </span>
+                            </div>
+                          )}
+
+                          {isVerified && !hasRating && (
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              <button
+                                onClick={() =>
+                                  handleCalificar(intercambio.id, "positiva")
+                                }
+                                disabled={calificando === intercambio.id}
+                                className="flex items-center justify-center gap-2 rounded-xl border-2 border-green-200 bg-white px-5 py-3 text-sm font-semibold text-green-700 transition-all duration-200 hover:scale-[1.02] hover:border-green-500 hover:bg-green-50 disabled:opacity-50"
+                              >
+                                <span className="text-lg">👍</span>
+                                <span>Buen intercambio</span>
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleCalificar(intercambio.id, "negativa")
+                                }
+                                disabled={calificando === intercambio.id}
+                                className="flex items-center justify-center gap-2 rounded-xl border-2 border-red-200 bg-white px-5 py-3 text-sm font-semibold text-red-700 transition-all duration-200 hover:scale-[1.02] hover:border-red-500 hover:bg-red-50 disabled:opacity-50"
+                              >
+                                <span className="text-lg">👎</span>
+                                <span>Mal intercambio</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
+            </section>
+          </>
+        )}
+      </main>
 
-              {/* Summary */}
-              <div className="mt-4 flex items-center justify-between rounded-lg bg-gray-800/50 px-3 py-2 text-xs text-gray-400">
-                <span>{verificados.length} verificados</span>
-                <span>{pendientes.length} pendientes</span>
-              </div>
-
-              <button
-                onClick={() => router.push("/dashboard")}
-                className="mt-6 w-full rounded-lg bg-[#6B3FA0] py-3 text-sm font-medium text-white transition-colors hover:bg-[#5a3588]"
-              >
-                Volver al dashboard
-              </button>
-            </>
-          )}
+      {/* ===== FOOTER ===== */}
+      <footer className="border-t border-black/5 bg-white py-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 md:flex-row">
+          <p className="text-xs text-[#595c5d]">
+            &copy; 2026 Comentalo — Hecho para creadores de LatAm
+          </p>
+          <div className="flex gap-6">
+            <a
+              href="#"
+              className="text-[10px] font-medium uppercase tracking-widest text-[#595c5d] hover:text-[#2c2f30]"
+            >
+              Términos
+            </a>
+            <a
+              href="#"
+              className="text-[10px] font-medium uppercase tracking-widest text-[#595c5d] hover:text-[#2c2f30]"
+            >
+              Contacto
+            </a>
+          </div>
         </div>
-      </div>
-    </main>
+      </footer>
+    </div>
   );
 }

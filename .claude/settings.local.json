@@ -1,7 +1,25 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx create-next-app@latest *)"
+      "Bash(npx create-next-app@latest *)",
+      "Bash(gh auth *)",
+      "Bash(where gh *)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI/\")",
+      "Bash(gh repo *)",
+      "Bash(curl *)",
+      "Bash(npx supabase *)",
+      "Bash(npx vercel *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npx next *)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(node *)",
+      "Skill(update-config)",
+      "Read",
+      "Bash(git restore *)"
     ]
   }
 }
