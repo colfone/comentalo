@@ -314,19 +314,19 @@ export default function RegistrarVideoPage() {
               <h1 className="mt-3 font-headline text-3xl font-extrabold tracking-tighter text-[#2c2f30]">Configura tu intercambio</h1>
             </div>
 
-            <div className="rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-8 shadow-sm">
+            <div className="rounded-3xl bg-white p-8" style={{ border: "1px solid rgba(171,173,174,0.2)", boxShadow: "0 4px 24px rgba(44,47,48,0.08)" }}>
               {/* Preview */}
-              <div className="mb-6 flex items-center gap-4 rounded-2xl bg-[#f5f6f7] p-4">
-                <img src={chosen.thumbnail} alt="" className="h-16 w-28 shrink-0 rounded-xl object-cover" />
+              <div className="mb-6 flex items-center gap-4 rounded-2xl p-4" style={{ background: "#f5f6f7", border: "1px solid rgba(171,173,174,0.3)" }}>
+                <img src={chosen.thumbnail} alt="" className="h-14 w-20 shrink-0 rounded-xl object-cover" />
                 <div className="min-w-0">
-                  <p className="font-headline text-sm font-bold text-[#2c2f30]">{chosen.titulo}</p>
+                  <p className="text-sm font-bold text-[#2c2f30]">{chosen.titulo}</p>
                   {chosen.vistas > 0 && <p className="mt-0.5 text-xs text-[#595c5d]">{formatViews(chosen.vistas)} vistas</p>}
                 </div>
               </div>
 
               {/* Descripcion */}
-              <label className="mb-1 block text-sm font-medium text-[#2c2f30]">
-                ¿De que trata tu video? <span className="text-[#595c5d]">(opcional)</span>
+              <label className="mb-1 block text-sm font-semibold text-[#2c2f30]">
+                ¿De que trata tu video? <span className="font-normal text-[#595c5d]">(opcional)</span>
               </label>
               <div className="relative">
                 <textarea
@@ -342,15 +342,19 @@ export default function RegistrarVideoPage() {
 
               {/* Tipo */}
               <fieldset className="mt-6">
-                <legend className="mb-2 text-sm font-medium text-[#2c2f30]">Tipo de intercambio deseado</legend>
+                <legend className="mb-2 text-sm font-semibold text-[#2c2f30]">Tipo de intercambio deseado</legend>
                 <div className="flex flex-wrap gap-2">
                   {tiposIntercambio.map((t) => (
                     <button key={t.value} type="button" onClick={() => setTipoIntercambio(t.value)}
-                      className={`rounded-full px-5 py-2 text-sm font-medium transition-colors ${
+                      className={`rounded-xl px-5 py-2.5 text-sm transition-all ${
                         tipoIntercambio === t.value
-                          ? "bg-[#6200EE] text-white"
-                          : "border border-[rgba(171,173,174,0.15)] bg-white text-[#595c5d] hover:border-[#6200EE]/30"
+                          ? "border-[#6200EE] bg-[#6200EE] font-bold text-white"
+                          : "font-medium text-[#2c2f30] hover:border-[#6200EE] hover:text-[#6200EE]"
                       }`}
+                      style={tipoIntercambio === t.value
+                        ? { border: "1.5px solid #6200EE", boxShadow: "0 4px 12px rgba(98,0,238,0.25)" }
+                        : { border: "1.5px solid #abadae", background: "#fff" }
+                      }
                     >{t.label}</button>
                   ))}
                 </div>
@@ -358,15 +362,19 @@ export default function RegistrarVideoPage() {
 
               {/* Tono */}
               <fieldset className="mt-6">
-                <legend className="mb-2 text-sm font-medium text-[#2c2f30]">Tono preferido</legend>
+                <legend className="mb-2 text-sm font-semibold text-[#2c2f30]">Tono preferido</legend>
                 <div className="flex flex-wrap gap-2">
                   {tonos.map((t) => (
                     <button key={t.value} type="button" onClick={() => setTono(t.value)}
-                      className={`rounded-full px-5 py-2 text-sm font-medium transition-colors ${
+                      className={`rounded-xl px-5 py-2.5 text-sm transition-all ${
                         tono === t.value
-                          ? "bg-[#E87722] text-white"
-                          : "border border-[rgba(171,173,174,0.15)] bg-white text-[#595c5d] hover:border-[#E87722]/30"
+                          ? "border-[#6200EE] bg-[#6200EE] font-bold text-white"
+                          : "font-medium text-[#2c2f30] hover:border-[#6200EE] hover:text-[#6200EE]"
                       }`}
+                      style={tono === t.value
+                        ? { border: "1.5px solid #6200EE", boxShadow: "0 4px 12px rgba(98,0,238,0.25)" }
+                        : { border: "1.5px solid #abadae", background: "#fff" }
+                      }
                     >{t.label}</button>
                   ))}
                 </div>
@@ -375,7 +383,7 @@ export default function RegistrarVideoPage() {
               {/* Moderacion warning */}
               <div className="mt-6 flex gap-3 rounded-xl border-l-[3px] border-[#E87722] bg-[#fff8f3] p-4">
                 <svg className="mt-0.5 h-5 w-5 shrink-0 text-[#E87722]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg>
-                <p className="text-xs leading-relaxed text-[#2c2f30]/70">
+                <p className="text-xs font-medium leading-relaxed text-[#2c2f30]">
                   Asegurate de que tu video tenga los comentarios en modo Ninguno o Basico en YouTube Studio.
                 </p>
               </div>
