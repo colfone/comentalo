@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.3 — 17 de abril de 2026
+## Version actual: v4.4 — 17 de abril de 2026
 
 ## Registro de versiones
 
@@ -45,6 +45,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.1 | Rediseno registrar-video | 17 abril 2026 | Grid 3 columnas, badge PASO 01/02, overlay YA REGISTRADO, card buscar URL, boton Seleccionar sobre thumbnail, paso 2 con preview tipo/tono/moderacion |
 | v4.2 | Mejoras registrar-video | 17 abril 2026 | Likes y comentarios en grid y preview, sentence case titulos, bloqueo videos sin comentarios, overlay comentarios desactivados |
 | v4.3 | Cierre sesion 17 abril | 17 abril 2026 | ESTADO.md actualizado, fix DB vacia en dashboard, maxResults 8 |
+| v4.4 | Rediseno campana + estrellas | 17 abril 2026 | Rediseno campana/[campanaId]: hero con thumbnail, 3 stat cards, tabs Todos/Verificados/Pendientes, comment cards con avatar, badge de estado, sistema de estrellas 1-5 con hover naranja y labels. Migracion DB columna estrellas. RPC calcular_reputacion actualizado a promedio de estrellas. Dashboard muestra promedio en formato 4.2★ |
 
 ## Stack confirmado
 

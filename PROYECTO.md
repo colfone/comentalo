@@ -484,24 +484,22 @@ El creador que recibe tiene 72 horas para calificar el intercambio. Si no hace n
 
 ## **6.2 Calificación por Ciclos de 10**
 
-Para desbloquear los siguientes 10 intercambios, el creador debe calificar los 10 que recibió. La calificación es simple y rápida:
+La calificación es por estrellas del 1 al 5. Para desbloquear los siguientes 10 intercambios, el creador debe calificar los 10 que recibió. La calificación es simple y rápida — 5 estrellas interactivas por intercambio. Sin texto. Sin explicaciones. En 30 segundos se califican los 10. Si el creador no califica en 72 horas → se autocalifican con 5 estrellas con notificación previa a las 48 horas.
 
-- 👍 Buen intercambio
-
-- 👎 Mal intercambio
-
-Sin texto. Sin explicaciones. En 30 segundos se califican los 10. Si el creador no califica en 72 horas → se autocalifican como 👍 con notificación previa a las 48 horas.
+Etiquetas de referencia: 1★ Muy malo / 2★ Malo / 3★ Regular / 4★ Bueno / 5★ Excelente
 
 ## **6.3 Sistema de Reputación del Creador Colaborador**
 
-| **Nivel** | **% de 👍** | **Consecuencia** |
+| **Nivel** | **Promedio de estrellas** | **Consecuencia** |
 | --- | --- | --- |
-| 🟢 Verde — Acceso completo | +80% | Todo normal, acceso a todos los videos |
-| 🟡 Amarillo — Acceso limitado | 60% - 80% | Menos videos disponibles, advertencia |
-| 🟠 Naranja — Suspensión temporal | 40% - 60% | Sin intercambios por 7 días, puede apelar |
-| 🔴 Rojo — Baneo permanente | Menos de 40% | Cuenta bloqueada, canal de YouTube bloqueado |
+| 🟢 Verde — Acceso completo | 4.0 a 5.0 | Todo normal, acceso a todos los videos |
+| 🟡 Amarillo — Acceso limitado | 3.0 a 3.9 | Menos videos disponibles, advertencia |
+| 🟠 Naranja — Suspensión temporal | 2.0 a 2.9 | Sin intercambios por 7 días, puede apelar |
+| 🔴 Rojo — Baneo permanente | Menos de 2.0 | Cuenta bloqueada, canal de YouTube bloqueado |
 
-Nota importante: El sistema de reputación solo se activa después de un mínimo de 20 intercambios calificados. Antes de ese mínimo solo se emiten advertencias, nunca suspensiones.
+La reputación se calcula como promedio de estrellas acumuladas. El comentarista ve su promedio general en su perfil pero no la calificación de cada intercambio individual. El sistema se activa después de un mínimo de 20 intercambios calificados.
+
+Migración de calificaciones anteriores: intercambios calificados con positiva equivalen a 5 estrellas, intercambios calificados con negativa equivalen a 1 estrella.
 
 ## **6.4 Sistema de Disputas V1**
 
