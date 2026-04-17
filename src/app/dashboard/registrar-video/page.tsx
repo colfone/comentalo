@@ -224,11 +224,20 @@ export default function RegistrarVideoPage() {
                             </span>
                           </div>
                         )}
-                        {/* Selected check */}
+                        {/* Selected check + overlay button */}
                         {selectedVideo?.id === video.id && (
-                          <div className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-[#6200EE]">
-                            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
-                          </div>
+                          <>
+                            <div className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-[#6200EE]">
+                              <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                            </div>
+                            <div
+                              onClick={(e) => { e.stopPropagation(); setStep("form"); }}
+                              className="absolute bottom-0 left-0 right-0 py-2 text-center text-sm font-bold text-white transition-opacity duration-200"
+                              style={{ background: "linear-gradient(135deg, rgba(98,0,238,0.95), rgba(172,142,255,0.95))" }}
+                            >
+                              Seleccionar →
+                            </div>
+                          </>
                         )}
                       </div>
                       {/* Info */}
@@ -282,14 +291,14 @@ export default function RegistrarVideoPage() {
                   <p className="mt-8 text-center text-sm text-[#595c5d]">No encontramos videos publicos recientes en tu canal.</p>
                 )}
 
-                {/* Continue */}
-                {chosen && (
+                {/* Continue for manual video (no overlay available) */}
+                {manualVideo && !selectedVideo && (
                   <button
                     onClick={() => setStep("form")}
                     className="mt-8 w-full rounded-xl py-3.5 text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
                     style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
                   >
-                    Continuar con &ldquo;{chosen.titulo.length > 50 ? chosen.titulo.slice(0, 50) + "..." : chosen.titulo}&rdquo;
+                    Continuar con video manual
                   </button>
                 )}
               </>
