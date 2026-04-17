@@ -323,9 +323,11 @@ export default function RegistrarVideoPage() {
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-[#2c2f30]">{chosen.titulo}</p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-[#595c5d]">
-                    {chosen.vistas > 0 && <span>{formatViews(chosen.vistas)} vistas</span>}
-                    {chosen.likes > 0 && <><span>·</span><span>👍 {formatViews(chosen.likes)} likes</span></>}
-                    {chosen.comentarios > 0 && <><span>·</span><span>💬 {formatViews(chosen.comentarios)} comentarios</span></>}
+                    <span>{formatViews(chosen.vistas || 0)} vistas</span>
+                    <span>·</span>
+                    <span>👍 {formatViews(chosen.likes || 0)} likes</span>
+                    <span>·</span>
+                    <span>💬 {formatViews(chosen.comentarios || 0)} comentarios</span>
                   </p>
                 </div>
               </div>
