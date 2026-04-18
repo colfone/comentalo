@@ -363,7 +363,7 @@ Si el patron de intercambios pendientes se repite sistematicamente en un video �
 
 ## **5B.1 Como Funciona el Matching**
 
-El sistema asigna automaticamente el siguiente video disponible en la cola al comentarista. No hay lista de seleccion — el comentarista recibe el video, lee el resumen e instrucciones, y decide si lo comenta o no.
+El sistema asigna automáticamente 2 videos disponibles de la cola al comentarista simultáneamente. El comentarista ve ambos videos con su información y elige cuál comentar. Una vez que elige uno, el intercambio se crea para ese video y el otro vuelve a la cola disponible para otro comentarista. Esto garantiza que todos los videos reciban atención por igual — el sistema controla qué 2 aparecen, no el usuario — mientras mejora la experiencia al dar una alternativa inmediata.
 
 | **Por que asignacion automatica y no lista de seleccion** Con lista de seleccion, los videos de nichos poco populares nunca recibirian intercambios. Todos elegiriian gaming o entretenimiento y los videos de educacion, cocina o arte quedarian varados. La asignacion automatica garantiza que todos los videos reciban atencion por igual. |
 | --- |

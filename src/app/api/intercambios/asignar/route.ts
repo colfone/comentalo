@@ -1,4 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -43,7 +42,7 @@ export async function GET() {
     );
   }
 
-  // Call the RPC — handles all guardrails (video activo, 3 pendientes, cola FIFO, skip own)
+  // RPC reserva hasta 2 videos por 5 minutos y devuelve data completa
   const { data: rpcResult, error: rpcError } = await supabase.rpc(
     "asignar_intercambio",
     { p_comentarista_id: usuario.id }
@@ -57,7 +56,6 @@ export async function GET() {
     );
   }
 
-  // RPC returns JSON — parse error codes
   if (!rpcResult.ok) {
     return NextResponse.json({
       ok: false,
@@ -66,48 +64,37 @@ export async function GET() {
     });
   }
 
-  // Fetch video details for the UI — use service client because the video
-  // belongs to another user and RLS on videos only allows select_own
-  const serviceClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!
-  );
+  type RpcVideo = {
+    reserva_id: string;
+    campana_id: string;
+    video_id: string;
+    youtube_video_id: string;
+    titulo: string;
+    descripcion: string | null;
+    tipo_intercambio: string | null;
+    tono: string | null;
+    duracion_segundos: number | null;
+    vistas: number;
+    expires_at: string;
+    creador: { nombre: string | null; avatar_url: string | null; canal_url: string | null };
+  };
 
-  const { data: video, error: videoError } = await serviceClient
-    .from("videos")
-    .select(
-      "id, youtube_video_id, titulo, descripcion, tipo_intercambio, tono, duracion_segundos, vistas"
-    )
-    .eq("id", rpcResult.video_id)
-    .single();
+  const videos = (rpcResult.videos as RpcVideo[]).map((v) => ({
+    reserva_id: v.reserva_id,
+    campana_id: v.campana_id,
+    video_id: v.video_id,
+    youtube_video_id: v.youtube_video_id,
+    titulo: v.titulo,
+    descripcion: v.descripcion,
+    tipo_intercambio: v.tipo_intercambio,
+    tono: v.tono,
+    duracion_segundos: v.duracion_segundos,
+    vistas: v.vistas,
+    expires_at: v.expires_at,
+    thumbnail: `https://img.youtube.com/vi/${v.youtube_video_id}/mqdefault.jpg`,
+    youtube_url: `https://www.youtube.com/watch?v=${v.youtube_video_id}`,
+    creador: v.creador,
+  }));
 
-  if (videoError) {
-    console.error("Error fetching assigned video:", videoError, "video_id:", rpcResult.video_id);
-  }
-
-  if (!video) {
-    console.error("Video not found for id:", rpcResult.video_id);
-    return NextResponse.json(
-      { error: "Video asignado no encontrado." },
-      { status: 500 }
-    );
-  }
-
-  return NextResponse.json({
-    ok: true,
-    intercambio_id: rpcResult.intercambio_id,
-    campana_id: rpcResult.campana_id,
-    video: {
-      id: video.id,
-      youtube_video_id: video.youtube_video_id,
-      titulo: video.titulo,
-      descripcion: video.descripcion,
-      tipo_intercambio: video.tipo_intercambio,
-      tono: video.tono,
-      duracion_segundos: video.duracion_segundos,
-      vistas: video.vistas,
-      thumbnail: `https://img.youtube.com/vi/${video.youtube_video_id}/mqdefault.jpg`,
-      youtube_url: `https://www.youtube.com/watch?v=${video.youtube_video_id}`,
-    },
-  });
+  return NextResponse.json({ ok: true, videos });
 }

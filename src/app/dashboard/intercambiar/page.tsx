@@ -42,10 +42,18 @@ const tonoLabels: Record<string, string> = {
 
 // --- Types ---
 
-type Step = "loading" | "blocked" | "empty" | "video" | "write" | "copied" | "verificando" | "done" | "pendiente";
+type Step = "loading" | "blocked" | "empty" | "choose" | "video" | "write" | "copied" | "verificando" | "done" | "pendiente";
+
+interface Creador {
+  nombre: string | null;
+  avatar_url: string | null;
+  canal_url: string | null;
+}
 
 interface AssignedVideo {
-  id: string;
+  reserva_id: string;
+  campana_id: string;
+  video_id: string;
   youtube_video_id: string;
   titulo: string;
   descripcion: string | null;
@@ -53,13 +61,21 @@ interface AssignedVideo {
   tono: string | null;
   duracion_segundos: number | null;
   vistas: number;
+  expires_at: string;
   thumbnail: string;
   youtube_url: string;
+  creador: Creador;
 }
 
 export default function IntercambiarPage() {
   const [step, setStep] = useState<Step>("loading");
   const [blockedMessage, setBlockedMessage] = useState("");
+
+  // Reservas (choose step)
+  const [videos, setVideos] = useState<AssignedVideo[]>([]);
+  const [confirmingCampanaId, setConfirmingCampanaId] = useState<string | null>(null);
+
+  // Seleccionado (flujo post-confirmacion)
   const [intercambioId, setIntercambioId] = useState<string | null>(null);
   const [video, setVideo] = useState<AssignedVideo | null>(null);
 
@@ -98,10 +114,10 @@ export default function IntercambiarPage() {
     return () => { supabaseBrowser.removeChannel(channel); };
   }, [intercambioId]);
 
-  // --- Assign ---
-  useEffect(() => { assignVideo(); }, []);
+  // --- Reservar 2 videos ---
+  useEffect(() => { assignVideos(); }, []);
 
-  async function assignVideo() {
+  async function assignVideos() {
     setStep("loading");
     try {
       const res = await fetch("/api/intercambios/asignar");
@@ -114,10 +130,38 @@ export default function IntercambiarPage() {
         else { setBlockedMessage(data.mensaje || "Error inesperado."); setStep("blocked"); }
         return;
       }
-      setIntercambioId(data.intercambio_id);
-      setVideo(data.video);
-      setStep("video");
+      setVideos(data.videos || []);
+      setStep("choose");
     } catch { setBlockedMessage("Error de conexion. Intenta de nuevo."); setStep("blocked"); }
+  }
+
+  // --- Confirmar una de las 2 reservas ---
+  async function handleParticipar(chosen: AssignedVideo) {
+    if (confirmingCampanaId) return;
+    setConfirmingCampanaId(chosen.campana_id);
+    try {
+      const res = await fetch("/api/intercambios/confirmar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campana_id: chosen.campana_id }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || "Error al confirmar."); setConfirmingCampanaId(null); return; }
+      if (!data.ok) {
+        if (data.error_code === "RESERVA_EXPIRADA") {
+          alert(data.mensaje || "La reserva expiro. Cargando nuevos videos...");
+          setConfirmingCampanaId(null);
+          assignVideos();
+          return;
+        }
+        alert(data.mensaje || "No se pudo confirmar.");
+        setConfirmingCampanaId(null);
+        return;
+      }
+      setIntercambioId(data.intercambio_id);
+      setVideo(chosen);
+      setStep("video");
+    } catch { alert("Error de conexion."); setConfirmingCampanaId(null); }
   }
 
   // --- Copiar ---
@@ -157,7 +201,6 @@ export default function IntercambiarPage() {
     } catch { setResultMessage("Error de conexion al verificar."); setStep("blocked"); }
   }
 
-  // --- Is in active exchange state (video assigned) ---
   const hasVideo = step === "video" || step === "write" || step === "copied" || step === "verificando";
 
   return (
@@ -186,7 +229,7 @@ export default function IntercambiarPage() {
           <div className="flex items-center justify-center py-32">
             <div className="rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-12 text-center shadow-sm">
               <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-3 border-[#eff1f2] border-t-[#6200EE]" />
-              <p className="text-sm text-[#595c5d]">Buscando un video para ti...</p>
+              <p className="text-sm text-[#595c5d]">Buscando videos para ti...</p>
             </div>
           </div>
         )}
@@ -226,7 +269,122 @@ export default function IntercambiarPage() {
           </div>
         )}
 
-        {/* ===== TWO-COLUMN LAYOUT (video assigned) ===== */}
+        {/* ===== CHOOSE — 2 cards para elegir ===== */}
+        {step === "choose" && videos.length > 0 && (
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-[#6200EE]">Elige un video</p>
+            <h2 className="font-headline text-3xl font-extrabold tracking-tight text-[#2c2f30]">
+              {videos.length === 2 ? "2 videos disponibles" : "Video disponible"}
+            </h2>
+            <div className="mt-1 h-[3px] w-12 rounded-full bg-[#6200EE]" />
+            <p className="mt-3 max-w-2xl text-sm text-[#595c5d]">
+              Elige cual quieres comentar. Tienes 5 minutos para decidir — despues las reservas se liberan automaticamente para otros creadores.
+            </p>
+
+            <div className="mt-8 grid gap-6 md:grid-cols-2">
+              {videos.map((v) => {
+                const isConfirming = confirmingCampanaId === v.campana_id;
+                const isDisabled = confirmingCampanaId !== null && !isConfirming;
+                return (
+                  <div
+                    key={v.campana_id}
+                    className={`group relative overflow-hidden rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg ${isDisabled ? "opacity-40" : ""}`}
+                  >
+                    {/* Thumbnail */}
+                    <div className="relative aspect-video overflow-hidden bg-[#eff1f2]">
+                      <img
+                        src={`https://img.youtube.com/vi/${v.youtube_video_id}/maxresdefault.jpg`}
+                        alt={v.titulo}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        onError={(e) => { (e.target as HTMLImageElement).src = v.thumbnail; }}
+                      />
+                      {v.duracion_segundos && v.duracion_segundos > 0 && (
+                        <span className="absolute bottom-3 right-3 rounded-lg bg-black/70 px-2 py-1 text-xs font-medium text-white">
+                          {formatDuration(v.duracion_segundos)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Body */}
+                    <div className="p-6">
+                      {/* Creador */}
+                      <div className="mb-4 flex items-center gap-3">
+                        {v.creador.avatar_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={v.creador.avatar_url} alt={v.creador.nombre || "Creador"} className="h-9 w-9 rounded-full object-cover" />
+                        ) : (
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}>
+                            {(v.creador.nombre || "C").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-[#2c2f30]">
+                            {v.creador.nombre || "Creador de YouTube"}
+                          </p>
+                          {v.creador.canal_url && (
+                            <a href={v.creador.canal_url} target="_blank" rel="noopener noreferrer" className="text-xs text-[#595c5d] hover:text-[#6200EE]">
+                              Ver canal →
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="line-clamp-2 font-headline text-lg font-bold leading-snug text-[#2c2f30]">
+                        {v.titulo}
+                      </h3>
+
+                      {/* Description */}
+                      {v.descripcion && (
+                        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[#595c5d]">
+                          {v.descripcion}
+                        </p>
+                      )}
+
+                      {/* Badges */}
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {v.tipo_intercambio && (
+                          <span className="rounded-full border border-[#6200EE]/20 bg-[#6200EE]/5 px-3 py-1 text-xs font-medium text-[#6200EE]">
+                            {tipoLabels[v.tipo_intercambio] || v.tipo_intercambio}
+                          </span>
+                        )}
+                        {v.tono && (
+                          <span className="rounded-full border border-[#E87722]/20 bg-[#E87722]/5 px-3 py-1 text-xs font-medium text-[#E87722]">
+                            Tono: {tonoLabels[v.tono] || v.tono}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* CTA */}
+                      <button
+                        onClick={() => handleParticipar(v)}
+                        disabled={isDisabled || isConfirming}
+                        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
+                        style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+                      >
+                        {isConfirming ? (
+                          <>
+                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                            Confirmando...
+                          </>
+                        ) : (
+                          <>
+                            Participar
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                            </svg>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ===== TWO-COLUMN LAYOUT (video confirmado) ===== */}
         {hasVideo && video && (
           <div className="grid gap-8 lg:grid-cols-12">
             {/* --- Left: Video info --- */}
@@ -457,20 +615,25 @@ export default function IntercambiarPage() {
                 )}
               </div>
 
-              {/* Card: El Creador (placeholder — no creator data in current API) */}
+              {/* Card: El Creador */}
               <div className="rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-6">
                 <h3 className="mb-3 font-headline text-sm font-bold text-[#2c2f30]">El Creador</h3>
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold text-white" style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}>
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                    </svg>
-                  </div>
+                  {video.creador.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={video.creador.avatar_url} alt={video.creador.nombre || "Creador"} className="h-12 w-12 rounded-xl object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold text-white" style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}>
+                      {(video.creador.nombre || "C").charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
-                    <p className="text-sm font-semibold text-[#2c2f30]">Creador de YouTube</p>
-                    <a href={video.youtube_url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#E87722] hover:underline">
-                      Ver canal →
-                    </a>
+                    <p className="text-sm font-semibold text-[#2c2f30]">{video.creador.nombre || "Creador de YouTube"}</p>
+                    {video.creador.canal_url && (
+                      <a href={video.creador.canal_url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#E87722] hover:underline">
+                        Ver canal →
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
