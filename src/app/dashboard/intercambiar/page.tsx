@@ -1,48 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-// --- Tabla de tiempos minimos (seccion 5.4 del PROYECTO.md) ---
-
-function getMinWaitSeconds(duracionSegundos: number): number {
-  if (duracionSegundos < 120) return 60;
-  if (duracionSegundos < 300) return 120;
-  if (duracionSegundos < 600) return 180;
-  return 300;
-}
-
-function formatCountdown(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-}
-
-function formatDuration(seconds: number | null): string {
-  if (!seconds) return "";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  if (m === 0) return `${s}s`;
-  return s > 0 ? `${m}m ${s}s` : `${m} min`;
-}
-
-// --- Label helpers ---
-
-const tipoLabels: Record<string, string> = {
-  opinion: "Opinion",
-  pregunta: "Pregunta",
-  experiencia: "Experiencia personal",
-};
-
-const tonoLabels: Record<string, string> = {
-  casual: "Casual",
-  entusiasta: "Entusiasta",
-  reflexivo: "Reflexivo",
-};
+// Cola de intercambios — el sistema asigna 2 videos simultáneos
+// Prototipo Design: screens/Feed.jsx + App.jsx Shell
 
 // --- Types ---
-
-type Step = "loading" | "blocked" | "empty" | "choose" | "video" | "write" | "copied" | "verificando" | "done" | "pendiente";
 
 interface Creador {
   nombre: string | null;
@@ -67,616 +32,469 @@ interface AssignedVideo {
   creador: Creador;
 }
 
-export default function IntercambiarPage() {
-  const [step, setStep] = useState<Step>("loading");
-  const [blockedMessage, setBlockedMessage] = useState("");
+// --- Helpers ---
 
-  // Reservas (choose step)
+function formatSubs(n: number): string {
+  if (n < 1000) return n.toString();
+  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0).replace(".0", "")}K`;
+  return `${(n / 1_000_000).toFixed(1).replace(".0", "")}M`;
+}
+
+function formatDuration(sec: number | null): string {
+  if (!sec) return "";
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  if (m === 0) return `${s}s`;
+  return s > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${m} min`;
+}
+
+function reputacionNivel(rep: number | null): { color: string; label: string; dot: string } {
+  // Promedio de estrellas 1-5 (seccion 6.3 del PROYECTO.md tras v4.4)
+  if (rep == null) return { color: "#8a8d8f", label: "—", dot: "#dcdedf" };
+  if (rep >= 4.0) return { color: "#2c2f30", label: `${rep.toFixed(1)}★`, dot: "#22c55e" };
+  if (rep >= 3.0) return { color: "#2c2f30", label: `${rep.toFixed(1)}★`, dot: "#eab308" };
+  if (rep >= 2.0) return { color: "#2c2f30", label: `${rep.toFixed(1)}★`, dot: "#f97316" };
+  return { color: "#2c2f30", label: `${rep.toFixed(1)}★`, dot: "#ef4444" };
+}
+
+// --- Icons (inline) ---
+
+const SwapIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M7 4v14m0 0-3-3m3 3 3-3M17 20V6m0 0 3 3m-3-3-3 3" />
+  </svg>
+);
+const InboxIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M22 13h-6l-2 3h-4l-2-3H2" />
+    <path d="M5.5 5h13l3 8v6a2 2 0 0 1-2 2H4.5a2 2 0 0 1-2-2v-6z" />
+  </svg>
+);
+const UserIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
+  </svg>
+);
+const BellIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
+  </svg>
+);
+const FlameIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M8.5 14.5a3.5 3.5 0 1 0 7 0c0-1.5-.5-2-2-3.5s-1.5-3 0-5C10.5 6 7 9 7 12.5a5 5 0 0 0 5 5" />
+  </svg>
+);
+const UsersIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" />
+  </svg>
+);
+const PlayIcon = ({ size = 32 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M6 4v16l14-8z" />
+  </svg>
+);
+const ChevronRight = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m9 6 6 6-6 6" />
+  </svg>
+);
+
+// --- Component ---
+
+export default function ColaPage() {
+  const router = useRouter();
+
+  const [loading, setLoading] = useState(true);
   const [videos, setVideos] = useState<AssignedVideo[]>([]);
+  const [empty, setEmpty] = useState(false);
+  const [blocked, setBlocked] = useState<string | null>(null);
+
   const [confirmingCampanaId, setConfirmingCampanaId] = useState<string | null>(null);
 
-  // Seleccionado (flujo post-confirmacion)
-  const [intercambioId, setIntercambioId] = useState<string | null>(null);
-  const [video, setVideo] = useState<AssignedVideo | null>(null);
+  const [stats, setStats] = useState({
+    comentariosMes: "—",
+    rachaDias: "—",
+    subs: "—",
+    reputacion: reputacionNivel(null),
+  });
 
-  const [comentario, setComentario] = useState("");
-  const [countdown, setCountdown] = useState(0);
-  const [copied, setCopied] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const [cancelando, setCancelando] = useState(false);
-  const [resultMessage, setResultMessage] = useState("");
-
-  // --- Cancel ---
-  async function handleCancelar() {
-    if (!intercambioId) return;
-    setCancelando(true);
-    try {
-      const res = await fetch("/api/intercambios/cancelar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ intercambio_id: intercambioId }) });
-      const data = await res.json();
-      if (!res.ok || !data.ok) { alert(data.error || "Error al cancelar."); return; }
-      window.location.href = "/dashboard";
-    } catch { alert("Error de conexion."); } finally { setCancelando(false); }
-  }
-
-  // --- Realtime ---
+  // --- Load cola ---
   useEffect(() => {
-    if (!intercambioId) return;
-    const supabaseBrowser = createSupabaseBrowserClient();
-    const channel = supabaseBrowser
-      .channel(`intercambio-${intercambioId}`)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "intercambios", filter: `id=eq.${intercambioId}` }, (payload) => {
-        const newEstado = payload.new?.estado;
-        if (newEstado === "verificado") setStep("done");
-        else if (newEstado === "rechazado") { setResultMessage("Tu intercambio no pudo ser verificado tras 24 horas de reintentos."); setStep("blocked"); }
-      })
-      .subscribe();
-    return () => { supabaseBrowser.removeChannel(channel); };
-  }, [intercambioId]);
-
-  // --- Reservar 2 videos ---
-  useEffect(() => { assignVideos(); }, []);
-
-  async function assignVideos() {
-    setStep("loading");
-    try {
-      const res = await fetch("/api/intercambios/asignar");
-      const data = await res.json();
-      if (!res.ok) { setBlockedMessage(data.error || "Error al asignar intercambio."); setStep("blocked"); return; }
-      if (!data.ok) {
-        if (data.error_code === "LIMITE_PENDIENTES_ALCANZADO") { setBlockedMessage("Tienes 3 intercambios pendientes de verificacion. Espera a que se resuelvan antes de continuar."); setStep("blocked"); }
-        else if (data.error_code === "USUARIO_SIN_VIDEO_ACTIVO") { setBlockedMessage(data.mensaje); setStep("blocked"); }
-        else if (data.error_code === "COLA_VACIA") { setStep("empty"); }
-        else { setBlockedMessage(data.mensaje || "Error inesperado."); setStep("blocked"); }
-        return;
+    (async () => {
+      setLoading(true);
+      setEmpty(false);
+      setBlocked(null);
+      try {
+        const res = await fetch("/api/intercambios/asignar");
+        const data = await res.json();
+        if (!res.ok) {
+          setBlocked(data.error || "Error al cargar la cola.");
+        } else if (!data.ok) {
+          if (data.error_code === "COLA_VACIA") setEmpty(true);
+          else if (data.error_code === "LIMITE_PENDIENTES_ALCANZADO")
+            setBlocked("Tienes 3 intercambios pendientes de verificación. Espera a que se resuelvan antes de continuar.");
+          else if (data.error_code === "USUARIO_SIN_VIDEO_ACTIVO")
+            setBlocked(data.mensaje);
+          else setBlocked(data.mensaje || "Error inesperado.");
+        } else {
+          setVideos(data.videos || []);
+        }
+      } catch {
+        setBlocked("Error de conexión.");
+      } finally {
+        setLoading(false);
       }
-      setVideos(data.videos || []);
-      setStep("choose");
-    } catch { setBlockedMessage("Error de conexion. Intenta de nuevo."); setStep("blocked"); }
-  }
+    })();
+  }, []);
 
-  // --- Confirmar una de las 2 reservas ---
-  async function handleParticipar(chosen: AssignedVideo) {
+  // --- Load stats ---
+  useEffect(() => {
+    (async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: usuario } = await supabase
+        .from("usuarios")
+        .select("id, suscriptores_al_registro, reputacion")
+        .eq("auth_id", user.id)
+        .maybeSingle();
+
+      if (!usuario) return;
+
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const { count } = await supabase
+        .from("intercambios")
+        .select("*", { count: "exact", head: true })
+        .eq("comentarista_id", usuario.id)
+        .gte("created_at", startOfMonth.toISOString());
+
+      setStats({
+        comentariosMes: (count ?? 0).toString(),
+        rachaDias: "—",
+        subs: formatSubs(usuario.suscriptores_al_registro || 0),
+        reputacion: reputacionNivel(usuario.reputacion),
+      });
+    })();
+  }, []);
+
+  async function handleComentar(video: AssignedVideo) {
     if (confirmingCampanaId) return;
-    setConfirmingCampanaId(chosen.campana_id);
+    setConfirmingCampanaId(video.campana_id);
     try {
       const res = await fetch("/api/intercambios/confirmar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campana_id: chosen.campana_id }),
+        body: JSON.stringify({ campana_id: video.campana_id }),
       });
       const data = await res.json();
-      if (!res.ok) { alert(data.error || "Error al confirmar."); setConfirmingCampanaId(null); return; }
-      if (!data.ok) {
+      if (!res.ok || !data.ok) {
         if (data.error_code === "RESERVA_EXPIRADA") {
-          alert(data.mensaje || "La reserva expiro. Cargando nuevos videos...");
-          setConfirmingCampanaId(null);
-          assignVideos();
+          alert("La reserva expiró. Recargando la cola...");
+          window.location.reload();
           return;
         }
-        alert(data.mensaje || "No se pudo confirmar.");
+        alert(data.mensaje || data.error || "No se pudo confirmar.");
         setConfirmingCampanaId(null);
         return;
       }
-      setIntercambioId(data.intercambio_id);
-      setVideo(chosen);
-      setStep("video");
-    } catch { alert("Error de conexion."); setConfirmingCampanaId(null); }
+      // Navega al detalle — pendiente de construir (ver ESTADO.md Pendientes)
+      router.push(`/dashboard/intercambiar/${video.campana_id}`);
+    } catch {
+      alert("Error de conexión.");
+      setConfirmingCampanaId(null);
+    }
   }
-
-  // --- Copiar ---
-  async function handleCopiar() {
-    if (!intercambioId || !video || comentario.length < 20) return;
-    try { await navigator.clipboard.writeText(comentario); setCopied(true); } catch { /* fallback */ }
-    try {
-      const res = await fetch("/api/intercambios/copiar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ intercambio_id: intercambioId, texto_comentario: comentario, duracion_video_segundos: video.duracion_segundos || 0 }) });
-      if (!res.ok) { const data = await res.json(); alert(data.error || "Error al guardar el comentario."); return; }
-    } catch { alert("Error de conexion al guardar el comentario."); return; }
-    const waitSeconds = getMinWaitSeconds(video.duracion_segundos || 0);
-    setCountdown(waitSeconds);
-    setStep("copied");
-  }
-
-  // --- Countdown ---
-  const tickCountdown = useCallback(() => {
-    setCountdown((prev) => { if (prev <= 1) { if (timerRef.current) clearInterval(timerRef.current); return 0; } return prev - 1; });
-  }, []);
-
-  useEffect(() => {
-    if (step !== "copied") return;
-    timerRef.current = setInterval(tickCountdown, 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [step, tickCountdown]);
-
-  // --- Ya publique ---
-  async function handleYaPublique() {
-    if (!intercambioId) return;
-    setStep("verificando");
-    try {
-      const res = await fetch("/api/intercambios/verificar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ intercambio_id: intercambioId }) });
-      const data = await res.json();
-      if (!res.ok) { setResultMessage(data.error || "Error al verificar."); setStep("blocked"); return; }
-      if (data.resultado === "verificado") setStep("done");
-      else if (data.resultado === "pendiente") { setResultMessage(data.mensaje); setStep("pendiente"); }
-    } catch { setResultMessage("Error de conexion al verificar."); setStep("blocked"); }
-  }
-
-  const hasVideo = step === "video" || step === "write" || step === "copied" || step === "verificando";
 
   return (
     <div className="min-h-screen bg-[#f5f6f7]">
-      {/* ===== HEADER ===== */}
-      <header className="fixed top-0 z-50 w-full border-b border-black/5 bg-white/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <div className="flex items-center gap-6">
-            <a href="/dashboard" className="font-headline text-xl font-bold tracking-tighter text-[#2c2f30]">
-              Comentalo<span className="text-[#E87722]">.</span>
+      {/* ===== TOP FLOATING NAV ===== */}
+      <header className="sticky top-3 z-30 mx-auto mt-3 max-w-[1240px] px-4">
+        <div
+          className="flex items-center gap-4 rounded-full border border-white/60 bg-white/80 px-5 py-2 pr-2.5 shadow-[0_8px_32px_rgba(44,47,48,0.08)]"
+          style={{ backdropFilter: "blur(24px) saturate(1.2)", WebkitBackdropFilter: "blur(24px) saturate(1.2)" }}
+        >
+          {/* Logo */}
+          <a href="/dashboard/intercambiar" className="flex items-center gap-2.5">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-[10px] font-headline text-base font-bold text-white"
+              style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+            >
+              C
+            </div>
+            <span className="font-headline text-lg font-bold tracking-[-0.02em] text-[#2c2f30]">
+              Comentalo
+            </span>
+          </a>
+
+          {/* Nav items */}
+          <nav className="ml-4 flex gap-0.5">
+            <a
+              href="/dashboard/intercambiar"
+              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium transition-colors"
+              style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}
+            >
+              <SwapIcon />
+              Cola
             </a>
-            <a href="/dashboard" className="hidden items-center gap-1 text-sm text-[#595c5d] transition-colors hover:text-[#2c2f30] md:flex">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-              </svg>
-              Volver al dashboard
+            <a
+              href="/dashboard/actividad"
+              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
+            >
+              <InboxIcon />
+              Mi actividad
             </a>
-          </div>
-          <p className="text-sm font-medium text-[#2c2f30]">Intercambiar</p>
+            <a
+              href="/dashboard/perfil"
+              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
+            >
+              <UserIcon />
+              Perfil
+            </a>
+          </nav>
+
+          <div className="flex-1" />
+
+          {/* Bell */}
+          <button
+            type="button"
+            aria-label="Notificaciones"
+            className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[#e9ebec] text-[#5b5e60] transition-colors hover:bg-[#e3e5e6]"
+          >
+            <BellIcon />
+            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#E87722] ring-2 ring-white" />
+          </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 pt-24 pb-12">
-        {/* ===== LOADING ===== */}
-        {step === "loading" && (
-          <div className="flex items-center justify-center py-32">
-            <div className="rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-12 text-center shadow-sm">
-              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-3 border-[#eff1f2] border-t-[#6200EE]" />
-              <p className="text-sm text-[#595c5d]">Buscando videos para ti...</p>
+      <main className="mx-auto max-w-[1240px] px-6 pb-16 pt-8">
+        {/* ===== HERO ===== */}
+        <div className="py-6">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.05em] text-[#6200EE]">
+            Tu cola · {videos.length} asignados
+          </p>
+          <h1 className="max-w-[820px] font-headline text-[clamp(40px,6vw,72px)] font-bold leading-[1.02] tracking-[-0.03em] text-[#2c2f30]">
+            Creadores esperando tu comentario.
+          </h1>
+          <p className="mt-4 max-w-[620px] text-base leading-[1.55] text-[#5b5e60]">
+            Cada comentario tuyo activa un intercambio en tu próximo video. Elige uno,
+            míralo, comenta de verdad.
+          </p>
+        </div>
+
+        {/* ===== STATS STRIP ===== */}
+        <div
+          className="mt-5 grid gap-0.5 overflow-hidden rounded-3xl bg-[#eff1f2] p-0.5"
+          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
+        >
+          {/* Comentarios este mes */}
+          <div className="flex items-center gap-3.5 bg-white px-5 py-[18px]">
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+              style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}
+            >
+              <SwapIcon size={18} />
+            </div>
+            <div>
+              <div className="font-headline text-2xl font-bold leading-none text-[#2c2f30]">
+                {stats.comentariosMes}
+              </div>
+              <div className="mt-1 text-[13px] leading-[1.5] text-[#5b5e60]">
+                Comentarios este mes
+              </div>
             </div>
           </div>
-        )}
 
-        {/* ===== BLOCKED ===== */}
-        {step === "blocked" && (
-          <div className="flex items-center justify-center py-32">
-            <div className="w-full max-w-md rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-10 text-center shadow-sm">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
-                <svg className="h-7 w-7 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-                </svg>
+          {/* Racha activa */}
+          <div className="flex items-center gap-3.5 bg-white px-5 py-[18px]">
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+              style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}
+            >
+              <FlameIcon />
+            </div>
+            <div>
+              <div className="font-headline text-2xl font-bold leading-none text-[#2c2f30]">
+                {stats.rachaDias}
               </div>
-              <p className="text-sm leading-relaxed text-[#2c2f30]">{resultMessage || blockedMessage}</p>
-              <a href="/dashboard" className="mt-6 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white" style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}>
+              <div className="mt-1 text-[13px] leading-[1.5] text-[#5b5e60]">
+                Racha activa
+              </div>
+            </div>
+          </div>
+
+          {/* Subs en tu canal */}
+          <div className="flex items-center gap-3.5 bg-white px-5 py-[18px]">
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+              style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}
+            >
+              <UsersIcon />
+            </div>
+            <div>
+              <div className="font-headline text-2xl font-bold leading-none text-[#2c2f30]">
+                {stats.subs}
+              </div>
+              <div className="mt-1 text-[13px] leading-[1.5] text-[#5b5e60]">
+                Subs en tu canal
+              </div>
+            </div>
+          </div>
+
+          {/* Reputación */}
+          <div className="flex items-center gap-3.5 bg-white px-5 py-[18px]">
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+              style={{ background: "rgba(98, 0, 238, 0.08)" }}
+            >
+              <span
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ background: stats.reputacion.dot, boxShadow: `0 0 0 3px ${stats.reputacion.dot}33` }}
+              />
+            </div>
+            <div>
+              <div className="font-headline text-2xl font-bold leading-none text-[#2c2f30]">
+                {stats.reputacion.label}
+              </div>
+              <div className="mt-1 text-[13px] leading-[1.5] text-[#5b5e60]">
+                Reputación
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ===== CARDS ===== */}
+        <div className="mt-8">
+          {loading && (
+            <div className="flex items-center justify-center py-20">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#e9ebec] border-t-[#6200EE]" />
+            </div>
+          )}
+
+          {!loading && blocked && (
+            <div className="rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-10 text-center shadow-sm">
+              <p className="text-sm text-[#2c2f30]">{blocked}</p>
+              <a
+                href="/dashboard"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white"
+                style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+              >
                 Volver al dashboard
               </a>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ===== EMPTY ===== */}
-        {step === "empty" && (
-          <div className="flex items-center justify-center py-32">
-            <div className="w-full max-w-md rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-10 text-center shadow-sm">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f5f6f7]">
-                <svg className="h-7 w-7 text-[#595c5d]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
-                </svg>
-              </div>
+          {!loading && !blocked && empty && (
+            <div className="rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-10 text-center shadow-sm">
               <p className="text-sm text-[#2c2f30]">No hay videos disponibles en este momento.</p>
-              <p className="mt-1 text-xs text-[#595c5d]">Vuelve pronto — otros creadores estan registrando videos.</p>
-              <a href="/dashboard" className="mt-6 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white" style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}>
-                Volver al dashboard
-              </a>
+              <p className="mt-1 text-xs text-[#5b5e60]">
+                Vuelve pronto — otros creadores están registrando videos.
+              </p>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ===== CHOOSE — 2 cards para elegir ===== */}
-        {step === "choose" && videos.length > 0 && (
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-[#6200EE]">Elige un video</p>
-            <h2 className="font-headline text-3xl font-extrabold tracking-tight text-[#2c2f30]">
-              {videos.length === 2 ? "2 videos disponibles" : "Video disponible"}
-            </h2>
-            <div className="mt-1 h-[3px] w-12 rounded-full bg-[#6200EE]" />
-            <p className="mt-3 max-w-2xl text-sm text-[#595c5d]">
-              Elige cual quieres comentar. Tienes 5 minutos para decidir — despues las reservas se liberan automaticamente para otros creadores.
-            </p>
-
-            <div className="mt-8 grid gap-6 md:grid-cols-2">
-              {videos.map((v) => {
+          {!loading && !blocked && !empty && videos.length > 0 && (
+            <div
+              className="grid gap-5"
+              style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}
+            >
+              {videos.map((v, i) => {
                 const isConfirming = confirmingCampanaId === v.campana_id;
                 const isDisabled = confirmingCampanaId !== null && !isConfirming;
                 return (
-                  <div
+                  <article
                     key={v.campana_id}
-                    className={`group relative overflow-hidden rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg ${isDisabled ? "opacity-40" : ""}`}
+                    className={`flex flex-col gap-4 rounded-3xl bg-white p-6 transition-all hover:-translate-y-1 hover:shadow-lg ${isDisabled ? "opacity-40" : ""}`}
+                    style={{ animationDelay: `${i * 60}ms` }}
                   >
                     {/* Thumbnail */}
-                    <div className="relative aspect-video overflow-hidden bg-[#eff1f2]">
+                    <div className="relative aspect-video overflow-hidden rounded-2xl bg-[#e3e5e6]">
                       <img
                         src={`https://img.youtube.com/vi/${v.youtube_video_id}/maxresdefault.jpg`}
                         alt={v.titulo}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="h-full w-full object-cover"
                         onError={(e) => { (e.target as HTMLImageElement).src = v.thumbnail; }}
                       />
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-white/65">
+                        <PlayIcon size={48} />
+                      </div>
                       {v.duracion_segundos && v.duracion_segundos > 0 && (
-                        <span className="absolute bottom-3 right-3 rounded-lg bg-black/70 px-2 py-1 text-xs font-medium text-white">
+                        <span className="absolute bottom-2.5 right-2.5 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-semibold text-white">
                           {formatDuration(v.duracion_segundos)}
                         </span>
                       )}
                     </div>
 
-                    {/* Body */}
-                    <div className="p-6">
-                      {/* Creador */}
-                      <div className="mb-4 flex items-center gap-3">
+                    {/* Creator row + title */}
+                    <div>
+                      <div className="mb-2.5 flex flex-wrap items-center gap-2">
                         {v.creador.avatar_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={v.creador.avatar_url} alt={v.creador.nombre || "Creador"} className="h-9 w-9 rounded-full object-cover" />
+                          <img
+                            src={v.creador.avatar_url}
+                            alt={v.creador.nombre || "Creador"}
+                            className="h-7 w-7 rounded-full object-cover"
+                          />
                         ) : (
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}>
+                          <div
+                            className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                            style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+                          >
                             {(v.creador.nombre || "C").charAt(0).toUpperCase()}
                           </div>
                         )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-[#2c2f30]">
-                            {v.creador.nombre || "Creador de YouTube"}
-                          </p>
-                          {v.creador.canal_url && (
-                            <a href={v.creador.canal_url} target="_blank" rel="noopener noreferrer" className="text-xs text-[#595c5d] hover:text-[#6200EE]">
-                              Ver canal →
-                            </a>
-                          )}
-                        </div>
+                        <span className="text-sm font-semibold text-[#2c2f30]">
+                          {v.creador.nombre || "Creador"}
+                        </span>
+                        {v.vistas > 0 && (
+                          <>
+                            <span className="inline-block h-[3px] w-[3px] rounded-full bg-[#abadae]" />
+                            <span className="text-[13px] text-[#5b5e60]">
+                              {formatSubs(v.vistas)} vistas
+                            </span>
+                          </>
+                        )}
                       </div>
-
-                      {/* Title */}
-                      <h3 className="line-clamp-2 font-headline text-lg font-bold leading-snug text-[#2c2f30]">
+                      <h3 className="m-0 line-clamp-2 font-headline text-xl font-bold leading-[1.2] tracking-[-0.01em] text-[#2c2f30]">
                         {v.titulo}
                       </h3>
+                    </div>
 
-                      {/* Description */}
-                      {v.descripcion && (
-                        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[#595c5d]">
-                          {v.descripcion}
-                        </p>
-                      )}
-
-                      {/* Badges */}
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {v.tipo_intercambio && (
-                          <span className="rounded-full border border-[#6200EE]/20 bg-[#6200EE]/5 px-3 py-1 text-xs font-medium text-[#6200EE]">
-                            {tipoLabels[v.tipo_intercambio] || v.tipo_intercambio}
-                          </span>
-                        )}
-                        {v.tono && (
-                          <span className="rounded-full border border-[#E87722]/20 bg-[#E87722]/5 px-3 py-1 text-xs font-medium text-[#E87722]">
-                            Tono: {tonoLabels[v.tono] || v.tono}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* CTA */}
+                    {/* CTA */}
+                    <div className="flex items-center justify-end gap-3">
                       <button
-                        onClick={() => handleParticipar(v)}
+                        onClick={() => handleComentar(v)}
                         disabled={isDisabled || isConfirming}
-                        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1.5 rounded-2xl px-[18px] py-2.5 text-[13px] font-semibold text-white transition-all hover:shadow-[0_0_0_6px_rgba(98,0,238,0.12)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-none"
                         style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
                       >
                         {isConfirming ? (
                           <>
-                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                            Confirmando...
+                            <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                            Confirmando…
                           </>
                         ) : (
                           <>
-                            Participar
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                            </svg>
+                            Comentar
+                            <ChevronRight />
                           </>
                         )}
                       </button>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
-          </div>
-        )}
-
-        {/* ===== TWO-COLUMN LAYOUT (video confirmado) ===== */}
-        {hasVideo && video && (
-          <div className="grid gap-8 lg:grid-cols-12">
-            {/* --- Left: Video info --- */}
-            <div className="lg:col-span-7">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-[#6200EE]">Intercambio activo</p>
-              <h2 className="font-headline text-3xl font-extrabold tracking-tight text-[#2c2f30]">
-                Video Asignado
-              </h2>
-              <div className="mt-1 h-[3px] w-12 rounded-full bg-[#6200EE]" />
-
-              {/* Thumbnail */}
-              <div className="group relative mt-6 overflow-hidden rounded-2xl">
-                <img
-                  src={`https://img.youtube.com/vi/${video.youtube_video_id}/maxresdefault.jpg`}
-                  alt={video.titulo}
-                  className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  onError={(e) => { (e.target as HTMLImageElement).src = video.thumbnail; }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/30">
-                  <svg className="h-16 w-16 text-white opacity-0 transition-opacity group-hover:opacity-80" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </div>
-                {video.duracion_segundos && video.duracion_segundos > 0 && (
-                  <span className="absolute bottom-3 left-3 rounded-lg bg-black/70 px-2 py-1 text-xs font-medium text-white">
-                    {formatDuration(video.duracion_segundos)}
-                  </span>
-                )}
-              </div>
-
-              {/* Badges */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                {video.tipo_intercambio && (
-                  <span className="rounded-full border border-[#6200EE]/20 bg-[#6200EE]/5 px-3 py-1 text-xs font-medium text-[#6200EE]">
-                    {tipoLabels[video.tipo_intercambio] || video.tipo_intercambio}
-                  </span>
-                )}
-                {video.tono && (
-                  <span className="rounded-full border border-[#E87722]/20 bg-[#E87722]/5 px-3 py-1 text-xs font-medium text-[#E87722]">
-                    Tono: {tonoLabels[video.tono] || video.tono}
-                  </span>
-                )}
-                {video.duracion_segundos && (
-                  <span className="rounded-full border border-[rgba(171,173,174,0.15)] px-3 py-1 text-xs text-[#595c5d]">
-                    {formatDuration(video.duracion_segundos)}
-                  </span>
-                )}
-              </div>
-
-              {/* Title + description */}
-              <h3 className="mt-4 font-headline text-2xl font-bold text-[#2c2f30]">{video.titulo}</h3>
-              {video.descripcion && (
-                <p className="mt-2 text-sm leading-relaxed text-[#595c5d]">{video.descripcion}</p>
-              )}
-
-              {/* Like nudge */}
-              <div className="mt-6 flex gap-3 rounded-xl border-l-[3px] border-[#E87722] bg-[#fff8f3] p-4">
-                <svg className="mt-0.5 h-5 w-5 shrink-0 text-[#E87722]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-                </svg>
-                <p className="text-xs leading-relaxed text-[#2c2f30]/70">
-                  Recuerda darle Like al video antes de comentar. Es un buen gesto entre creadores.
-                </p>
-              </div>
-            </div>
-
-            {/* --- Right: Task + Creator --- */}
-            <div className="space-y-4 lg:col-span-5">
-              {/* Card: Tu Tarea */}
-              <div className="rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-6">
-                <div className="mb-4 flex items-center gap-2">
-                  <svg className="h-5 w-5 text-[#6200EE]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15a2.25 2.25 0 0 1 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
-                  </svg>
-                  <h3 className="font-headline text-base font-bold text-[#2c2f30]">Tu Tarea</h3>
-                </div>
-
-                {/* STATE: video — show "start writing" */}
-                {step === "video" && (
-                  <>
-                    <p className="mb-4 text-sm text-[#595c5d]">Escribe un comentario genuino para este video y pegalo en YouTube.</p>
-                    <button
-                      onClick={() => setStep("write")}
-                      className="w-full rounded-xl py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
-                      style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
-                    >
-                      Escribir comentario
-                    </button>
-                  </>
-                )}
-
-                {/* STATE: write */}
-                {step === "write" && (
-                  <>
-                    {(video.tipo_intercambio || video.tono) && (
-                      <p className="mb-3 text-xs text-[#595c5d]">
-                        El creador busca:{" "}
-                        {video.tipo_intercambio && <span className="font-medium text-[#6200EE]">{tipoLabels[video.tipo_intercambio] || video.tipo_intercambio}</span>}
-                        {video.tipo_intercambio && video.tono && " — "}
-                        {video.tono && <span className="font-medium text-[#E87722]">tono {tonoLabels[video.tono] || video.tono}</span>}
-                      </p>
-                    )}
-
-                    <textarea
-                      value={comentario}
-                      onChange={(e) => setComentario(e.target.value)}
-                      rows={5}
-                      placeholder="Escribe un comentario genuino sobre el video..."
-                      className="w-full rounded-xl border border-[rgba(171,173,174,0.15)] bg-[#f5f6f7] px-4 py-3 text-sm text-[#2c2f30] placeholder-[#595c5d]/50 outline-none transition-colors focus:border-[#6200EE] focus:bg-white"
-                    />
-
-                    {/* Emojis */}
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {["👍", "🔥", "❤️", "💯", "🙌", "😊", "👏", "🎯", "💪", "✅"].map((emoji) => (
-                        <button key={emoji} type="button" onClick={() => setComentario((prev) => prev + emoji)} className="rounded-lg border border-[rgba(171,173,174,0.15)] bg-white px-2 py-1 text-base transition-colors hover:bg-[#f5f6f7]">
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="mt-2 flex items-center justify-between">
-                      <p className={`text-xs ${comentario.length < 20 ? "text-[#595c5d]" : "text-green-600"}`}>
-                        {comentario.length} caracteres{comentario.length < 20 && " (minimo 20)"}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={handleCopiar}
-                      disabled={comentario.length < 20}
-                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9.75a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
-                      </svg>
-                      Copiar comentario
-                    </button>
-
-                    <button onClick={() => setStep("video")} className="mt-2 w-full text-center text-xs text-[#595c5d] hover:text-[#2c2f30]">
-                      Volver
-                    </button>
-                  </>
-                )}
-
-                {/* STATE: copied */}
-                {step === "copied" && (
-                  <>
-                    <div className="mb-4 rounded-xl border border-green-200 bg-green-50 p-3">
-                      <p className="text-xs font-medium text-green-700">
-                        {copied ? "Comentario copiado al portapapeles." : "Comentario guardado. Selecciona el texto y copialo manualmente."}
-                      </p>
-                    </div>
-
-                    <div className="mb-4">
-                      <p className="mb-1 text-[10px] uppercase tracking-widest text-[#595c5d]">Tu comentario:</p>
-                      <textarea
-                        readOnly
-                        value={comentario}
-                        rows={3}
-                        onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-                        className="w-full rounded-xl border border-[rgba(171,173,174,0.15)] bg-[#f5f6f7] px-4 py-3 text-xs text-[#2c2f30] outline-none focus:border-[#6200EE]"
-                      />
-                    </div>
-
-                    <p className="mb-3 text-sm text-[#2c2f30]">Ahora publica en YouTube</p>
-                    <p className="mb-4 text-xs text-[#595c5d]">Abre el video, pega tu comentario y publicalo.</p>
-
-                    <a
-                      href={video.youtube_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700"
-                    >
-                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                      </svg>
-                      Ir al video en YouTube
-                    </a>
-
-                    {/* Countdown */}
-                    {countdown > 0 ? (
-                      <>
-                        <div className="mb-2 flex items-center justify-center">
-                          <span className={`font-headline text-4xl font-extrabold text-[#6200EE] ${countdown <= 30 ? "animate-pulse" : ""}`}>
-                            {formatCountdown(countdown)}
-                          </span>
-                        </div>
-                        <button disabled className="w-full rounded-xl bg-[#eff1f2] py-3 text-sm font-medium text-[#595c5d] cursor-not-allowed">
-                          Ya publique mi comentario
-                        </button>
-                        <p className="mt-2 text-center text-[10px] text-[#595c5d]">
-                          El boton se habilitara cuando termine el tiempo minimo de visualizacion.
-                        </p>
-                      </>
-                    ) : (
-                      <button
-                        onClick={handleYaPublique}
-                        className="w-full rounded-xl py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
-                        style={{ background: "linear-gradient(135deg, #E87722, #f0a964)" }}
-                      >
-                        Ya publique mi comentario
-                      </button>
-                    )}
-                  </>
-                )}
-
-                {/* STATE: verificando */}
-                {step === "verificando" && (
-                  <div className="py-8 text-center">
-                    <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-3 border-[#eff1f2] border-t-[#6200EE]" />
-                    <p className="text-sm text-[#2c2f30]">Verificando tu comentario en YouTube...</p>
-                    <p className="mt-1 text-xs text-[#595c5d]">Esto puede tardar unos segundos.</p>
-                  </div>
-                )}
-
-                {/* Cancel button — visible in video, write, copied */}
-                {(step === "video" || step === "write" || step === "copied") && (
-                  <button
-                    onClick={handleCancelar}
-                    disabled={cancelando}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-[#595c5d]/30 py-3 text-sm font-medium text-[#595c5d] transition-colors hover:border-red-400 hover:text-red-500 disabled:opacity-50"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                    </svg>
-                    {cancelando ? "Cancelando..." : "Cancelar intercambio"}
-                  </button>
-                )}
-              </div>
-
-              {/* Card: El Creador */}
-              <div className="rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-6">
-                <h3 className="mb-3 font-headline text-sm font-bold text-[#2c2f30]">El Creador</h3>
-                <div className="flex items-center gap-3">
-                  {video.creador.avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={video.creador.avatar_url} alt={video.creador.nombre || "Creador"} className="h-12 w-12 rounded-xl object-cover" />
-                  ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold text-white" style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}>
-                      {(video.creador.nombre || "C").charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm font-semibold text-[#2c2f30]">{video.creador.nombre || "Creador de YouTube"}</p>
-                    {video.creador.canal_url && (
-                      <a href={video.creador.canal_url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#E87722] hover:underline">
-                        Ver canal →
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ===== PENDIENTE ===== */}
-        {step === "pendiente" && (
-          <div className="flex items-center justify-center py-32">
-            <div className="w-full max-w-md rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-10 text-center shadow-sm">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E87722]/10">
-                <svg className="h-7 w-7 text-[#E87722]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                </svg>
-              </div>
-              <h3 className="font-headline text-lg font-bold text-[#2c2f30]">Intercambio en revision</h3>
-              <p className="mt-2 text-sm text-[#595c5d]">{resultMessage}</p>
-              <p className="mt-3 text-xs text-[#595c5d]">Esta pagina se actualizara automaticamente cuando tu intercambio sea verificado.</p>
-              <a href="/dashboard" className="mt-6 inline-flex rounded-xl px-6 py-3 text-sm font-semibold text-white" style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}>
-                Volver al dashboard
-              </a>
-            </div>
-          </div>
-        )}
-
-        {/* ===== DONE ===== */}
-        {step === "done" && (
-          <div className="flex items-center justify-center py-32">
-            <div className="w-full max-w-md rounded-3xl border border-[rgba(171,173,174,0.15)] bg-white p-10 text-center shadow-sm">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-green-50">
-                <svg className="h-7 w-7 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                </svg>
-              </div>
-              <h3 className="font-headline text-lg font-bold text-[#2c2f30]">Intercambio enviado</h3>
-              <p className="mt-2 text-sm text-[#595c5d]">Tu comentario sera verificado automaticamente. Recibiras una notificacion cuando se confirme.</p>
-              <a href="/dashboard" className="mt-6 inline-flex rounded-xl px-6 py-3 text-sm font-semibold text-white" style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}>
-                Volver al dashboard
-              </a>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </main>
     </div>
   );
