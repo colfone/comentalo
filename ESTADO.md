@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.4 — 17 de abril de 2026
+## Version actual: v4.5 — 18 de abril de 2026
 
 ## Registro de versiones
 
@@ -46,6 +46,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.2 | Mejoras registrar-video | 17 abril 2026 | Likes y comentarios en grid y preview, sentence case titulos, bloqueo videos sin comentarios, overlay comentarios desactivados |
 | v4.3 | Cierre sesion 17 abril | 17 abril 2026 | ESTADO.md actualizado, fix DB vacia en dashboard, maxResults 8 |
 | v4.4 | Rediseno campana + estrellas | 17 abril 2026 | Rediseno campana/[campanaId]: hero con thumbnail, 3 stat cards, tabs Todos/Verificados/Pendientes, comment cards con avatar, badge de estado, sistema de estrellas 1-5 con hover naranja y labels. Migracion DB columna estrellas. RPC calcular_reputacion actualizado a promedio de estrellas. Dashboard muestra promedio en formato 4.2★ |
+| v4.5 | Flujo 2 videos simultaneos | 18 abril 2026 | Cambio estructural en flujo de intercambio: el sistema ahora asigna 2 videos simultaneos en lugar de 1. Nueva tabla reservas_intercambio con expiracion de 5 minutos. RPC asignar_intercambio reescrito para devolver 2 videos. Nuevo RPC confirmar_intercambio que crea el intercambio al elegir y libera el otro. Nuevo endpoint /api/intercambios/confirmar. Vista /dashboard/intercambiar rediseñada con 2 cards lado a lado y boton "Participar →" en cada una |
 
 ## Stack confirmado
 
@@ -603,8 +604,7 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 
 ## Sesion siguiente
 
-Sesion 8 — Rediseno vistas restantes + programa de fundadores
-Pendiente: rediseno /dashboard/campana/[campanaId], /dashboard/calificar/[campanaId], /verificar-canal, /verificar-codigo. Luego programa de fundadores (seccion 8.3), badge de fundador, expansion basica al completar primer ciclo, programa de referidos (seccion 8.4).
+Pendientes de rediseno: /dashboard/calificar/[campanaId], /verificar-canal, /verificar-codigo. Pendiente de prueba end-to-end: flujo de 2 videos simultaneos en /dashboard/intercambiar.
 
 ---
 
