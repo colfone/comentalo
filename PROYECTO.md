@@ -1151,4 +1151,8 @@ Para el lanzamiento se reclutarán 10 creadores aliados que autoricen el uso de 
 
 Vista /perfil o /dashboard/perfil que muestra: card con avatar del canal, nombre, suscriptores, país y fecha de registro, nivel de reputación (Verde/Amarillo/Naranja/Rojo). 4 stats: intercambios este mes, promedio de estrellas (4.2★), porcentaje de calificación positiva y campañas completadas. Lista de videos registrados con thumbnail, título, progreso de intercambios, vistas y badge de estado (Activo/Suspendido). Botón "+ Registrar otro video" que navega a /dashboard/registrar-video. Nav horizontal con Cola / Mis intercambios / Perfil que reemplaza la navegación actual del dashboard.
 
+## **10.10 Revisar flujo de verificación de canal — Pendiente**
+
+El prototipo de Design muestra verificación por link del canal. El flujo actual en producción (v1.7) usa código en la descripción (COMENTALO-XXXX). Evaluar si simplificar a verificación por link directo es más amigable para el usuario antes del lanzamiento con fundadores.
+
 comentalo.com — Documento Maestro V4.1 — Abril 2026
