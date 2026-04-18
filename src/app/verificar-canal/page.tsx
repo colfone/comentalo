@@ -99,7 +99,7 @@ export default function VerificarCanalPage() {
       setVerifying(false);
       setVerified(true);
       setTimeout(() => {
-        router.push(`/verificar-codigo?codigo=${data.codigo}`);
+        router.push("/bienvenida");
       }, 800);
     } catch {
       setError("Error de conexion. Intenta de nuevo.");

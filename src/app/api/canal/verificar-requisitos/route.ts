@@ -2,32 +2,20 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-// Extract channel ID from various YouTube URL formats
+// Resuelve distintos formatos de URL del canal de YouTube
 function extractChannelId(url: string): { type: "id" | "custom" | "handle"; value: string } | null {
-  // youtube.com/channel/UCxxxx
   const channelMatch = url.match(/youtube\.com\/channel\/([a-zA-Z0-9_-]+)/);
   if (channelMatch) return { type: "id", value: channelMatch[1] };
 
-  // youtube.com/@handle
   const handleMatch = url.match(/youtube\.com\/@([a-zA-Z0-9_.-]+)/);
   if (handleMatch) return { type: "handle", value: `@${handleMatch[1]}` };
 
-  // youtube.com/c/customname or youtube.com/customname
   const customMatch = url.match(/youtube\.com\/(?:c\/)?([a-zA-Z0-9_.-]+)/);
   if (customMatch && !["watch", "feed", "channel", "playlist", "shorts"].includes(customMatch[1])) {
     return { type: "custom", value: customMatch[1] };
   }
 
   return null;
-}
-
-function generateCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I/O/0/1 to avoid confusion
-  let code = "";
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return `COMENTALO-${code}`;
 }
 
 export async function POST(request: Request) {
@@ -71,7 +59,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // Extract channel identifier from URL
+  // Parsea el link del canal
   const parsed = extractChannelId(body.canal_url);
   if (!parsed) {
     return NextResponse.json({
@@ -81,18 +69,14 @@ export async function POST(request: Request) {
     });
   }
 
-  // Resolve to channel ID via YouTube API
+  // Resuelve a channel ID via YouTube API
   let channelId: string | null = null;
 
   if (parsed.type === "id") {
     channelId = parsed.value;
   } else {
-    // Search by handle or custom URL using forHandle or forUsername
-    const searchParam =
-      parsed.type === "handle" ? "forHandle" : "forUsername";
-    const resolveUrl = new URL(
-      "https://www.googleapis.com/youtube/v3/channels"
-    );
+    const searchParam = parsed.type === "handle" ? "forHandle" : "forUsername";
+    const resolveUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
     resolveUrl.searchParams.set("key", process.env.YOUTUBE_API_KEY!);
     resolveUrl.searchParams.set("part", "id");
     resolveUrl.searchParams.set(searchParam, parsed.value);
@@ -105,11 +89,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // If forHandle/forUsername didn't work, try search as fallback
+    // Fallback — search
     if (!channelId) {
-      const searchUrl = new URL(
-        "https://www.googleapis.com/youtube/v3/search"
-      );
+      const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
       searchUrl.searchParams.set("key", process.env.YOUTUBE_API_KEY!);
       searchUrl.searchParams.set("part", "id");
       searchUrl.searchParams.set("type", "channel");
@@ -134,7 +116,7 @@ export async function POST(request: Request) {
     });
   }
 
-  // Fetch full channel data
+  // Trae la data completa del canal
   const ytUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
   ytUrl.searchParams.set("key", process.env.YOUTUBE_API_KEY!);
   ytUrl.searchParams.set("id", channelId);
@@ -158,14 +140,33 @@ export async function POST(request: Request) {
 
   const channel = ytData.items[0];
 
-  // Check if channel is already linked
-  const { data: existingUser } = await supabase
+  // Idempotencia: si el usuario ya tiene fila de usuarios con este canal, retry es exitoso
+  const { data: existingByAuth } = await supabase
+    .from("usuarios")
+    .select("id, canal_youtube_id")
+    .eq("auth_id", user.id)
+    .maybeSingle();
+
+  if (existingByAuth) {
+    if (existingByAuth.canal_youtube_id === channelId) {
+      return NextResponse.json({ ok: true });
+    }
+    // Ya tiene cuenta vinculada a otro canal — cambio solo via soporte (seccion 9.3)
+    return NextResponse.json({
+      ok: false,
+      error:
+        "Ya tienes una cuenta vinculada a otro canal. Contacta a soporte para cambiarlo.",
+    });
+  }
+
+  // Anti-duplicado: canal ya usado por otro auth
+  const { data: existingByChannel } = await supabase
     .from("usuarios")
     .select("id")
     .eq("canal_youtube_id", channelId)
     .maybeSingle();
 
-  if (existingUser) {
+  if (existingByChannel) {
     return NextResponse.json({
       ok: false,
       error:
@@ -173,7 +174,7 @@ export async function POST(request: Request) {
     });
   }
 
-  // Verify requirements (seccion 4B)
+  // Verifica requisitos minimos (seccion 4B)
   const errors: string[] = [];
 
   if (channel.statistics.hiddenSubscriberCount) {
@@ -213,51 +214,35 @@ export async function POST(request: Request) {
     });
   }
 
-  // Generate verification code
-  const codigo = generateCode();
+  // Auto-registro — inserta directo en public.usuarios (reemplaza flujo de codigo)
+  const channelUrl = channel.snippet.customUrl
+    ? `https://www.youtube.com/${channel.snippet.customUrl}`
+    : `https://www.youtube.com/channel/${channelId}`;
 
-  // Store in verificaciones_canal
-  const canalData = {
-    id: channelId,
-    title: channel.snippet.title,
-    thumbnail: channel.snippet.thumbnails?.default?.url || "",
-    customUrl: channel.snippet.customUrl || "",
-    subscribers: subscriberCount,
-    videos: videoCount,
-    publishedAt: channel.snippet.publishedAt,
-  };
-
-  // Delete any previous pending verification for this user
-  await supabase
-    .from("verificaciones_canal")
-    .delete()
-    .eq("auth_id", user.id);
-
-  const { error: insertError } = await supabase
-    .from("verificaciones_canal")
-    .insert({
-      auth_id: user.id,
-      codigo,
-      canal_youtube_id: channelId,
-      canal_data: canalData,
-    });
+  const { error: insertError } = await supabase.from("usuarios").insert({
+    auth_id: user.id,
+    email: user.email,
+    nombre:
+      user.user_metadata?.full_name || user.user_metadata?.name || null,
+    avatar_url:
+      channel.snippet.thumbnails?.default?.url ||
+      user.user_metadata?.avatar_url ||
+      null,
+    canal_youtube_id: channelId,
+    canal_url: channelUrl,
+    suscriptores_al_registro: subscriberCount,
+    antiguedad: channel.snippet.publishedAt.split("T")[0],
+    videos_al_registro: videoCount,
+    reputacion: 100.0,
+  });
 
   if (insertError) {
-    console.error("Error inserting verificacion:", insertError);
+    console.error("Error inserting usuario:", insertError);
     return NextResponse.json(
-      { error: "Error al generar el codigo. Intenta de nuevo." },
+      { error: "Error al crear tu cuenta. Intenta de nuevo." },
       { status: 500 }
     );
   }
 
-  return NextResponse.json({
-    ok: true,
-    codigo,
-    canal: {
-      id: channelId,
-      title: channel.snippet.title,
-      thumbnail: channel.snippet.thumbnails?.default?.url || "",
-      subscribers: subscriberCount,
-    },
-  });
+  return NextResponse.json({ ok: true });
 }
