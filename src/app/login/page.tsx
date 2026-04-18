@@ -26,40 +26,14 @@ export default function LandingPage() {
     }
   }
 
-  function scrollToLogin() {
-    document.getElementById("login-section")?.scrollIntoView({ behavior: "smooth" });
-  }
-
   return (
     <div className="min-h-screen bg-white">
       {/* ===== NAV ===== */}
       <nav className="fixed top-0 z-50 w-full border-b border-[var(--ghost-border)] bg-white/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+        <div className="mx-auto flex h-16 max-w-6xl items-center px-6">
           <a href="/" className="font-headline text-xl font-bold tracking-tighter text-gray-900">
             Comenta<span className="text-[var(--primary)]">lo</span>
           </a>
-
-          <div className="hidden items-center gap-8 md:flex">
-            <a href="#como-funciona" className="text-sm text-gray-600 transition-colors hover:text-gray-900">
-              Como funciona
-            </a>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={scrollToLogin}
-              className="hidden text-sm font-medium text-gray-700 transition-colors hover:text-gray-900 md:block"
-            >
-              Iniciar sesion
-            </button>
-            <button
-              onClick={scrollToLogin}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-transform hover:scale-105"
-              style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
-            >
-              Unirse
-            </button>
-          </div>
         </div>
       </nav>
 
