@@ -1147,4 +1147,8 @@ Panel de administración interno para el equipo de Comentalo. Incluye: gestión 
 
 Para el lanzamiento se reclutarán 10 creadores aliados que autoricen el uso de sus videos en la plataforma como seed data. Estos videos estarán disponibles en la cola desde el día uno para que los primeros fundadores puedan hacer intercambios inmediatamente sin encontrar la cola vacía.
 
+## **10.9 Vista de Perfil — Pendiente de construcción**
+
+Vista /perfil o /dashboard/perfil que muestra: card con avatar del canal, nombre, suscriptores, país y fecha de registro, nivel de reputación (Verde/Amarillo/Naranja/Rojo). 4 stats: intercambios este mes, promedio de estrellas (4.2★), porcentaje de calificación positiva y campañas completadas. Lista de videos registrados con thumbnail, título, progreso de intercambios, vistas y badge de estado (Activo/Suspendido). Botón "+ Registrar otro video" que navega a /dashboard/registrar-video. Nav horizontal con Cola / Mis intercambios / Perfil que reemplaza la navegación actual del dashboard.
+
 comentalo.com — Documento Maestro V4.1 — Abril 2026
