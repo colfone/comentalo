@@ -1139,4 +1139,12 @@ Movido al Backlog V2. No es un pendiente del MVP. Se define en Fase 2 basado en 
 
 - Perfil y reputación
 
+## **10.7 Panel Administrativo — Backlog post-diseño**
+
+Panel de administración interno para el equipo de Comentalo. Incluye: gestión de usuarios y baneos, monitoreo de intercambios pendientes de revisión manual (sección 6C.5), gestión de disputas (sección 6.4), monitoreo de cuota de API de YouTube, y vista general de campañas activas. Se construye después de completar el rediseño de todas las vistas.
+
+## **10.8 Masa Crítica — Creadores Aliados**
+
+Para el lanzamiento se reclutarán 10 creadores aliados que autoricen el uso de sus videos en la plataforma como seed data. Estos videos estarán disponibles en la cola desde el día uno para que los primeros fundadores puedan hacer intercambios inmediatamente sin encontrar la cola vacía.
+
 comentalo.com — Documento Maestro V4.1 — Abril 2026
