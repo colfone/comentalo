@@ -73,18 +73,6 @@ interface RegistroResult {
   mensaje: string;
 }
 
-const tiposIntercambio = [
-  { value: "opinion", label: "Opinión", d: "Comparten qué pensaron del video" },
-  { value: "pregunta", label: "Pregunta", d: "Activan la conversación con dudas" },
-  { value: "experiencia", label: "Experiencia personal", d: "Comparten algo que les pasó" },
-] as const;
-
-const tonos = [
-  { value: "casual", label: "Casual", d: "Como mensaje a un amigo" },
-  { value: "entusiasta", label: "Entusiasta", d: "Con energía y emojis" },
-  { value: "reflexivo", label: "Reflexivo", d: "Pensado y matizado" },
-] as const;
-
 // --- Icons (inline, same family as el resto de /dashboard) ---
 
 const SwapIcon = ({ size = 16 }: { size?: number }) => (
@@ -174,8 +162,6 @@ export default function CrearCampanaPage() {
   const [linkError, setLinkError] = useState<string | null>(null);
 
   const [descripcion, setDescripcion] = useState("");
-  const [tipoIntercambio, setTipoIntercambio] = useState<string>("opinion");
-  const [tono, setTono] = useState<string>("casual");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<RegistroResult | null>(null);
@@ -231,8 +217,6 @@ export default function CrearCampanaPage() {
   async function handleSubmit() {
     const chosen = selectedVideo;
     if (!chosen) return;
-    if (!tipoIntercambio) { setSubmitError("Selecciona el tipo de comentario."); return; }
-    if (!tono) { setSubmitError("Selecciona el tono."); return; }
     setSubmitting(true); setSubmitError(null);
     try {
       const res = await fetch("/api/videos/registrar", {
@@ -241,8 +225,6 @@ export default function CrearCampanaPage() {
         body: JSON.stringify({
           youtube_url: `https://www.youtube.com/watch?v=${chosen.id}`,
           descripcion: descripcion || undefined,
-          tipo_intercambio: tipoIntercambio,
-          tono,
         }),
       });
       const data = await res.json();
@@ -596,80 +578,27 @@ export default function CrearCampanaPage() {
               </div>
             </div>
 
-            {/* Descripción */}
+            {/* Notas para los comentaristas */}
             <div className="mb-6">
-              <div className="mb-2.5 flex items-center justify-between text-sm">
+              <div className="mb-1.5 flex items-center justify-between text-sm">
                 <label className="font-semibold text-[#2c2f30]">
-                  ¿De qué trata tu video?
+                  Notas para los comentaristas
                   <span className="ml-1.5 font-medium text-[#6200EE]">(opcional)</span>
                 </label>
                 <span className="text-xs text-[#8a8d8f]">{descripcion.length}/300</span>
               </div>
+              <p className="mb-2.5 text-xs leading-relaxed text-[#8a8d8f]">
+                Cuéntales a los comentaristas cómo quieres que comenten tu video. Mientras más claro seas, mejores comentarios recibirás.
+              </p>
               <textarea
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value.slice(0, 300))}
-                rows={3}
+                rows={4}
                 maxLength={300}
-                placeholder="Breve descripción para los demás creadores…"
+                placeholder="Ej: Quiero comentarios que mencionen qué parte del video les gustó más. Tono cercano, como si me hablaran de tú."
                 className="w-full resize-y rounded-xl bg-[#f5f6f7] px-3.5 py-3 text-sm leading-relaxed text-[#2c2f30] placeholder-[#8a8d8f] outline-none transition-colors focus:bg-white focus:ring-2 focus:ring-[#6200EE]/20"
-                style={{ border: "1px solid rgba(171,173,174,0.25)", minHeight: 96 }}
+                style={{ border: "1px solid rgba(171,173,174,0.25)", minHeight: 112 }}
               />
-            </div>
-
-            {/* Tipo */}
-            <div className="mb-6">
-              <p className="mb-2.5 text-sm font-semibold text-[#2c2f30]">Tipo de comentario deseado</p>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {tiposIntercambio.map((o) => {
-                  const active = tipoIntercambio === o.value;
-                  return (
-                    <button
-                      key={o.value}
-                      type="button"
-                      onClick={() => setTipoIntercambio(o.value)}
-                      className="rounded-2xl p-3.5 text-left transition-colors"
-                      style={{
-                        background: active ? "rgba(98,0,238,0.08)" : "#eff1f2",
-                        color: active ? "#6200EE" : "#2c2f30",
-                        boxShadow: active ? "inset 0 0 0 1.5px rgba(98,0,238,0.35)" : "none",
-                      }}
-                    >
-                      <div className="text-sm font-semibold">{o.label}</div>
-                      <div className="mt-0.5 text-xs" style={{ color: active ? "rgba(98,0,238,0.75)" : "#5b5e60" }}>
-                        {o.d}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Tono */}
-            <div className="mb-6">
-              <p className="mb-2.5 text-sm font-semibold text-[#2c2f30]">Tono preferido</p>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {tonos.map((o) => {
-                  const active = tono === o.value;
-                  return (
-                    <button
-                      key={o.value}
-                      type="button"
-                      onClick={() => setTono(o.value)}
-                      className="rounded-2xl p-3.5 text-left transition-colors"
-                      style={{
-                        background: active ? "rgba(98,0,238,0.08)" : "#eff1f2",
-                        color: active ? "#6200EE" : "#2c2f30",
-                        boxShadow: active ? "inset 0 0 0 1.5px rgba(98,0,238,0.35)" : "none",
-                      }}
-                    >
-                      <div className="text-sm font-semibold">{o.label}</div>
-                      <div className="mt-0.5 text-xs" style={{ color: active ? "rgba(98,0,238,0.75)" : "#5b5e60" }}>
-                        {o.d}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
 
             {/* Warning YouTube Studio */}
@@ -709,7 +638,7 @@ export default function CrearCampanaPage() {
               ) : (
                 <ZapIcon />
               )}
-              {submitting ? "Registrando…" : "Registrar video y empezar a recibir comentarios"}
+              {submitting ? "Registrando…" : "Crear campaña"}
             </button>
 
             <button
