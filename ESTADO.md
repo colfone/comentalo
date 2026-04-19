@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.7 — 18 de abril de 2026
+## Version actual: v4.8 — 19 de abril de 2026
 
 ## Registro de versiones
 
@@ -49,6 +49,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.5 | Flujo 2 videos simultaneos | 18 abril 2026 | Cambio estructural en flujo de intercambio: el sistema ahora asigna 2 videos simultaneos en lugar de 1. Nueva tabla reservas_intercambio con expiracion de 5 minutos. RPC asignar_intercambio reescrito para devolver 2 videos. Nuevo RPC confirmar_intercambio que crea el intercambio al elegir y libera el otro. Nuevo endpoint /api/intercambios/confirmar. Vista /dashboard/intercambiar rediseñada con 2 cards lado a lado y boton "Participar →" en cada una |
 | v4.6 | Sesión prototipo | 18 abril 2026 | Nueva landing Paso 1/3, nueva /verificar-canal Paso 2/3 con auto-registro directo, nueva /bienvenida Paso 3/3, flujo /verificar-codigo deprecado |
 | v4.7 | Sesión prototipo día 2 | 18 abril 2026 | Cola rediseñada, Mi actividad nueva, Perfil nuevo, Detalle del intercambio nuevo, flujo onboarding completo en producción |
+| v4.8 | Rediseño Crear campaña + detalle intercambio | 19 abril 2026 | Rediseño /dashboard/registrar-video "Crear campaña" con nav floating Cola/Mi actividad/Perfil, banner amarillo de advertencia previo al grid, flujo 2 pasos (seleccionar video / pegar link → configurar campaña), cards tipo/tono con descripción, helper normalizeTitle (NFKC para letras matemáticas + regex emojis/banderas + sentence case saltando puntuación inicial). Commit del detalle del intercambio /dashboard/intercambiar/[campanaId] |
 
 ## Stack confirmado
 
@@ -608,7 +609,6 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 
 ### Pendientes inmediatos
 
-- Pantalla Registrar video — implementar rediseño con título "Crear campaña", banner amarillo de advertencia, subtítulo actualizado
 - Pantalla Calificar campaña — /dashboard/calificar/[campanaId] pendiente de rediseño
 - Dashboard principal — /dashboard pendiente de rediseño o deprecar si el nuevo nav lo reemplaza
 - Deprecar /verificar-codigo y limpiar tabla verificaciones_canal
