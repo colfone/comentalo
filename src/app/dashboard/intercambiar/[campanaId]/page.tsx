@@ -165,6 +165,7 @@ export default function DetalleIntercambioPage({
 
   const [resultMessage, setResultMessage] = useState("");
   const [cancelando, setCancelando] = useState(false);
+  const [confirmCancelar, setConfirmCancelar] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -184,99 +185,77 @@ export default function DetalleIntercambioPage({
           .maybeSingle();
         if (!usuario) { router.replace("/verificar-canal"); return; }
 
-        type IntercambioRaw = {
-          id: string;
-          texto_comentario: string;
-          estado: string;
-          timestamp_copia: string;
-          campanas: {
-            videos: {
-              id: string;
-              youtube_video_id: string;
-              titulo: string;
-              descripcion: string | null;
-              tipo_intercambio: string | null;
-              tono: string | null;
-              duracion_segundos: number | null;
-              vistas: number;
-              usuarios: {
+        // RPC con SECURITY DEFINER — bypasea RLS de campanas/videos/usuarios
+        // que solo dejan ver los rows al dueño del video. Ver migración
+        // 20260419210000_rpc_get_intercambio_detalle.sql.
+        type DetalleResult =
+          | {
+              ok: true;
+              intercambio: { id: string; texto_comentario: string; estado: string; timestamp_copia: string };
+              video: {
+                id: string;
+                youtube_video_id: string;
+                titulo: string;
+                descripcion: string | null;
+                tipo_intercambio: string | null;
+                tono: string | null;
+                duracion_segundos: number | null;
+                vistas: number;
+              };
+              creador: {
                 id: string;
                 nombre: string | null;
                 avatar_url: string | null;
                 canal_url: string | null;
                 suscriptores_al_registro: number;
-              } | null;
-            } | null;
-          } | null;
-        };
+              };
+            }
+          | { ok: false; error: string; mensaje: string };
 
-        const { data: raw } = await supabase
-          .from("intercambios")
-          .select(`
-            id, texto_comentario, estado, timestamp_copia,
-            campanas!inner (
-              videos!inner (
-                id, youtube_video_id, titulo, descripcion,
-                tipo_intercambio, tono, duracion_segundos, vistas,
-                usuarios!inner (
-                  id, nombre, avatar_url, canal_url, suscriptores_al_registro
-                )
-              )
-            )
-          `)
-          .eq("campana_id", campanaId)
-          .eq("comentarista_id", usuario.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const { data: rpcData, error: rpcError } = await supabase.rpc(
+          "get_intercambio_detalle",
+          { p_campana_id: campanaId }
+        );
 
-        if (!raw) {
-          setErrorMsg("No encontramos este intercambio o ya no está activo.");
+        if (rpcError) {
+          console.error("RPC get_intercambio_detalle error:", rpcError);
+          setErrorMsg("Error al cargar el intercambio.");
           setPhase("error");
           return;
         }
 
-        const r = raw as unknown as IntercambioRaw;
-        const v = r.campanas?.videos;
-        const u = v?.usuarios;
-        if (!v || !u) {
-          setErrorMsg("Datos del video incompletos.");
+        const result = rpcData as DetalleResult | null;
+        if (!result || !result.ok) {
+          setErrorMsg(
+            (result && !result.ok ? result.mensaje : null) ||
+              "No encontramos este intercambio o ya no está activo."
+          );
           setPhase("error");
           return;
         }
 
-        setIntercambio({
-          id: r.id,
-          texto_comentario: r.texto_comentario,
-          estado: r.estado,
-          timestamp_copia: r.timestamp_copia,
-        });
-        setVideo({
-          id: v.id,
-          youtube_video_id: v.youtube_video_id,
-          titulo: v.titulo,
-          descripcion: v.descripcion,
-          tipo_intercambio: v.tipo_intercambio,
-          tono: v.tono,
-          duracion_segundos: v.duracion_segundos,
-          vistas: v.vistas,
-        });
+        const i = result.intercambio;
+        const v = result.video;
+        const u = result.creador;
+
+        setIntercambio(i);
+        setVideo(v);
         setCreador(u);
 
         // Estado inicial según la fila existente
-        if (r.estado === "verificado") {
+        if (i.estado === "verificado") {
           setPhase("done");
-        } else if (r.estado === "rechazado") {
+        } else if (i.estado === "rechazado") {
           setResultMessage("Tu intercambio no pudo ser verificado tras 24 horas de reintentos.");
           setPhase("pendiente");
-        } else if (r.estado === "pendiente") {
+        } else if (i.estado === "pendiente") {
           setPhase("compose");
           // Si ya se copió previamente, recuperar estado
-          if (r.texto_comentario && r.texto_comentario.length > 0) {
-            setComentario(r.texto_comentario);
+          if (i.texto_comentario && i.texto_comentario.length > 0) {
+            setComentario(i.texto_comentario);
             setCopied(true);
             const minWait = getMinWaitSeconds(v.duracion_segundos || 0);
-            const elapsed = Math.floor((Date.now() - new Date(r.timestamp_copia).getTime()) / 1000);
+            const elapsed = Math.floor((Date.now() - new Date(i.timestamp_copia).getTime()) / 1000);
             setCountdown(Math.max(0, minWait - elapsed));
           }
         }
@@ -388,7 +367,6 @@ export default function DetalleIntercambioPage({
 
   async function handleCancelar() {
     if (!intercambio || cancelando) return;
-    if (!confirm("¿Cancelar este intercambio? El video volverá a la cola para otro creador.")) return;
     setCancelando(true);
     try {
       const res = await fetch("/api/intercambios/cancelar", {
@@ -400,12 +378,14 @@ export default function DetalleIntercambioPage({
       if (!res.ok || !data.ok) {
         alert(data.error || "Error al cancelar.");
         setCancelando(false);
+        setConfirmCancelar(false);
         return;
       }
       router.push("/dashboard/intercambiar");
     } catch {
       alert("Error de conexión.");
       setCancelando(false);
+      setConfirmCancelar(false);
     }
   }
 
@@ -747,7 +727,7 @@ export default function DetalleIntercambioPage({
 
                   {/* Cancelar */}
                   <button
-                    onClick={handleCancelar}
+                    onClick={() => setConfirmCancelar(true)}
                     disabled={cancelando}
                     className="mt-4 w-full text-center text-xs text-[#8a8d8f] transition-colors hover:text-red-500 disabled:opacity-50"
                   >
@@ -871,6 +851,104 @@ export default function DetalleIntercambioPage({
           </div>
         )}
       </main>
+
+      <ConfirmCancelarModal
+        open={confirmCancelar}
+        pending={cancelando}
+        onCancel={() => setConfirmCancelar(false)}
+        onConfirm={handleCancelar}
+      />
+    </div>
+  );
+}
+
+// --- Modal de confirmación de cancelación ---
+// (duplica el patrón de /dashboard/perfil y /dashboard/actividad;
+// consolidar cuando se cree shared lib)
+
+function ConfirmCancelarModal({
+  open,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !pending) onCancel();
+    };
+    window.addEventListener("keydown", handler);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handler);
+      document.body.style.overflow = prev;
+    };
+  }, [open, onCancel, pending]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+      style={{
+        background: "rgba(20, 20, 24, 0.48)",
+        animation: "comentaloFade 160ms ease-out forwards",
+      }}
+      onClick={() => { if (!pending) onCancel(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-cancelar-title"
+    >
+      <style>{`
+        @keyframes comentaloFade { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes comentaloPop {
+          from { opacity: 0; transform: scale(0.96) translateY(6px) }
+          to   { opacity: 1; transform: scale(1) translateY(0) }
+        }
+      `}</style>
+      <div
+        className="w-full max-w-[420px] rounded-3xl bg-white p-7 shadow-[0_24px_64px_rgba(20,20,24,0.24)]"
+        style={{ animation: "comentaloPop 220ms cubic-bezier(0.2, 0.9, 0.3, 1.12) forwards" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3
+          id="confirm-cancelar-title"
+          className="font-headline text-xl font-extrabold tracking-[-0.02em] text-[#2c2f30]"
+        >
+          Cancelar intercambio
+        </h3>
+        <p className="mt-2 text-sm leading-relaxed text-[#5b5e60]">
+          ¿Cancelar este intercambio? El video volverá a la cola para otro creador.
+        </p>
+        <div className="mt-6 flex gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={pending}
+            className="flex-1 rounded-2xl bg-[#e3e5e6] py-3 text-sm font-semibold text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30] disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={pending}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
+            style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+          >
+            {pending && (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            )}
+            Confirmar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

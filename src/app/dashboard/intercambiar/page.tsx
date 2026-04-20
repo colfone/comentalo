@@ -48,6 +48,21 @@ function formatDuration(sec: number | null): string {
   return s > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${m} min`;
 }
 
+// Duplicado de /dashboard/registrar-video — NFKC + emojis/banderas + sentence case.
+function normalizeTitle(titulo: string): string {
+  if (!titulo) return '';
+  const plano = titulo.normalize('NFKC');
+  const sinEmojis = plano
+    .replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}\u200D\uFE0F]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!sinEmojis) return '';
+  const lower = sinEmojis.toLowerCase();
+  const firstLetter = lower.search(/\p{L}/u);
+  if (firstLetter < 0) return lower;
+  return lower.slice(0, firstLetter) + lower[firstLetter].toUpperCase() + lower.slice(firstLetter + 1);
+}
+
 function reputacionNivel(rep: number | null, totalCalificados: number): { color: string; label: string; dot: string } {
   // Promedio de estrellas 1-5 (seccion 6.3 del PROYECTO.md tras v4.4).
   // Se activa con >= 20 intercambios calificados (igual que /dashboard/perfil).
@@ -515,7 +530,7 @@ export default function ColaPage() {
                         )}
                       </div>
                       <h3 className="m-0 line-clamp-2 font-headline text-xl font-bold leading-[1.2] tracking-[-0.01em] text-[#2c2f30]">
-                        {v.titulo}
+                        {normalizeTitle(v.titulo)}
                       </h3>
                     </div>
 
