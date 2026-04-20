@@ -103,12 +103,6 @@ function formatDuration(sec: number | null): string {
   return s > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${m} min`;
 }
 
-function pendienteStatusLabel(intercambio: IntercambioRow): string {
-  return intercambio.texto_comentario && intercambio.texto_comentario.length > 0
-    ? "No encontramos tu comentario"
-    : "Por comentar";
-}
-
 // --- Icons ---
 
 const HomeIcon = ({ size = 16 }: { size?: number }) => (
@@ -146,12 +140,6 @@ const PlayIcon = ({ size = 24 }: { size?: number }) => (
 const PlusIcon = ({ size = 16 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M12 5v14M5 12h14" />
-  </svg>
-);
-const ClockIcon = ({ size = 11 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v5l3 2" />
   </svg>
 );
 const CheckIcon = ({ size = 12 }: { size?: number }) => (
@@ -758,21 +746,13 @@ function ActividadRow({
         <div className="truncate text-[15px] font-semibold text-[#2c2f30]">
           {v.titulo}
         </div>
-        <div className="mt-1.5 flex items-center gap-2">
-          {tab === "pendientes" ? (
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full px-2 py-[3px] text-[11px] font-semibold"
-              style={{ background: "rgba(98,0,238,0.08)", color: "#6200EE" }}
-            >
-              <ClockIcon size={11} />
-              {pendienteStatusLabel(intercambio)}
-            </span>
-          ) : (
+        {tab === "completados" && (
+          <div className="mt-1.5 flex items-center gap-2">
             <span className="text-[13px] text-[#5b5e60]">
               Completado {formatDateRelative(intercambio.created_at)}
             </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* CTA */}

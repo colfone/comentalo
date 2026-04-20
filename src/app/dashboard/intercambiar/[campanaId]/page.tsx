@@ -36,7 +36,7 @@ interface IntercambioData {
   timestamp_copia: string;
 }
 
-type Phase = "loading" | "error" | "compose" | "verifying" | "done" | "pendiente";
+type Phase = "loading" | "error" | "compose" | "verifying" | "done";
 
 // --- Labels ---
 
@@ -231,14 +231,14 @@ export default function DetalleIntercambioPage({
         if (i.estado === "verificado") {
           setPhase("done");
         } else if (i.estado === "rechazado") {
-          setResultMessage("Tu intercambio no pudo ser verificado tras 24 horas de reintentos.");
-          setPhase("pendiente");
+          router.replace("/dashboard/actividad");
+          return;
         } else if (i.estado === "pendiente") {
           setPhase("compose");
-          // Si ya se copió previamente, recuperar estado
+          // Pre-poblar el textarea con el texto previo pero dejar copied=false
+          // para que el usuario pueda editar y volver a copiar (flujo "Volver a intentarlo").
           if (i.texto_comentario && i.texto_comentario.length > 0) {
             setComentario(i.texto_comentario);
-            setCopied(true);
           }
         }
       } catch (e) {
@@ -258,14 +258,11 @@ export default function DetalleIntercambioPage({
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "intercambios", filter: `id=eq.${intercambio.id}` }, (payload) => {
         const newEstado = (payload.new as { estado?: string })?.estado;
         if (newEstado === "verificado") setPhase("done");
-        else if (newEstado === "rechazado") {
-          setResultMessage("Tu intercambio no pudo ser verificado tras 24 horas de reintentos.");
-          setPhase("pendiente");
-        }
+        else if (newEstado === "rechazado") router.replace("/dashboard/actividad");
       })
       .subscribe();
     return () => { supabaseBrowser.removeChannel(channel); };
-  }, [intercambio?.id]);
+  }, [intercambio?.id, router]);
 
   // --- Actions ---
 
@@ -326,8 +323,7 @@ export default function DetalleIntercambioPage({
       }
       if (data.resultado === "verificado") setPhase("done");
       else if (data.resultado === "pendiente") {
-        setResultMessage(data.mensaje);
-        setPhase("pendiente");
+        router.push("/dashboard/actividad");
       }
     } catch {
       setResultMessage("Error de conexión al verificar.");
@@ -703,47 +699,6 @@ export default function DetalleIntercambioPage({
                 </div>
               )}
 
-              {phase === "pendiente" && (
-                <div className="rounded-3xl bg-white p-8 text-center">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#E87722]/10 text-[#E87722]">
-                    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="9" />
-                      <path d="M12 8v4" />
-                      <path d="M12 16h.01" />
-                    </svg>
-                  </div>
-                  <h2 className="m-0 mb-2 font-headline text-xl font-bold text-[#2c2f30]">
-                    No encontramos tu comentario
-                  </h2>
-                  <p className="mx-auto max-w-[440px] text-sm leading-[1.55] text-[#5b5e60]">
-                    El texto que escribiste aquí no apareció en el video de YouTube. Puede que no lo hayas publicado, o que lo hayas modificado al pegarlo.
-                  </p>
-                  <div className="mx-auto mt-6 flex max-w-[360px] flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Reset al estado inicial de compose. El textarea
-                        // conserva el texto previo (setComentario sin tocar).
-                        setResultMessage("");
-                        setCopied(false);
-                        setWentToYt(false);
-                        setPhase("compose");
-                      }}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.01]"
-                      style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
-                    >
-                      Volver a intentarlo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmCancelar(true)}
-                      className="w-full rounded-2xl bg-[#e3e5e6] py-3 text-sm font-semibold text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30]"
-                    >
-                      Cancelar intercambio
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* ===== SIDEBAR ===== */}
