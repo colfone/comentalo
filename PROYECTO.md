@@ -2,7 +2,7 @@
 
 Documento Maestro del Proyecto
 
-Versión 4.1 — Abril 2026
+Versión 4.2 — Abril 2026
 
 *Comunidad de intercambio de comentarios reales entre creadores de YouTube en Latinoamérica*
 
@@ -42,6 +42,7 @@ Versión 4.1 — Abril 2026
 | 3.9 | Abril 2026 | Nuevo flujo de verificacion de canal por codigo en descripcion (seccion 9.5). Regla de eliminacion de videos (seccion 4C.5). Login sin scope youtube.readonly |
 | 4.0 | Abril 2026 | Agregada seccion 6G — Sistema de notificaciones con 5 tipos, panel de campana en dashboard, Realtime |
 | 4.1 | Abril 2026 | Landing page profesional con sistema de diseno oficial. Color primary #6200EE. Seccion 6H — Sistema de diseno |
+| 4.2 | Abril 2026 | Cambio estructural — campañas por tiempo (10 días fijos, sin límite de intercambios, cierre automático al vencer). Actualizada sección 5C completa y sección 6.2 |
 
 # **1. Visión General del Proyecto**
 
@@ -395,84 +396,56 @@ Los videos en la cola se ordenan por antiguedad del registro — el video que ll
 
 En V1 la cola es estrictamente FIFO (First In, First Out) — el video que lleva mas tiempo esperando va primero, sin excepciones. No hay prioridad pagada en la beta. La prioridad para videos con expansion pagada se definira en V2 cuando se active la pasarela de pagos.
 
-# **5C. El Modelo de Campanas**
+# 5C. El Modelo de Campanas
 
-Una campana es la unidad de trabajo central de Comentalo. El creador no gestiona intercambios individuales — gestiona campanas. Cada campana es un bloque de 10 intercambios para un video especifico con un inicio claro, un proceso definido y un cierre concreto.
+Una campaña es la unidad de trabajo central de Comentalo. Cada campaña tiene una duración fija de 10 días y recibe todos los comentarios verificados que lleguen durante ese periodo, sin límite de cantidad.
 
-## **5C.1 Que es una Campana**
+## 5C.1 Que es una Campaña
 
-| **Elemento** | **Definicion** |
+| Elemento | Definición |
 | --- | --- |
-| Intercambios por campana | 10 fijos — siempre |
-| Inicio | El creador lanza la campana para un video especifico |
-| Proceso | 10 comentaristas participan en los intercambios |
-| Cierre | El creador califica los 10 intercambios recibidos |
-| Resultado | Campana completada — 10 intercambios verificados y calificados |
+| Duración | 10 días fijos desde el momento en que se lanza |
+| Intercambios por campaña | Sin límite — recibe todos los comentarios verificados que lleguen en 10 días |
+| Inicio | El creador lanza la campaña para un video específico |
+| Cierre automático | La campaña se cierra sola al vencer los 10 días |
+| Cierre manual | El creador puede pausarla o finalizarla antes del vencimiento |
+| Nueva campaña | El creador puede lanzar otra campaña del mismo video inmediatamente después de que la anterior termine |
 
-## **5C.2 El Flujo de una Campana**
+## 5C.2 El Flujo de una Campaña
 
-Paso 1 — El creador lanza una campana para su video.
-
+Paso 1 — El creador lanza una campaña para su video.
 Paso 2 — El sistema verifica que el video cumple la regla de vistas (ver 5C.4).
+Paso 3 — La campaña queda activa durante 10 días en la cola.
+Paso 4 — Los comentaristas participan libremente durante esos 10 días.
+Paso 5 — El creador califica los comentarios recibidos en cualquier momento durante o después de la campaña.
+Paso 6 — Al vencer los 10 días la campaña se cierra automáticamente. El creador puede lanzar una nueva campaña del mismo video inmediatamente.
 
-Paso 3 — Se activan 10 intercambios en la cola.
+## 5C.3 Reglas de las Campañas
 
-Paso 4 — 10 comentaristas participan uno a uno.
-
-Paso 5 — El creador recibe los 10 intercambios y los califica.
-
-Paso 6 — Campana completada.
-
-Paso 7 — Si el video tiene mas intercambios disponibles (por expansion) — el creador puede lanzar otra campana.
-
-## **5C.3 Reglas de las Campanas**
-
-| **Parametro** | **Valor** |
+| Parámetro | Valor |
 | --- | --- |
-| Intercambios por campana | 10 fijos |
-| Campanas simultaneas por video | 1 — no puede haber dos campanas abiertas en el mismo video |
-| Campanas simultaneas entre videos | Segun videos activos disponibles en su plan base |
-| Condicion para lanzar otra campana | La campana anterior debe estar completada y calificada |
-| Condicion de cierre | Calificar los 10 intercambios recibidos |
+| Duración | 10 días fijos |
+| Intercambios por campaña | Sin límite |
+| Campañas simultáneas por video | 1 — no puede haber dos campañas abiertas en el mismo video |
+| Condición para lanzar otra campaña | La campaña anterior debe estar cerrada (finalizada o vencida) |
+| Cierre automático | Al vencer los 10 días |
 
-## **5C.4 La Regla de Vistas**
+## 5C.4 La Regla de Vistas
 
-Para lanzar una campana el video debe tener suficientes vistas en YouTube. La regla es:
+Para lanzar una campaña el video debe tener al menos 10 vistas por cada campaña lanzada. Ejemplos:
 
-| **Regla de vistas** Vistas del video >= Total de intercambios acumulados de campanas anteriores + 10 de la nueva campana. |
-| --- |
+- Video con 10 vistas → puede lanzar Campaña 1
+- Video con 15 vistas al terminar Campaña 1 → no puede lanzar Campaña 2 aún (necesita 20 vistas)
+- Video con 22 vistas → puede lanzar Campaña 2
 
-Ejemplos:
+## 5C.5 Vocabulario Oficial de Campañas
 
-- Video con 10 vistas y 0 campanas anteriores → puede lanzar Campana 1 (necesita 10 vistas para 10 intercambios)
-
-- Video con 18 vistas y 1 campana completada (10 intercambios) → no puede lanzar Campana 2 aun (necesita 20 vistas)
-
-- Video con 25 vistas y 1 campana completada → puede lanzar Campana 2
-
-- Video con expansion Pro (60 intercambios) y 45 vistas → puede lanzar hasta 4 campanas completas (40 intercambios) pero no la quinta hasta tener 50 vistas
-
-Si el video no tiene suficientes vistas para lanzar la campana — el creador puede dejarla preparada. Se activa automaticamente cuando el video alcanza el umbral de vistas requerido.
-
-## **5C.5 Vocabulario Oficial de Campanas**
-
-| **Evitar** | **Usar en su lugar** |
+| Evitar | Usar en su lugar |
 | --- | --- |
-| Intercambios por video | Campanas disponibles por video |
-| Activar intercambios | Lanzar una campana |
-| Completar ciclo de 10 | Completar campana |
-| Calificar los 10 | Cerrar campana con calificacion |
-| Cola de intercambios | Cola de campanas activas |
-
-## **5C.6 Ejemplo Concreto**
-
-El creador tiene plan base — 2 videos activos, 10 intercambios por campana. Activa una expansion basica en el Video A — hasta 20 intercambios totales (2 campanas posibles).
-
-- Video A tiene 22 vistas → lanza Campana 1 → recibe 10 intercambios → califica → completada
-
-- Video A ahora tiene 35 vistas → lanza Campana 2 → recibe 10 intercambios → califica → completada
-
-- Video A agoto sus 20 intercambios — necesita expansion adicional para mas campanas
+| Intercambios por video | Campañas del video |
+| Activar intercambios | Lanzar una campaña |
+| Completar ciclo de 10 | Campaña finalizada |
+| Cola de intercambios | Cola de campañas activas |
 
 # **5D. Estados y Acciones de Campañas**
 
@@ -506,9 +479,9 @@ La verificacion es automatica via API publica de YouTube. Cuando el creador cola
 
 El creador que recibe tiene 72 horas para calificar el intercambio. Si no hace nada en 72 horas → el intercambio se confirma automaticamente.
 
-## **6.2 Calificación por Ciclos de 10**
+## **6.2 Calificación de Comentarios**
 
-La calificación es por estrellas del 1 al 5. Para desbloquear los siguientes 10 intercambios, el creador debe calificar los 10 que recibió. La calificación es simple y rápida — 5 estrellas interactivas por intercambio. Sin texto. Sin explicaciones. En 30 segundos se califican los 10. Si el creador no califica en 72 horas → se autocalifican con 5 estrellas con notificación previa a las 48 horas.
+La calificación es por estrellas del 1 al 5. La calificación es simple y rápida — 5 estrellas interactivas por intercambio. Sin texto. Sin explicaciones. En 30 segundos se califican los 10. Si el creador no califica en 72 horas → se autocalifican con 5 estrellas con notificación previa a las 48 horas.
 
 Etiquetas de referencia: 1★ Muy malo / 2★ Malo / 3★ Regular / 4★ Bueno / 5★ Excelente
 
