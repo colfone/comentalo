@@ -169,6 +169,26 @@ const ChevronRight = ({ size = 14 }: { size?: number }) => (
 
 type Tab = "pendientes" | "completados";
 type Section = "comentando" | "recibiendo";
+type CampanaActionId = "pausar" | "activar" | "finalizar" | "eliminar";
+
+const CONFIRM_TEXTS: Record<CampanaActionId, { titulo: string; mensaje: string }> = {
+  pausar: {
+    titulo: "Pausar campaña",
+    mensaje: "Los comentaristas no podrán comentar tu video mientras esté pausada.",
+  },
+  activar: {
+    titulo: "Activar campaña",
+    mensaje: "Tu video volverá a estar disponible para comentarios.",
+  },
+  finalizar: {
+    titulo: "Finalizar campaña",
+    mensaje: "Tu campaña se cerrará permanentemente. Esta acción no se puede deshacer.",
+  },
+  eliminar: {
+    titulo: "Eliminar campaña",
+    mensaje: "Tu campaña será eliminada permanentemente. Solo puedes eliminar campañas sin comentarios verificados.",
+  },
+};
 
 export default function ActividadPage() {
   const router = useRouter();
@@ -184,6 +204,7 @@ export default function ActividadPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState<string | null>(null);
+  const [confirmState, setConfirmState] = useState<{ action: CampanaActionId; campanaId: string } | null>(null);
 
   async function accionCampana(campanaId: string, endpoint: string) {
     setActionPending(campanaId);
@@ -205,6 +226,19 @@ export default function ActividadPage() {
     } finally {
       setActionPending(null);
     }
+  }
+
+  function pedirConfirmacion(action: CampanaActionId, campanaId: string | null) {
+    if (!campanaId) return;
+    setActionError(null);
+    setConfirmState({ action, campanaId });
+  }
+
+  async function confirmarAccion() {
+    if (!confirmState) return;
+    const { action, campanaId } = confirmState;
+    await accionCampana(campanaId, `/api/campanas/${action}`);
+    setConfirmState(null);
   }
 
   useEffect(() => {
@@ -654,10 +688,10 @@ export default function ActividadPage() {
                           campanaEstado={v.campana_estado}
                           intercambiosRecibidos={v.intercambios_recibidos}
                           actionPending={actionPending}
-                          onPausar={() => v.campana_id && window.confirm("¿Pausar esta campaña? Los comentaristas no podrán comentar tu video mientras esté pausada.") && accionCampana(v.campana_id, "/api/campanas/pausar")}
-                          onActivar={() => v.campana_id && accionCampana(v.campana_id, "/api/campanas/activar")}
-                          onFinalizar={() => v.campana_id && window.confirm("¿Finalizar esta campaña? Quedará cerrada permanentemente y no se puede revertir.") && accionCampana(v.campana_id, "/api/campanas/finalizar")}
-                          onEliminar={() => v.campana_id && window.confirm("¿Eliminar esta campaña? Esta acción no se puede deshacer.") && accionCampana(v.campana_id, "/api/campanas/eliminar")}
+                          onPausar={() => pedirConfirmacion("pausar", v.campana_id)}
+                          onActivar={() => pedirConfirmacion("activar", v.campana_id)}
+                          onFinalizar={() => pedirConfirmacion("finalizar", v.campana_id)}
+                          onEliminar={() => pedirConfirmacion("eliminar", v.campana_id)}
                         />
                       </div>
                     );
@@ -677,6 +711,13 @@ export default function ActividadPage() {
           </>
         )}
       </main>
+
+      <ConfirmModal
+        state={confirmState}
+        pending={confirmState ? actionPending === confirmState.campanaId : false}
+        onCancel={() => setConfirmState(null)}
+        onConfirm={confirmarAccion}
+      />
     </div>
   );
 }
@@ -860,6 +901,99 @@ function CampanaAcciones({
           Eliminar
         </button>
       )}
+    </div>
+  );
+}
+
+// --- Modal de confirmación (duplicado del de /dashboard/perfil) ---
+// Cerrable con Cancelar, ESC o click en backdrop. Deshabilita controles
+// mientras la acción está pendiente.
+
+function ConfirmModal({
+  state,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  state: { action: CampanaActionId; campanaId: string } | null;
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useEffect(() => {
+    if (!state) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !pending) onCancel();
+    };
+    window.addEventListener("keydown", handler);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handler);
+      document.body.style.overflow = prev;
+    };
+  }, [state, onCancel, pending]);
+
+  if (!state) return null;
+
+  const { titulo, mensaje } = CONFIRM_TEXTS[state.action];
+
+  return (
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+      style={{
+        background: "rgba(20, 20, 24, 0.48)",
+        animation: "comentaloFade 160ms ease-out forwards",
+      }}
+      onClick={() => { if (!pending) onCancel(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-title"
+    >
+      <style>{`
+        @keyframes comentaloFade { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes comentaloPop {
+          from { opacity: 0; transform: scale(0.96) translateY(6px) }
+          to   { opacity: 1; transform: scale(1) translateY(0) }
+        }
+      `}</style>
+      <div
+        className="w-full max-w-[420px] rounded-3xl bg-white p-7 shadow-[0_24px_64px_rgba(20,20,24,0.24)]"
+        style={{ animation: "comentaloPop 220ms cubic-bezier(0.2, 0.9, 0.3, 1.12) forwards" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3
+          id="confirm-title"
+          className="font-headline text-xl font-extrabold tracking-[-0.02em] text-[#2c2f30]"
+        >
+          {titulo}
+        </h3>
+        <p className="mt-2 text-sm leading-relaxed text-[#5b5e60]">
+          {mensaje}
+        </p>
+        <div className="mt-6 flex gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={pending}
+            className="flex-1 rounded-2xl bg-[#e3e5e6] py-3 text-sm font-semibold text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30] disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={pending}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
+            style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+          >
+            {pending && (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            )}
+            Confirmar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
