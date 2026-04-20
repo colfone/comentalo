@@ -107,13 +107,12 @@ export async function POST(request: Request) {
     );
   }
 
-  // Check if text was already saved (Copiar already pressed)
-  if (intercambio.texto_comentario && intercambio.texto_comentario.length > 0) {
-    return NextResponse.json(
-      { error: "El texto del comentario ya fue guardado." },
-      { status: 409 }
-    );
-  }
+  // Nota (v4.10): anteriormente aquí se rechazaba si texto_comentario ya
+  // estaba guardado. Se removió para soportar el flujo "Volver a intentarlo"
+  // desde la pantalla de no-encontrado: el usuario puede modificar el texto
+  // y re-copiar mientras el intercambio siga en estado 'pendiente'. La RPC
+  // procesar_verificaciones_pendientes buscará el nuevo texto en la próxima
+  // corrida del cron.
 
   // Update intercambio with comment text, timestamp and video duration
   const { error: updateError } = await serviceClient

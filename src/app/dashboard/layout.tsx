@@ -5,16 +5,24 @@ import VerificacionCanalModal from "./verificacion-canal-modal";
 // Si el usuario existe pero no ha verificado su canal, rendereamos el modal
 // sobre los children — el usuario ve el dashboard bloqueado por el overlay.
 //
-// Nota: si la columna `usuarios.canal_verificado` todavía no existe (migración
-// 20260419180000 no aplicada), la query retorna error y tratamos al usuario
-// como verificado — fail-open para no romper el dashboard antes de la DDL.
+// Notas:
+// 1. Si la columna `usuarios.canal_verificado` todavía no existe (migración
+//    20260419180000 no aplicada), la query retorna error y tratamos al usuario
+//    como verificado — fail-open para no romper el dashboard antes de la DDL.
+// 2. Usamos getSession() en vez de getUser() a propósito. getUser() valida el
+//    JWT contra Supabase y puede intentar refrescar el token, lo que llama a
+//    cookies().set() — prohibido en layouts/pages de Next 16 (solo Server
+//    Actions y Route Handlers pueden escribir cookies). getSession() lee del
+//    cookie sin refresh. La seguridad real sigue enforceada por RLS en cada
+//    query, no por esta lectura de gate.
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServerClient();
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   let mostrarModal = false;
   let canalInfo: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -68,20 +68,6 @@ function formatDuration(sec: number | null): string {
   const s = sec % 60;
   if (m === 0) return `${s}s`;
   return s > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${m} min`;
-}
-
-// Seccion 5.4 del PROYECTO.md — tiempo minimo entre Copiar y Ya publique
-function getMinWaitSeconds(duracionSegundos: number): number {
-  if (duracionSegundos < 120) return 60;
-  if (duracionSegundos < 300) return 120;
-  if (duracionSegundos < 600) return 180;
-  return 300; // techo maximo
-}
-
-function formatCountdown(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
 // --- Icons ---
@@ -160,15 +146,14 @@ export default function DetalleIntercambioPage({
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
-  const [countdown, setCountdown] = useState(0);
   const [wentToYt, setWentToYt] = useState(false);
 
   const [resultMessage, setResultMessage] = useState("");
   const [cancelando, setCancelando] = useState(false);
   const [confirmCancelar, setConfirmCancelar] = useState(false);
+  const [motivationalOpen, setMotivationalOpen] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // --- Load intercambio ---
   useEffect(() => {
@@ -254,9 +239,6 @@ export default function DetalleIntercambioPage({
           if (i.texto_comentario && i.texto_comentario.length > 0) {
             setComentario(i.texto_comentario);
             setCopied(true);
-            const minWait = getMinWaitSeconds(v.duracion_segundos || 0);
-            const elapsed = Math.floor((Date.now() - new Date(i.timestamp_copia).getTime()) / 1000);
-            setCountdown(Math.max(0, minWait - elapsed));
           }
         }
       } catch (e) {
@@ -266,23 +248,6 @@ export default function DetalleIntercambioPage({
       }
     })();
   }, [campanaId, router]);
-
-  // --- Countdown tick ---
-  const tick = useCallback(() => {
-    setCountdown((prev) => {
-      if (prev <= 1) {
-        if (timerRef.current) clearInterval(timerRef.current);
-        return 0;
-      }
-      return prev - 1;
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!copied || countdown <= 0) return;
-    timerRef.current = setInterval(tick, 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [copied, countdown, tick]);
 
   // --- Realtime: actualiza UI cuando verificaciones_pendientes cron cambie el estado ---
   useEffect(() => {
@@ -325,7 +290,6 @@ export default function DetalleIntercambioPage({
         return;
       }
       setCopied(true);
-      setCountdown(getMinWaitSeconds(video.duracion_segundos || 0));
     } catch {
       alert("Error de conexión al guardar el comentario.");
     } finally {
@@ -335,12 +299,18 @@ export default function DetalleIntercambioPage({
 
   function handleIrAYouTube() {
     if (!copied || !video) return;
+    setMotivationalOpen(true);
+  }
+
+  function abrirVideoConfirmado() {
+    if (!video) return;
     setWentToYt(true);
+    setMotivationalOpen(false);
     window.open(`https://www.youtube.com/watch?v=${video.youtube_video_id}`, "_blank", "noopener,noreferrer");
   }
 
   async function handleYaPublique() {
-    if (!intercambio || countdown > 0) return;
+    if (!intercambio) return;
     setPhase("verifying");
     try {
       const res = await fetch("/api/intercambios/verificar", {
@@ -408,10 +378,9 @@ export default function DetalleIntercambioPage({
 
   const chars = comentario.length;
   const canCopy = chars >= 20 && !copied && !saving;
-  const canPublish = copied && countdown === 0 && wentToYt;
+  const canPublish = copied && wentToYt;
   const disabledPublishReason =
     !copied ? "Copia el comentario primero" :
-    countdown > 0 ? "Espera el tiempo mínimo" :
     !wentToYt ? "Visita YouTube primero" : "";
 
   return (
@@ -652,16 +621,11 @@ export default function DetalleIntercambioPage({
                     {saving ? "Guardando…" : copied ? "Copiado" : "Copiar comentario"}
                   </button>
 
-                  {/* ===== Text entre los botones ===== */}
-                  <p className="mt-4 mb-4 rounded-2xl bg-[#eff1f2] px-4 py-3.5 text-[13px] leading-[1.55] text-[#5b5e60]">
-                    Pega tu comentario directamente en YouTube. Vuelve aquí cuando lo hayas publicado.
-                  </p>
-
                   {/* ===== BUTTON 2: Ir a YouTube ===== */}
                   <button
                     onClick={handleIrAYouTube}
                     disabled={!copied}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-[#e3e5e6] disabled:text-[#8a8d8f]"
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-[#e3e5e6] disabled:text-[#8a8d8f]"
                   >
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                       <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
@@ -670,55 +634,23 @@ export default function DetalleIntercambioPage({
                     <ChevronRight />
                   </button>
 
-                  {/* ===== Countdown + Ya publique (aparece tras copiar) ===== */}
-                  {copied && (
-                    <div className="mt-6 border-t border-[#e9ebec] pt-5">
-                      {countdown > 0 ? (
-                        <div className="flex items-center gap-4 rounded-2xl bg-[#eff1f2] p-4">
-                          <span
-                            className="font-headline text-3xl font-extrabold tabular-nums"
-                            style={{ color: countdown <= 30 ? "#E87722" : "#6200EE" }}
-                          >
-                            {formatCountdown(countdown)}
-                          </span>
-                          <div>
-                            <p className="text-sm font-semibold text-[#2c2f30]">
-                              Tiempo mínimo de visualización
-                            </p>
-                            <p className="text-[13px] text-[#5b5e60]">
-                              Así el comentario cuenta para el algoritmo de YouTube.
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-4 rounded-2xl bg-green-50 p-4">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-600 text-white">
-                            <CheckIcon />
-                          </span>
-                          <div>
-                            <p className="text-sm font-semibold text-[#2c2f30]">
-                              Ya puedes confirmar
-                            </p>
-                            <p className="text-[13px] text-[#5b5e60]">
-                              {wentToYt
-                                ? "Pulsa abajo cuando hayas publicado."
-                                : "Visita YouTube primero para publicar tu comentario."}
-                            </p>
-                          </div>
-                        </div>
-                      )}
+                  {/* ===== Texto de ayuda ===== */}
+                  <p className="mt-3 text-center text-sm leading-[1.5] text-[#8a8d8f]">
+                    Pega tu comentario directamente en YouTube. Vuelve aquí cuando lo hayas publicado.
+                  </p>
 
-                      <button
-                        onClick={handleYaPublique}
-                        disabled={!canPublish}
-                        title={disabledPublishReason}
-                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
-                        style={{ background: "linear-gradient(135deg, #E87722, #f0a964)" }}
-                      >
-                        <CheckIcon />
-                        Ya publiqué mi comentario
-                      </button>
-                    </div>
+                  {/* ===== Ya publiqué (aparece tras copiar, habilita al visitar YT) ===== */}
+                  {copied && (
+                    <button
+                      onClick={handleYaPublique}
+                      disabled={!canPublish}
+                      title={disabledPublishReason}
+                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{ background: "linear-gradient(135deg, #E87722, #f0a964)" }}
+                    >
+                      <CheckIcon />
+                      Ya publiqué mi comentario
+                    </button>
                   )}
 
                   {resultMessage && (
@@ -776,23 +708,40 @@ export default function DetalleIntercambioPage({
                   <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#E87722]/10 text-[#E87722]">
                     <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="9" />
-                      <path d="M12 7v5l3 2" />
+                      <path d="M12 8v4" />
+                      <path d="M12 16h.01" />
                     </svg>
                   </div>
                   <h2 className="m-0 mb-2 font-headline text-xl font-bold text-[#2c2f30]">
-                    Intercambio en revisión
+                    No encontramos tu comentario
                   </h2>
-                  <p className="m-0 text-sm text-[#5b5e60]">{resultMessage}</p>
-                  <p className="mt-2 text-xs text-[#8a8d8f]">
-                    Esta página se actualizará cuando se verifique automáticamente.
+                  <p className="mx-auto max-w-[440px] text-sm leading-[1.55] text-[#5b5e60]">
+                    El texto que escribiste aquí no apareció en el video de YouTube. Puede que no lo hayas publicado, o que lo hayas modificado al pegarlo.
                   </p>
-                  <Link
-                    href="/dashboard/intercambiar"
-                    className="mt-6 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white"
-                    style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
-                  >
-                    Volver a la cola
-                  </Link>
+                  <div className="mx-auto mt-6 flex max-w-[360px] flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Reset al estado inicial de compose. El textarea
+                        // conserva el texto previo (setComentario sin tocar).
+                        setResultMessage("");
+                        setCopied(false);
+                        setWentToYt(false);
+                        setPhase("compose");
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.01]"
+                      style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+                    >
+                      Volver a intentarlo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmCancelar(true)}
+                      className="w-full rounded-2xl bg-[#e3e5e6] py-3 text-sm font-semibold text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30]"
+                    >
+                      Cancelar intercambio
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -857,6 +806,12 @@ export default function DetalleIntercambioPage({
         pending={cancelando}
         onCancel={() => setConfirmCancelar(false)}
         onConfirm={handleCancelar}
+      />
+
+      <MotivacionalModal
+        open={motivationalOpen}
+        onCancel={() => setMotivationalOpen(false)}
+        onAbrirVideo={abrirVideoConfirmado}
       />
     </div>
   );
@@ -948,6 +903,80 @@ function ConfirmCancelarModal({
             Confirmar
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Modal motivacional antes de abrir el video en YouTube ---
+// Dismissable (ESC / backdrop). Un solo botón: abrir video en YouTube.
+
+function MotivacionalModal({
+  open,
+  onCancel,
+  onAbrirVideo,
+}: {
+  open: boolean;
+  onCancel: () => void;
+  onAbrirVideo: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", handler);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handler);
+      document.body.style.overflow = prev;
+    };
+  }, [open, onCancel]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+      style={{
+        background: "rgba(20, 20, 24, 0.48)",
+        animation: "comentaloFade 160ms ease-out forwards",
+      }}
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="motivacional-title"
+    >
+      <style>{`
+        @keyframes comentaloFade { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes comentaloPop {
+          from { opacity: 0; transform: scale(0.96) translateY(6px) }
+          to   { opacity: 1; transform: scale(1) translateY(0) }
+        }
+      `}</style>
+      <div
+        className="w-full max-w-[440px] rounded-3xl bg-white p-7 shadow-[0_24px_64px_rgba(20,20,24,0.24)]"
+        style={{ animation: "comentaloPop 220ms cubic-bezier(0.2, 0.9, 0.3, 1.12) forwards" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3
+          id="motivacional-title"
+          className="font-headline text-xl font-extrabold tracking-[-0.02em] text-[#2c2f30]"
+        >
+          Antes de comentar
+        </h3>
+        <p className="mt-2 text-sm leading-relaxed text-[#5b5e60]">
+          Ver el video y darle like no es obligatorio, pero ayuda al creador y fortalece nuestra comunidad.
+        </p>
+        <button
+          type="button"
+          onClick={onAbrirVideo}
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-semibold text-white transition-transform hover:scale-[1.01]"
+          style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+        >
+          Abrir video en YouTube →
+        </button>
       </div>
     </div>
   );

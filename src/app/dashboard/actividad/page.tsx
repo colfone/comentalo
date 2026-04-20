@@ -105,7 +105,7 @@ function formatDuration(sec: number | null): string {
 
 function pendienteStatusLabel(intercambio: IntercambioRow): string {
   return intercambio.texto_comentario && intercambio.texto_comentario.length > 0
-    ? "Verificando"
+    ? "No encontramos tu comentario"
     : "Por comentar";
 }
 
@@ -291,59 +291,27 @@ export default function ActividadPage() {
         }
 
         // --- Intercambios del usuario (como comentarista) ---
-        type IntercambioRaw = {
+        // RPC get_mis_intercambios_comentarista (SECURITY DEFINER) bypasea RLS
+        // en campanas/videos/usuarios — las policies solo permiten ver esos
+        // rows al DUEÑO del video, no al comentarista, y los !inner joins
+        // colapsaban por RLS. Ver migración 20260420_rpc_get_mis_intercambios.
+        type IntercambioRpcRow = {
           id: string;
           campana_id: string;
           texto_comentario: string;
           created_at: string;
           estado: string;
-          campanas: {
-            videos: {
-              id: string;
-              youtube_video_id: string;
-              titulo: string;
-              duracion_segundos: number | null;
-              usuarios: { id: string; nombre: string | null; avatar_url: string | null } | null;
-            } | null;
-          } | null;
+          video: {
+            id: string;
+            youtube_video_id: string;
+            titulo: string;
+            duracion_segundos: number | null;
+          };
+          creador: { id: string; nombre: string | null; avatar_url: string | null };
         };
 
-        const { data: intercambios } = await supabase
-          .from("intercambios")
-          .select(`
-            id, campana_id, texto_comentario, created_at, estado,
-            campanas!inner (
-              videos!inner (
-                id, youtube_video_id, titulo, duracion_segundos,
-                usuarios!inner ( id, nombre, avatar_url )
-              )
-            )
-          `)
-          .eq("comentarista_id", usuario.id)
-          .in("estado", ["pendiente", "verificado"])
-          .order("created_at", { ascending: false })
-          .limit(100);
-
-        const rows: IntercambioRow[] = ((intercambios as IntercambioRaw[] | null) ?? [])
-          .map((i) => {
-            const v = i.campanas?.videos;
-            if (!v || !v.usuarios) return null;
-            return {
-              id: i.id,
-              campana_id: i.campana_id,
-              texto_comentario: i.texto_comentario,
-              created_at: i.created_at,
-              estado: i.estado,
-              video: {
-                id: v.id,
-                youtube_video_id: v.youtube_video_id,
-                titulo: v.titulo,
-                duracion_segundos: v.duracion_segundos,
-              },
-              creador: v.usuarios,
-            };
-          })
-          .filter((x): x is IntercambioRow => x !== null);
+        const { data: rpcRows } = await supabase.rpc("get_mis_intercambios_comentarista");
+        const rows: IntercambioRow[] = (rpcRows as IntercambioRpcRow[] | null) ?? [];
 
         setPendientes(rows.filter((r) => r.estado === "pendiente"));
         setCompletados(rows.filter((r) => r.estado === "verificado"));
