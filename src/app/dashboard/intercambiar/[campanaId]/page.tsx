@@ -36,7 +36,43 @@ interface IntercambioData {
   timestamp_copia: string;
 }
 
-type Phase = "loading" | "error" | "compose" | "verifying" | "done";
+type Phase = "loading" | "error" | "watch" | "compose" | "copied" | "verifying" | "done" | "rechazado";
+
+// --- YouTube IFrame Player API types ---
+// Shim mínimo para no introducir un .d.ts global. Sólo lo que usamos.
+
+type YTPlayer = { destroy: () => void };
+
+type YTPlayerConstructor = new (
+  elementId: string,
+  opts: {
+    videoId: string;
+    width: string | number;
+    height: string | number;
+    playerVars?: { rel?: 0 | 1; modestbranding?: 0 | 1 };
+    events?: {
+      onReady?: () => void;
+      onStateChange?: (event: { data: number }) => void;
+    };
+  }
+) => YTPlayer;
+
+interface YTApi {
+  Player: YTPlayerConstructor;
+  PlayerState: {
+    UNSTARTED: number;
+    ENDED: number;
+    PLAYING: number;
+    PAUSED: number;
+    BUFFERING: number;
+    CUED: number;
+  };
+}
+
+interface YTWindow extends Window {
+  YT?: YTApi;
+  onYouTubeIframeAPIReady?: () => void;
+}
 
 // --- Labels ---
 
@@ -147,11 +183,16 @@ export default function DetalleIntercambioPage({
   const [saving, setSaving] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [wentToYt, setWentToYt] = useState(false);
+  const [verificandoEn, setVerificandoEn] = useState<number | null>(null);
+  const [verificando, setVerificando] = useState(false);
+  const [primerIntentoFallido, setPrimerIntentoFallido] = useState(false);
 
   const [resultMessage, setResultMessage] = useState("");
   const [cancelando, setCancelando] = useState(false);
   const [confirmCancelar, setConfirmCancelar] = useState(false);
   const [motivationalOpen, setMotivationalOpen] = useState(false);
+  const [miCanalUrl, setMiCanalUrl] = useState<string | null>(null);
+  const [secondsWatched, setSecondsWatched] = useState(0);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -165,10 +206,11 @@ export default function DetalleIntercambioPage({
 
         const { data: usuario } = await supabase
           .from("usuarios")
-          .select("id")
+          .select("id, canal_url")
           .eq("auth_id", user.id)
-          .maybeSingle();
+          .maybeSingle<{ id: string; canal_url: string | null }>();
         if (!usuario) { router.replace("/verificar-canal"); return; }
+        setMiCanalUrl(usuario.canal_url);
 
         // RPC con SECURITY DEFINER — bypasea RLS de campanas/videos/usuarios
         // que solo dejan ver los rows al dueño del video. Ver migración
@@ -231,14 +273,23 @@ export default function DetalleIntercambioPage({
         if (i.estado === "verificado") {
           setPhase("done");
         } else if (i.estado === "rechazado") {
-          router.replace("/dashboard/actividad");
-          return;
-        } else if (i.estado === "pendiente") {
-          setPhase("compose");
-          // Pre-poblar el textarea con el texto previo pero dejar copied=false
-          // para que el usuario pueda editar y volver a copiar (flujo "Volver a intentarlo").
+          // Restaura el comentario y marca copied/wentToYt para que
+          // "Volver a intentarlo" permita re-verificar sin re-copiar.
           if (i.texto_comentario && i.texto_comentario.length > 0) {
             setComentario(i.texto_comentario);
+          }
+          setCopied(true);
+          setWentToYt(true);
+          setPhase("rechazado");
+        } else if (i.estado === "pendiente") {
+          // Primera visita → watch. Si el usuario ya había empezado (tiene
+          // texto guardado), saltamos directo a compose para no forzarlo a
+          // ver 30s de video otra vez.
+          if (i.texto_comentario && i.texto_comentario.length > 0) {
+            setComentario(i.texto_comentario);
+            setPhase("compose");
+          } else {
+            setPhase("watch");
           }
         }
       } catch (e) {
@@ -258,11 +309,116 @@ export default function DetalleIntercambioPage({
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "intercambios", filter: `id=eq.${intercambio.id}` }, (payload) => {
         const newEstado = (payload.new as { estado?: string })?.estado;
         if (newEstado === "verificado") setPhase("done");
-        else if (newEstado === "rechazado") router.replace("/dashboard/actividad");
+        else if (newEstado === "rechazado") setPhase("rechazado");
       })
       .subscribe();
     return () => { supabaseBrowser.removeChannel(channel); };
-  }, [intercambio?.id, router]);
+  }, [intercambio?.id]);
+
+  // --- YouTube IFrame Player API ---
+  // Carga la API una sola vez (el script puede ya estar en el DOM si el
+  // usuario navegó desde otra página de la app que lo usara) y monta el
+  // player sobre el div #youtube-player. Detectamos el primer PLAY para
+  // habilitar el botón "Copiar comentario".
+  useEffect(() => {
+    if (!video) return;
+    const videoId = video.youtube_video_id;
+    const w = window as unknown as YTWindow;
+
+    let cancelled = false;
+    let player: YTPlayer | null = null;
+    let watchInterval: ReturnType<typeof setInterval> | null = null;
+
+    const startWatchInterval = () => {
+      if (watchInterval !== null) return;
+      watchInterval = setInterval(() => {
+        setSecondsWatched((s) => s + 1);
+      }, 1000);
+    };
+    const stopWatchInterval = () => {
+      if (watchInterval !== null) {
+        clearInterval(watchInterval);
+        watchInterval = null;
+      }
+    };
+
+    const initPlayer = () => {
+      if (cancelled) return;
+      if (!w.YT || !w.YT.Player) return;
+      if (!document.getElementById("youtube-player")) return;
+      player = new w.YT.Player("youtube-player", {
+        videoId,
+        width: "100%",
+        height: "360",
+        playerVars: { rel: 0, modestbranding: 1 },
+        events: {
+          onReady: () => {},
+          onStateChange: (event) => {
+            if (!w.YT) return;
+            if (event.data === w.YT.PlayerState.PLAYING) {
+              startWatchInterval();
+            } else if (
+              event.data === w.YT.PlayerState.PAUSED ||
+              event.data === w.YT.PlayerState.ENDED
+            ) {
+              stopWatchInterval();
+            }
+          },
+        },
+      });
+    };
+
+    if (w.YT && w.YT.Player) {
+      // API ya cargada en esta sesión.
+      initPlayer();
+    } else {
+      // Registrar callback global y cargar script si no existe.
+      w.onYouTubeIframeAPIReady = initPlayer;
+      const existing = document.querySelector(
+        'script[src="https://www.youtube.com/iframe_api"]'
+      );
+      if (!existing) {
+        const script = document.createElement("script");
+        script.src = "https://www.youtube.com/iframe_api";
+        script.async = true;
+        document.body.appendChild(script);
+      }
+    }
+
+    return () => {
+      cancelled = true;
+      stopWatchInterval();
+      if (w.onYouTubeIframeAPIReady === initPlayer) {
+        w.onYouTubeIframeAPIReady = undefined;
+      }
+      if (player) {
+        try {
+          player.destroy();
+        } catch {
+          /* noop */
+        }
+      }
+    };
+  }, [video]);
+
+  // --- Tick del countdown de 30s tras presionar "Ya publiqué" ---
+  // Al llegar a 0 dispara handleYaPublique automáticamente.
+  useEffect(() => {
+    if (verificandoEn === null) return;
+    if (verificandoEn <= 0) {
+      setVerificandoEn(null);
+      handleYaPublique();
+      return;
+    }
+    const id = setTimeout(
+      () => setVerificandoEn((n) => (n === null ? null : n - 1)),
+      1000
+    );
+    return () => clearTimeout(id);
+    // handleYaPublique es closure estable sobre intercambio; no lo incluimos
+    // en deps para evitar reinicios del timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verificandoEn]);
 
   // --- Actions ---
 
@@ -287,6 +443,7 @@ export default function DetalleIntercambioPage({
         return;
       }
       setCopied(true);
+      setPhase("copied");
     } catch {
       alert("Error de conexión al guardar el comentario.");
     } finally {
@@ -307,8 +464,8 @@ export default function DetalleIntercambioPage({
   }
 
   async function handleYaPublique() {
-    if (!intercambio) return;
-    setPhase("verifying");
+    if (!intercambio || verificando || verificandoEn !== null) return;
+    setVerificando(true);
     try {
       const res = await fetch("/api/intercambios/verificar", {
         method: "POST",
@@ -318,16 +475,25 @@ export default function DetalleIntercambioPage({
       const data = await res.json();
       if (!res.ok) {
         setResultMessage(data.error || "Error al verificar.");
-        setPhase("compose");
         return;
       }
-      if (data.resultado === "verificado") setPhase("done");
-      else if (data.resultado === "pendiente") {
-        router.push("/dashboard/actividad");
+      if (data.resultado === "verificado") {
+        setPhase("done");
+        return;
+      }
+      // Resultado no verificado (la API responde "pendiente"):
+      //   — 1er intento: activamos countdown de 30s para 2º intento automático.
+      //   — 2º intento: mostramos pantalla de rechazo.
+      if (primerIntentoFallido) {
+        setPhase("rechazado");
+      } else {
+        setPrimerIntentoFallido(true);
+        setVerificandoEn(30);
       }
     } catch {
       setResultMessage("Error de conexión al verificar.");
-      setPhase("compose");
+    } finally {
+      setVerificando(false);
     }
   }
 
@@ -378,6 +544,14 @@ export default function DetalleIntercambioPage({
   const disabledPublishReason =
     !copied ? "Copia el comentario primero" :
     !wentToYt ? "Visita YouTube primero" : "";
+  const enCountdown = verificandoEn !== null;
+  const botonOcupado = enCountdown || verificando;
+  // Handle tipo "@agenciajaque1142" extraído de una URL como
+  // "https://www.youtube.com/@agenciajaque1142". Si no podemos
+  // parsear, caemos a la URL completa, y si no hay URL, null.
+  const miCanalHandle = miCanalUrl
+    ? miCanalUrl.match(/@[^/?#]+/)?.[0] ?? miCanalUrl
+    : null;
 
   return (
     <div className="min-h-screen bg-[#f5f6f7]">
@@ -454,14 +628,9 @@ export default function DetalleIntercambioPage({
             <div className="flex flex-col gap-4">
               {/* Video card */}
               <div className="rounded-3xl bg-white p-5">
-                <div className="relative aspect-video overflow-hidden rounded-2xl bg-[#e3e5e6]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`https://img.youtube.com/vi/${video.youtube_video_id}/maxresdefault.jpg`}
-                    alt={video.titulo}
-                    className="h-full w-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.youtube_video_id}/mqdefault.jpg`; }}
-                  />
+                <div className="relative overflow-hidden rounded-lg bg-[#e3e5e6]" style={{ height: 360 }}>
+                  {/* El player se monta aquí vía YT.Player (ver useEffect). */}
+                  <div id="youtube-player" className="h-full w-full" />
                   {video.duracion_segundos && video.duracion_segundos > 0 && (
                     <span className="absolute bottom-3 right-3 rounded-md bg-black/70 px-2 py-0.5 text-xs font-semibold text-white">
                       {formatDuration(video.duracion_segundos)}
@@ -518,6 +687,54 @@ export default function DetalleIntercambioPage({
                   </div>
                 </div>
               </div>
+
+              {/* ===== Pantalla 1: Ver el video ===== */}
+              {phase === "watch" && (
+                <div className="rounded-3xl bg-white p-6">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.05em] text-[#5b5e60]">
+                    Paso 1 de 3
+                  </p>
+                  <h2 className="m-0 mb-2 font-headline text-2xl font-bold leading-[1.2] text-[#2c2f30]">
+                    Ve el video antes de comentar
+                  </h2>
+                  <p className="mb-5 text-[14px] leading-[1.55] text-[#5b5e60]">
+                    Mira al menos 30 segundos para entender de qué trata.
+                  </p>
+
+                  {/* Progress bar — secondsWatched acumula aunque el usuario pause */}
+                  <div className="rounded-xl bg-[#eff1f2] p-4">
+                    <div className="mb-2 flex items-center justify-between text-[13px] text-[#5b5e60]">
+                      <span>Viendo el video...</span>
+                      <span className="tabular-nums font-medium">
+                        {Math.min(secondsWatched, 30)}s / 30 segundos
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-[#e3e5e6]">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{
+                          width: `${Math.min(100, (secondsWatched / 30) * 100)}%`,
+                          background: "#6200EE",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setPhase("compose")}
+                    disabled={secondsWatched < 30}
+                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed"
+                    style={{
+                      background: secondsWatched >= 30
+                        ? "linear-gradient(135deg, #6200EE, #ac8eff)"
+                        : "#e5e7eb",
+                      color: secondsWatched >= 30 ? "#ffffff" : "#9ca3af",
+                    }}
+                  >
+                    {secondsWatched >= 30 ? "Comentar este video →" : "Comentar este video"}
+                  </button>
+                </div>
+              )}
 
               {/* Compose section */}
               {phase === "compose" && (
@@ -603,25 +820,50 @@ export default function DetalleIntercambioPage({
                     </span>
                   </div>
 
-                  {/* ===== BUTTON 1: Copiar ===== */}
+                  {/* ===== BUTTON: Copiar ===== */}
                   <button
                     onClick={handleCopiar}
                     disabled={!canCopy}
-                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{
-                      background: copied ? "#e3e5e6" : "linear-gradient(135deg, #6200EE, #ac8eff)",
-                      color: copied ? "#2c2f30" : "#ffffff",
-                    }}
+                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
                   >
-                    {copied ? <CheckIcon /> : <CopyIcon />}
-                    {saving ? "Guardando…" : copied ? "Copiado" : "Copiar comentario"}
+                    <CopyIcon />
+                    {saving ? "Guardando…" : "Copiar comentario"}
                   </button>
 
-                  {/* ===== BUTTON 2: Ir a YouTube ===== */}
+                  {/* Cancelar */}
+                  <button
+                    onClick={() => setConfirmCancelar(true)}
+                    disabled={cancelando}
+                    className="mt-4 w-full text-center text-xs text-[#8a8d8f] transition-colors hover:text-red-500 disabled:opacity-50"
+                  >
+                    {cancelando ? "Cancelando…" : "Cancelar intercambio"}
+                  </button>
+                </div>
+              )}
+
+              {/* ===== Pantalla 3: Verificar ===== */}
+              {phase === "copied" && (
+                <div className="rounded-3xl bg-white p-6">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.05em] text-[#5b5e60]">
+                    Paso 3 de 3
+                  </p>
+                  <h2 className="m-0 mb-2 font-headline text-2xl font-bold leading-[1.2] text-[#2c2f30]">
+                    Publica tu comentario en YouTube
+                  </h2>
+                  <p className="mb-5 text-[14px] leading-[1.55] text-[#5b5e60]">
+                    Tu comentario ya está copiado. Pégalo en YouTube y vuelve aquí para verificarlo.
+                  </p>
+
+                  {/* Display del comentario copiado (sólo lectura) */}
+                  <div className="rounded-xl bg-[#eff1f2] p-4 text-[15px] leading-[1.5] text-[#2c2f30] whitespace-pre-wrap">
+                    {comentario}
+                  </div>
+
+                  {/* Ir a YouTube */}
                   <button
                     onClick={handleIrAYouTube}
-                    disabled={!copied}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-[#e3e5e6] disabled:text-[#8a8d8f]"
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700"
                   >
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                       <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
@@ -630,30 +872,34 @@ export default function DetalleIntercambioPage({
                     <ChevronRight />
                   </button>
 
-                  {/* ===== Texto de ayuda ===== */}
                   <p className="mt-3 text-center text-sm leading-[1.5] text-[#8a8d8f]">
                     Pega tu comentario directamente en YouTube. Vuelve aquí cuando lo hayas publicado.
                   </p>
 
-                  {/* ===== Ya publiqué (aparece tras copiar, habilita al visitar YT) ===== */}
-                  {copied && (
-                    <button
-                      onClick={handleYaPublique}
-                      disabled={!canPublish}
-                      title={disabledPublishReason}
-                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
-                      style={{ background: "linear-gradient(135deg, #E87722, #f0a964)" }}
-                    >
-                      <CheckIcon />
-                      Ya publiqué mi comentario
-                    </button>
-                  )}
+                  {/* Ya publiqué — mismo flujo de 2 intentos con countdown de 30s */}
+                  <button
+                    onClick={handleYaPublique}
+                    disabled={!canPublish || botonOcupado}
+                    title={disabledPublishReason}
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ background: botonOcupado ? "#6b7280" : "#16a34a" }}
+                  >
+                    {enCountdown && verificandoEn !== null && verificandoEn > 0 ? (
+                      `Buscando tu comentario... ${verificandoEn}s`
+                    ) : botonOcupado ? (
+                      "Verificando..."
+                    ) : (
+                      <>
+                        <CheckIcon />
+                        Ya publiqué mi comentario
+                      </>
+                    )}
+                  </button>
 
                   {resultMessage && (
                     <p className="mt-4 rounded-xl bg-red-50 p-3 text-xs text-red-600">{resultMessage}</p>
                   )}
 
-                  {/* Cancelar */}
                   <button
                     onClick={() => setConfirmCancelar(true)}
                     disabled={cancelando}
@@ -685,7 +931,7 @@ export default function DetalleIntercambioPage({
                     <CheckIcon size={28} />
                   </div>
                   <h2 className="m-0 mb-2 font-headline text-2xl font-bold">
-                    Intercambio verificado ✨
+                    Comentario verificado ✨
                   </h2>
                   <p className="m-0 mb-6 text-sm opacity-90">
                     Acabas de activar un intercambio para tu próximo video.
@@ -696,6 +942,67 @@ export default function DetalleIntercambioPage({
                   >
                     Volver a la cola
                   </Link>
+                </div>
+              )}
+
+              {phase === "rechazado" && (
+                <div className="rounded-3xl bg-white p-8">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#E87722]/10 text-[#E87722]">
+                    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 8v4" />
+                      <path d="M12 16h.01" />
+                    </svg>
+                  </div>
+                  <h2 className="m-0 mb-4 text-center font-headline text-xl font-bold text-[#2c2f30]">
+                    No pudimos verificar tu comentario
+                  </h2>
+                  <ul className="mx-auto max-w-[560px] space-y-3 text-sm leading-[1.55] text-[#5b5e60]">
+                    {miCanalHandle && (
+                      <li>
+                        <strong className="font-semibold text-[#2c2f30]">Canal incorrecto</strong> — tu canal registrado en Comentalo es <strong className="font-semibold text-[#2c2f30]">{miCanalHandle}</strong>. Si tienes múltiples canales en YouTube, asegúrate de haber comentado con ese canal específico.
+                      </li>
+                    )}
+                    <li>
+                      <strong className="font-semibold text-[#2c2f30]">Verificaste muy rápido</strong> — YouTube tarda unos segundos en indexar comentarios nuevos. Puedes volver a intentarlo.
+                    </li>
+                    <li>
+                      <strong className="font-semibold text-[#2c2f30]">El texto no coincide</strong> — el comentario publicado en YouTube debe ser exactamente el que copiaste desde Comentalo.
+                    </li>
+                    <li>
+                      <strong className="font-semibold text-[#2c2f30]">YouTube retuvo tu comentario</strong> — ocurre con cuentas nuevas o comentarios que YouTube detecta como sospechosos. Intenta desde una cuenta con más actividad en YouTube.
+                    </li>
+                    <li>
+                      <strong className="font-semibold text-[#2c2f30]">El video tiene moderación estricta</strong> — el creador puede tener activada la revisión manual de comentarios en YouTube Studio.
+                    </li>
+                  </ul>
+                  <div className="mx-auto mt-6 flex max-w-[360px] flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Vuelve a compose (saltamos watch — ya vimos el video).
+                        // Resetea copied/wentToYt para que pueda editar el
+                        // textarea y re-copiar, y primerIntentoFallido para
+                        // tener otro ciclo completo de 2 intentos.
+                        setResultMessage("");
+                        setPrimerIntentoFallido(false);
+                        setCopied(false);
+                        setWentToYt(false);
+                        setPhase("compose");
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.01]"
+                      style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+                    >
+                      Volver a intentarlo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmCancelar(true)}
+                      className="w-full rounded-2xl bg-[#e3e5e6] py-3 text-sm font-semibold text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30]"
+                    >
+                      Cancelar intercambio
+                    </button>
+                  </div>
                 </div>
               )}
 

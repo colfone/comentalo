@@ -1,98 +1,90 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-// Mi actividad — pendientes + completados + mi campaña activa
-// Prototipo Design: screens/MyExchanges.jsx
+// Mi actividad — 2 secciones:
+//   Comentando → intercambios propios verificados (como comentarista)
+//   Recibiendo → campañas propias con sus intercambios verificados + calificación
 
 // --- Types ---
 
-interface CreadorRow {
+interface VideoInfo {
+  id: string;
+  youtube_video_id: string;
+  titulo: string;
+  duracion_segundos: number | null;
+}
+
+interface CreadorInfo {
   id: string;
   nombre: string | null;
   avatar_url: string | null;
 }
 
-interface IntercambioRow {
+interface ComentandoRow {
   id: string;
   campana_id: string;
   texto_comentario: string;
   created_at: string;
   estado: string;
-  video: {
-    id: string;
-    youtube_video_id: string;
-    titulo: string;
-    duracion_segundos: number | null;
-  };
-  creador: CreadorRow;
+  video: VideoInfo;
+  creador: CreadorInfo;
 }
 
-interface MiCampanaActiva {
-  campana_id: string;
-  video_titulo: string;
-  intercambios_completados: number;
-  en_cola: number;
-}
-
-interface MisCampanasVideoRow {
+interface RecibiendoIntercambio {
   id: string;
-  youtube_video_id: string;
-  titulo: string;
-  vistas: number;
-  estado: string;
-  intercambios_recibidos: number;
-  campana_id: string | null;
-  campana_estado: string | null;
+  comentarista_id: string;
+  comentarista_nombre: string;
+  comentarista_canal: string | null;
+  texto_comentario: string;
+  estrellas: number | null;
+  created_at: string;
 }
+
+interface RecibiendoCampana {
+  campana_id: string;
+  campana_estado: string;
+  video_titulo: string;
+  youtube_video_id: string;
+  intercambios: RecibiendoIntercambio[];
+}
+
+type Section = "comentando" | "recibiendo";
 
 // --- Helpers ---
 
-function formatSubs(n: number): string {
-  if (n < 1000) return n.toString();
-  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0).replace(".0", "")}K`;
-  return `${(n / 1_000_000).toFixed(1).replace(".0", "")}M`;
-}
-
 // Duplicado de /dashboard/registrar-video — NFKC + emojis/banderas + sentence case.
 function normalizeTitle(titulo: string): string {
-  if (!titulo) return '';
-  const plano = titulo.normalize('NFKC');
+  if (!titulo) return "";
+  const plano = titulo.normalize("NFKC");
   const sinEmojis = plano
-    .replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}\u200D\uFE0F]/gu, '')
-    .replace(/\s+/g, ' ')
+    .replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}\u200D\uFE0F]/gu, "")
+    .replace(/\s+/g, " ")
     .trim();
-  if (!sinEmojis) return '';
+  if (!sinEmojis) return "";
   const lower = sinEmojis.toLowerCase();
   const firstLetter = lower.search(/\p{L}/u);
   if (firstLetter < 0) return lower;
   return lower.slice(0, firstLetter) + lower[firstLetter].toUpperCase() + lower.slice(firstLetter + 1);
 }
 
-function chipForEstado(estado: string): { label: string; bg: string; color: string } {
-  switch (estado) {
-    case "activo":
-      return { label: "Activo", bg: "#6200EE", color: "#ffffff" };
-    case "suspendido":
-      return { label: "Suspendido", bg: "#fde4e4", color: "#c43535" };
-    case "completado":
-      return { label: "Completado", bg: "rgba(98,0,238,0.08)", color: "#6200EE" };
-    default:
-      return { label: estado, bg: "#e3e5e6", color: "#5b5e60" };
-  }
+function getInitials(name: string | null): string {
+  if (!name) return "C";
+  return name.split(" ").map((w) => w[0] || "").join("").toUpperCase().slice(0, 2) || "C";
 }
 
-function formatDateRelative(iso: string): string {
-  const then = new Date(iso).getTime();
-  const now = Date.now();
-  const diffDays = Math.floor((now - then) / (1000 * 60 * 60 * 24));
-  if (diffDays <= 0) return "hoy";
-  if (diffDays === 1) return "ayer";
-  if (diffDays < 7) return `hace ${diffDays} días`;
-  if (diffDays < 30) return `hace ${Math.floor(diffDays / 7)} semanas`;
-  return new Date(iso).toLocaleDateString("es-LA", { day: "numeric", month: "short" });
+function tiempoRelativo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Hace instantes";
+  if (mins < 60) return `Hace ${mins} min`;
+  const horas = Math.floor(mins / 60);
+  if (horas < 24) return `Hace ${horas} h`;
+  const dias = Math.floor(horas / 24);
+  if (dias < 30) return `Hace ${dias} d`;
+  return new Date(iso).toLocaleDateString("es");
 }
 
 function formatDuration(sec: number | null): string {
@@ -101,6 +93,72 @@ function formatDuration(sec: number | null): string {
   const s = sec % 60;
   if (m === 0) return `${s}s`;
   return s > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${m} min`;
+}
+
+// --- Star labels — PROYECTO.md 6.2 ---
+
+const STAR_LABELS: Record<number, string> = {
+  1: "Muy malo",
+  2: "Malo",
+  3: "Regular",
+  4: "Bueno",
+  5: "Excelente",
+};
+
+// --- Star rating (copiado de /dashboard/campana/[campanaId]) ---
+
+function StarRating({
+  value,
+  disabled,
+  onRate,
+}: {
+  value: number | null;
+  disabled: boolean;
+  onRate: (n: number) => void;
+}) {
+  const [hover, setHover] = useState(0);
+
+  if (value && value > 0) {
+    return (
+      <div className="inline-flex items-center gap-3 rounded-full bg-[#E87722]/10 px-4 py-2">
+        <div className="flex gap-0.5 text-xl leading-none text-[#E87722]">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <span key={n}>{n <= value ? "★" : "☆"}</span>
+          ))}
+        </div>
+        <span className="text-sm font-semibold text-[#E87722]">
+          Calificado — {value}/5 estrellas
+        </span>
+      </div>
+    );
+  }
+
+  const display = hover || 0;
+
+  return (
+    <div>
+      <div className="flex gap-1" onMouseLeave={() => setHover(0)}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            disabled={disabled}
+            onMouseEnter={() => setHover(n)}
+            onFocus={() => setHover(n)}
+            onClick={() => onRate(n)}
+            aria-label={`${n} estrella${n > 1 ? "s" : ""} — ${STAR_LABELS[n]}`}
+            className="text-4xl leading-none transition-transform duration-150 hover:scale-110 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ color: display >= n ? "#E87722" : "#e0e3e4" }}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-[#595c5d]">
+        {display > 0 ? STAR_LABELS[display] : "Selecciona una calificación del 1 al 5"}
+      </p>
+    </div>
+  );
 }
 
 // --- Icons ---
@@ -137,214 +195,208 @@ const PlayIcon = ({ size = 24 }: { size?: number }) => (
     <path d="M6 4v16l14-8z" />
   </svg>
 );
-const PlusIcon = ({ size = 16 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 5v14M5 12h14" />
-  </svg>
-);
-const CheckIcon = ({ size = 12 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M20 6 9 17l-5-5" />
-  </svg>
-);
 const ChevronRight = ({ size = 14 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="m9 6 6 6-6 6" />
   </svg>
 );
+const PlusIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
 
 // --- Component ---
-
-type Tab = "pendientes" | "completados";
-type Section = "comentando" | "recibiendo";
-type CampanaActionId = "pausar" | "activar" | "finalizar" | "eliminar";
-
-const CONFIRM_TEXTS: Record<CampanaActionId, { titulo: string; mensaje: string }> = {
-  pausar: {
-    titulo: "Pausar campaña",
-    mensaje: "Los comentaristas no podrán comentar tu video mientras esté pausada.",
-  },
-  activar: {
-    titulo: "Activar campaña",
-    mensaje: "Tu video volverá a estar disponible para comentarios.",
-  },
-  finalizar: {
-    titulo: "Finalizar campaña",
-    mensaje: "Tu campaña se cerrará permanentemente. Esta acción no se puede deshacer.",
-  },
-  eliminar: {
-    titulo: "Eliminar campaña",
-    mensaje: "Tu campaña será eliminada permanentemente. Solo puedes eliminar campañas sin comentarios verificados.",
-  },
-};
 
 export default function ActividadPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [section, setSection] = useState<Section>("comentando");
-  const [tab, setTab] = useState<Tab>("pendientes");
+  const [comentando, setComentando] = useState<ComentandoRow[]>([]);
+  const [recibiendo, setRecibiendo] = useState<RecibiendoCampana[]>([]);
+  const [calificandoId, setCalificandoId] = useState<string | null>(null);
+  const [cerrandoCampanaId, setCerrandoCampanaId] = useState<string | null>(null);
+  const [confirmCerrar, setConfirmCerrar] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const [miCampana, setMiCampana] = useState<MiCampanaActiva | null>(null);
-  const [pendientes, setPendientes] = useState<IntercambioRow[]>([]);
-  const [completados, setCompletados] = useState<IntercambioRow[]>([]);
-  const [misCampanasVideos, setMisCampanasVideos] = useState<MisCampanasVideoRow[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [actionPending, setActionPending] = useState<string | null>(null);
-  const [confirmState, setConfirmState] = useState<{ action: CampanaActionId; campanaId: string } | null>(null);
-
-  async function accionCampana(campanaId: string, endpoint: string) {
-    setActionPending(campanaId);
-    setActionError(null);
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setErrorMsg(null);
     try {
-      const res = await fetch(endpoint, {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/"); return; }
+
+      const { data: usuario } = await supabase
+        .from("usuarios")
+        .select("id")
+        .eq("auth_id", user.id)
+        .maybeSingle();
+      if (!usuario) { router.replace("/verificar-canal"); return; }
+
+      // --- Comentando: intercambios del usuario verificados ---
+      // RPC SECURITY DEFINER — los joins con RLS bloqueaban al comentarista.
+      type IntercambioRpcRow = {
+        id: string;
+        campana_id: string;
+        texto_comentario: string;
+        created_at: string;
+        estado: string;
+        video: { id: string; youtube_video_id: string; titulo: string; duracion_segundos: number | null };
+        creador: { id: string; nombre: string | null; avatar_url: string | null };
+      };
+      const { data: rpcRows } = await supabase.rpc("get_mis_intercambios_comentarista");
+      const rows = (rpcRows as IntercambioRpcRow[] | null) ?? [];
+      setComentando(rows.filter((r) => r.estado === "verificado"));
+
+      // --- Recibiendo: mis campañas (excluyendo finalizadas/eliminadas) ---
+      type VideoRow = {
+        id: string;
+        youtube_video_id: string;
+        titulo: string;
+        campanas: { id: string; estado: string; intercambios_completados: number; created_at: string }[];
+      };
+      const { data: misVideos } = await supabase
+        .from("videos")
+        .select(`
+          id, youtube_video_id, titulo, created_at,
+          campanas ( id, estado, intercambios_completados, created_at )
+        `)
+        .eq("usuario_id", usuario.id)
+        .order("created_at", { ascending: false });
+
+      const campanasAplanadas: {
+        id: string;
+        estado: string;
+        video_titulo: string;
+        youtube_video_id: string;
+        created_at: string;
+      }[] = [];
+      for (const v of (misVideos as VideoRow[] | null) ?? []) {
+        for (const c of v.campanas ?? []) {
+          if (c.estado === "finalizada" || c.estado === "eliminada") continue;
+          if ((c.intercambios_completados ?? 0) <= 0) continue;
+          campanasAplanadas.push({
+            id: c.id,
+            estado: c.estado,
+            video_titulo: v.titulo,
+            youtube_video_id: v.youtube_video_id,
+            created_at: c.created_at,
+          });
+        }
+      }
+      campanasAplanadas.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      // N+1 por ahora — V1. /api/campanas/detalle es SECURITY DEFINER y
+      // enriquece con comentarista_nombre/canal bypasseando RLS.
+      const resultados = await Promise.all(
+        campanasAplanadas.map(async (c): Promise<RecibiendoCampana | null> => {
+          try {
+            const res = await fetch(`/api/campanas/detalle?campana_id=${c.id}`);
+            if (!res.ok) return null;
+            const data = (await res.json()) as {
+              intercambios?: Array<{
+                id: string;
+                comentarista_id: string;
+                comentarista_nombre: string;
+                comentarista_canal: string | null;
+                texto_comentario: string;
+                estado: string;
+                estrellas: number | null;
+                created_at: string;
+              }>;
+            };
+            const verificados = (data.intercambios ?? []).filter((i) => i.estado === "verificado");
+            if (verificados.length === 0) return null;
+            return {
+              campana_id: c.id,
+              campana_estado: c.estado,
+              video_titulo: c.video_titulo,
+              youtube_video_id: c.youtube_video_id,
+              intercambios: verificados.map((i) => ({
+                id: i.id,
+                comentarista_id: i.comentarista_id,
+                comentarista_nombre: i.comentarista_nombre,
+                comentarista_canal: i.comentarista_canal,
+                texto_comentario: i.texto_comentario,
+                estrellas: i.estrellas,
+                created_at: i.created_at,
+              })),
+            };
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      setRecibiendo(resultados.filter((r): r is RecibiendoCampana => r !== null));
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  async function handleCalificar(campanaId: string, intercambioId: string, estrellas: number) {
+    setCalificandoId(intercambioId);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/intercambios/calificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intercambio_id: intercambioId, estrellas }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setErrorMsg(d.error || "No se pudo calificar.");
+        return;
+      }
+      setRecibiendo((prev) =>
+        prev.map((c) =>
+          c.campana_id !== campanaId
+            ? c
+            : {
+                ...c,
+                intercambios: c.intercambios.map((i) =>
+                  i.id === intercambioId ? { ...i, estrellas } : i
+                ),
+              }
+        )
+      );
+    } catch {
+      setErrorMsg("Error de conexión.");
+    } finally {
+      setCalificandoId(null);
+    }
+  }
+
+  async function handleCerrarCampana(campanaId: string) {
+    setCerrandoCampanaId(campanaId);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/campanas/finalizar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campana_id: campanaId }),
       });
-      const data = await res.json();
-      if (!data.ok) {
-        setActionError(data.error || "No se pudo completar la acción.");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        setErrorMsg(data.error || "No se pudo cerrar la campaña.");
         return;
       }
-      setRefreshKey((k) => k + 1);
+      setRecibiendo((prev) => prev.filter((c) => c.campana_id !== campanaId));
+      setConfirmCerrar(null);
     } catch {
-      setActionError("Error de conexión.");
+      setErrorMsg("Error de conexión.");
     } finally {
-      setActionPending(null);
+      setCerrandoCampanaId(null);
     }
   }
-
-  function pedirConfirmacion(action: CampanaActionId, campanaId: string | null) {
-    if (!campanaId) return;
-    setActionError(null);
-    setConfirmState({ action, campanaId });
-  }
-
-  async function confirmarAccion() {
-    if (!confirmState) return;
-    const { action, campanaId } = confirmState;
-    await accionCampana(campanaId, `/api/campanas/${action}`);
-    setConfirmState(null);
-  }
-
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const supabase = createSupabaseBrowserClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { router.replace("/"); return; }
-
-        const { data: usuario } = await supabase
-          .from("usuarios")
-          .select("id")
-          .eq("auth_id", user.id)
-          .maybeSingle();
-        if (!usuario) { router.replace("/verificar-canal"); return; }
-
-        // --- Mi campaña activa ---
-        const { data: misVideos } = await supabase
-          .from("videos")
-          .select(`
-            id, titulo,
-            campanas!inner ( id, estado, intercambios_completados, created_at )
-          `)
-          .eq("usuario_id", usuario.id)
-          .eq("campanas.estado", "abierta")
-          .order("created_at", { ascending: false })
-          .limit(1);
-
-        type VideoConCampana = {
-          id: string;
-          titulo: string;
-          campanas: { id: string; estado: string; intercambios_completados: number; created_at: string }[];
-        };
-        const miVideo = (misVideos as VideoConCampana[] | null)?.[0];
-        if (miVideo && miVideo.campanas && miVideo.campanas.length > 0) {
-          const campana = miVideo.campanas[0];
-          const { count: enCola } = await supabase
-            .from("intercambios")
-            .select("*", { count: "exact", head: true })
-            .eq("campana_id", campana.id)
-            .eq("estado", "pendiente");
-
-          setMiCampana({
-            campana_id: campana.id,
-            video_titulo: miVideo.titulo,
-            intercambios_completados: campana.intercambios_completados,
-            en_cola: enCola ?? 0,
-          });
-        }
-
-        // --- Intercambios del usuario (como comentarista) ---
-        // RPC get_mis_intercambios_comentarista (SECURITY DEFINER) bypasea RLS
-        // en campanas/videos/usuarios — las policies solo permiten ver esos
-        // rows al DUEÑO del video, no al comentarista, y los !inner joins
-        // colapsaban por RLS. Ver migración 20260420_rpc_get_mis_intercambios.
-        type IntercambioRpcRow = {
-          id: string;
-          campana_id: string;
-          texto_comentario: string;
-          created_at: string;
-          estado: string;
-          video: {
-            id: string;
-            youtube_video_id: string;
-            titulo: string;
-            duracion_segundos: number | null;
-          };
-          creador: { id: string; nombre: string | null; avatar_url: string | null };
-        };
-
-        const { data: rpcRows } = await supabase.rpc("get_mis_intercambios_comentarista");
-        const rows: IntercambioRow[] = (rpcRows as IntercambioRpcRow[] | null) ?? [];
-
-        setPendientes(rows.filter((r) => r.estado === "pendiente"));
-        setCompletados(rows.filter((r) => r.estado === "verificado"));
-
-        // --- Mis campañas (todos los videos + última campaña) para tab Recibiendo ---
-        type VideoRecibiendoRaw = {
-          id: string;
-          youtube_video_id: string;
-          titulo: string;
-          vistas: number;
-          estado: string;
-          campanas: { id: string; estado: string; intercambios_completados: number; created_at: string }[];
-        };
-        const { data: todosMisVideos } = await supabase
-          .from("videos")
-          .select(`
-            id, youtube_video_id, titulo, vistas, estado, created_at,
-            campanas ( id, estado, intercambios_completados, created_at )
-          `)
-          .eq("usuario_id", usuario.id)
-          .order("created_at", { ascending: false });
-
-        const misCampanasRows: MisCampanasVideoRow[] = ((todosMisVideos as VideoRecibiendoRaw[] | null) ?? []).map((v) => {
-          const campanaReciente = [...(v.campanas ?? [])].sort(
-            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          )[0];
-          return {
-            id: v.id,
-            youtube_video_id: v.youtube_video_id,
-            titulo: v.titulo,
-            vistas: v.vistas,
-            estado: v.estado,
-            intercambios_recibidos: campanaReciente?.intercambios_completados ?? 0,
-            campana_id: campanaReciente?.id ?? null,
-            campana_estado: campanaReciente?.estado ?? null,
-          };
-        });
-        setMisCampanasVideos(misCampanasRows);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [router, refreshKey]);
-
-  const currentList = tab === "pendientes" ? pendientes : completados;
 
   return (
     <div className="min-h-screen bg-[#f5f6f7]">
@@ -425,8 +477,8 @@ export default function ActividadPage() {
         {/* ===== SECTION TABS ===== */}
         <div className="mb-6 inline-flex gap-1 rounded-full bg-[#eff1f2] p-1">
           {[
-            { id: "comentando" as Section, label: "Comentando" },
-            { id: "recibiendo" as Section, label: "Recibiendo" },
+            { id: "comentando" as Section, label: `Comentando (${comentando.length})` },
+            { id: "recibiendo" as Section, label: `Recibiendo (${recibiendo.length})` },
           ].map((s) => (
             <button
               key={s.id}
@@ -443,271 +495,117 @@ export default function ActividadPage() {
           ))}
         </div>
 
-        {section === "comentando" && (
-          <>
-            {/* ===== SUB-TABS ===== */}
-            <div className="mb-5 inline-flex gap-1 rounded-full bg-[#eff1f2] p-1">
-              {[
-                { id: "pendientes" as Tab, label: `Pendientes (${pendientes.length})` },
-                { id: "completados" as Tab, label: `Completados (${completados.length})` },
-              ].map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTab(t.id)}
-                  className="rounded-full px-4 py-2 text-[13px] font-semibold transition-all"
-                  style={{
-                    background: tab === t.id ? "#ffffff" : "transparent",
-                    color: tab === t.id ? "#2c2f30" : "#5b5e60",
-                    boxShadow: tab === t.id ? "0 2px 6px rgba(44,47,48,0.05)" : "none",
-                  }}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {/* ===== COMENTANDO LIST ===== */}
-            <div className="flex flex-col gap-3">
-              {loading && (
-                <div className="flex items-center justify-center rounded-3xl bg-white py-12">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#e9ebec] border-t-[#6200EE]" />
-                </div>
-              )}
-
-              {!loading && currentList.length === 0 && (
-                <div className="rounded-3xl bg-white p-10 text-center">
-                  <p className="text-sm text-[#2c2f30]">
-                    {tab === "pendientes"
-                      ? "Sin intercambios pendientes."
-                      : "Aún no has completado intercambios."}
-                  </p>
-                </div>
-              )}
-
-              {!loading && currentList.length > 0 && currentList.map((i) => (
-                <ActividadRow key={i.id} intercambio={i} tab={tab} router={router} />
-              ))}
-            </div>
-          </>
+        {errorMsg && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-[#c43535]">
+            {errorMsg}
+          </div>
         )}
 
-        {section === "recibiendo" && (
-          <>
-            {/* ===== MI CAMPAÑA ACTIVA ===== */}
-            <div className="mb-6 rounded-3xl bg-white p-6">
-              {loading && (
-                <div className="flex justify-center py-6">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#e9ebec] border-t-[#6200EE]" />
-                </div>
-              )}
+        {/* ===== COMENTANDO ===== */}
+        {section === "comentando" && (
+          <div className="flex flex-col gap-3">
+            {loading && (
+              <div className="flex items-center justify-center rounded-3xl bg-white py-12">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#e9ebec] border-t-[#6200EE]" />
+              </div>
+            )}
 
-              {!loading && !miCampana && (
-                <div className="flex flex-wrap items-start justify-between gap-5">
-                  <div>
-                    <p className="mb-2.5 text-xs font-semibold uppercase tracking-[0.05em] text-[#5b5e60]">
-                      Mi campaña activa
-                    </p>
-                    <h3 className="m-0 mb-2 font-headline text-2xl font-bold text-[#2c2f30]">
-                      Aún no tienes una campaña activa
-                    </h3>
-                    <p className="text-[14px] leading-[1.55] text-[#5b5e60]">
-                      Registra un video para que otros creadores puedan comentarlo.
-                    </p>
-                  </div>
-                  <a
-                    href="/dashboard/registrar-video"
-                    className="inline-flex items-center gap-1.5 rounded-2xl px-[18px] py-2.5 text-[13px] font-semibold text-white transition-all hover:shadow-[0_0_0_6px_rgba(98,0,238,0.12)] active:scale-[0.97]"
-                    style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
-                  >
-                    Crear campaña
-                    <ChevronRight />
-                  </a>
-                </div>
-              )}
-
-              {!loading && miCampana && (
-                <>
-                  <div className="flex flex-wrap items-start justify-between gap-5">
-                    <div className="min-w-0 flex-1">
-                      <p className="mb-2.5 text-xs font-semibold uppercase tracking-[0.05em] text-[#5b5e60]">
-                        Mi campaña activa
-                      </p>
-                      <h3 className="m-0 mb-2 line-clamp-2 font-headline text-2xl font-bold leading-[1.2] text-[#2c2f30]">
-                        {normalizeTitle(miCampana.video_titulo)}
-                      </h3>
-                      <p className="text-[14px] leading-[1.55] text-[#5b5e60]">
-                        {miCampana.intercambios_completados} comentarios recibidos de 10 · {miCampana.en_cola} en cola
-                      </p>
-                    </div>
-                    <a
-                      href={`/dashboard/calificar/${miCampana.campana_id}`}
-                      className="inline-flex items-center gap-1.5 rounded-2xl bg-[#e3e5e6] px-4 py-2.5 text-[13px] font-semibold text-[#6200EE] transition-colors hover:bg-[#dcdedf]"
-                    >
-                      Calificar recibidos
-                      <ChevronRight />
-                    </a>
-                  </div>
-
-                  {/* Progress: 10 segmentos */}
-                  <div className="mt-5 flex gap-1">
-                    {Array.from({ length: 10 }).map((_, i) => {
-                      const done = i < miCampana.intercambios_completados;
-                      const inQueue =
-                        !done &&
-                        i < miCampana.intercambios_completados + miCampana.en_cola;
-                      return (
-                        <div
-                          key={i}
-                          className="h-1.5 flex-1 rounded-full"
-                          style={{
-                            background: done
-                              ? "linear-gradient(135deg, #6200EE, #ac8eff)"
-                              : inQueue
-                                ? "rgba(98, 0, 238, 0.15)"
-                                : "#e3e5e6",
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* ===== MIS CAMPAÑAS LIST ===== */}
-            <div className="rounded-3xl bg-white p-6">
-              <h3 className="m-0 mb-4 font-headline text-xl font-semibold text-[#2c2f30]">
-                Mis campañas
-              </h3>
-
-              {actionError && (
-                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-[#c43535]">
-                  {actionError}
-                </div>
-              )}
-
-              {loading && misCampanasVideos.length === 0 && (
-                <div className="flex justify-center py-8">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#e9ebec] border-t-[#6200EE]" />
-                </div>
-              )}
-
-              {!loading && misCampanasVideos.length === 0 && (
-                <p className="py-4 text-sm text-[#5b5e60]">
-                  Aún no has registrado videos. Crea tu primera campaña para entrar a la comunidad.
+            {!loading && comentando.length === 0 && (
+              <div className="rounded-3xl bg-white p-10 text-center">
+                <p className="text-sm text-[#2c2f30]">
+                  Aún no tienes comentarios verificados.
                 </p>
-              )}
+                <a
+                  href="/dashboard/intercambiar"
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-2xl px-4 py-2.5 text-[13px] font-semibold text-white transition-all hover:shadow-[0_0_0_6px_rgba(98,0,238,0.12)] active:scale-[0.97]"
+                  style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+                >
+                  Ir a la cola
+                  <ChevronRight />
+                </a>
+              </div>
+            )}
 
-              {misCampanasVideos.length > 0 && (
-                <div className="flex flex-col gap-3">
-                  {misCampanasVideos.map((v) => {
-                    const estadoChip = chipForEstado(v.estado);
-                    return (
-                      <div
-                        key={v.id}
-                        className="flex items-center gap-4 rounded-2xl bg-[#eff1f2] p-3"
-                      >
-                        {/* Thumbnail */}
-                        <div className="relative aspect-video w-[120px] shrink-0 overflow-hidden rounded-xl bg-[#e3e5e6]">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={`https://img.youtube.com/vi/${v.youtube_video_id}/mqdefault.jpg`}
-                            alt={v.titulo}
-                            className="h-full w-full object-cover"
-                          />
-                          <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-white/60">
-                            <PlayIcon size={24} />
-                          </div>
-                        </div>
+            {!loading &&
+              comentando.map((i) => (
+                <ComentandoCard key={i.id} intercambio={i} />
+              ))}
+          </div>
+        )}
 
-                        {/* Info */}
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-[15px] font-semibold text-[#2c2f30]">
-                            {normalizeTitle(v.titulo)}
-                          </div>
-                          <div className="mt-1 text-[13px] text-[#5b5e60]">
-                            {v.intercambios_recibidos}/10 comentarios · {formatSubs(v.vistas)} vistas
-                          </div>
-                        </div>
+        {/* ===== RECIBIENDO ===== */}
+        {section === "recibiendo" && (
+          <div className="flex flex-col gap-5">
+            {loading && (
+              <div className="flex items-center justify-center rounded-3xl bg-white py-12">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#e9ebec] border-t-[#6200EE]" />
+              </div>
+            )}
 
-                        {/* Chip estado */}
-                        <span
-                          className="inline-flex shrink-0 items-center rounded-full px-3.5 py-1.5 text-[13px] font-medium"
-                          style={{ background: estadoChip.bg, color: estadoChip.color }}
-                        >
-                          {estadoChip.label}
-                        </span>
+            {!loading && recibiendo.length === 0 && (
+              <div className="rounded-3xl bg-white p-10 text-center">
+                <p className="text-sm text-[#2c2f30]">
+                  Aún no has recibido comentarios verificados en tus campañas.
+                </p>
+                <a
+                  href="/dashboard/registrar-video"
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-2xl px-4 py-2.5 text-[13px] font-semibold text-white transition-all hover:shadow-[0_0_0_6px_rgba(98,0,238,0.12)] active:scale-[0.97]"
+                  style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+                >
+                  <PlusIcon />
+                  Crear campaña
+                </a>
+              </div>
+            )}
 
-                        {/* Acciones — sección 5D de PROYECTO.md */}
-                        <CampanaAcciones
-                          campanaId={v.campana_id}
-                          campanaEstado={v.campana_estado}
-                          intercambiosRecibidos={v.intercambios_recibidos}
-                          actionPending={actionPending}
-                          onPausar={() => pedirConfirmacion("pausar", v.campana_id)}
-                          onActivar={() => pedirConfirmacion("activar", v.campana_id)}
-                          onFinalizar={() => pedirConfirmacion("finalizar", v.campana_id)}
-                          onEliminar={() => pedirConfirmacion("eliminar", v.campana_id)}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* CTA */}
-              <a
-                href="/dashboard/registrar-video"
-                className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-[#e3e5e6] px-4 py-3 text-[13px] font-semibold text-[#6200EE] transition-colors hover:bg-[#dcdedf]"
-              >
-                <PlusIcon />
-                Crear campaña
-              </a>
-            </div>
-          </>
+            {!loading &&
+              recibiendo.map((c) => (
+                <RecibiendoCard
+                  key={c.campana_id}
+                  campana={c}
+                  calificandoId={calificandoId}
+                  cerrandoCampanaId={cerrandoCampanaId}
+                  onRate={(intercambioId, estrellas) =>
+                    handleCalificar(c.campana_id, intercambioId, estrellas)
+                  }
+                  onRequestClose={() => setConfirmCerrar(c.campana_id)}
+                />
+              ))}
+          </div>
         )}
       </main>
 
-      <ConfirmModal
-        state={confirmState}
-        pending={confirmState ? actionPending === confirmState.campanaId : false}
-        onCancel={() => setConfirmState(null)}
-        onConfirm={confirmarAccion}
+      <ConfirmCerrarModal
+        open={confirmCerrar !== null}
+        pending={cerrandoCampanaId !== null && cerrandoCampanaId === confirmCerrar}
+        onCancel={() => {
+          if (cerrandoCampanaId === null) setConfirmCerrar(null);
+        }}
+        onConfirm={() => {
+          if (confirmCerrar) handleCerrarCampana(confirmCerrar);
+        }}
       />
     </div>
   );
 }
 
-// --- Row ---
+// --- Sub-components ---
 
-function ActividadRow({
-  intercambio,
-  tab,
-  router,
-}: {
-  intercambio: IntercambioRow;
-  tab: Tab;
-  router: ReturnType<typeof useRouter>;
-}) {
+function ComentandoCard({ intercambio }: { intercambio: ComentandoRow }) {
   const v = intercambio.video;
-  const c = intercambio.creador;
-  const youtubeUrl = `https://www.youtube.com/watch?v=${v.youtube_video_id}`;
-
-  function handleClick() {
-    if (tab === "pendientes") {
-      router.push(`/dashboard/intercambiar/${intercambio.campana_id}`);
-    } else {
-      window.open(youtubeUrl, "_blank", "noopener,noreferrer");
-    }
-  }
 
   return (
     <div
       className="grid gap-4 rounded-3xl bg-white p-4"
-      style={{ gridTemplateColumns: "100px 1fr auto", alignItems: "center" }}
+      style={{ gridTemplateColumns: "120px 1fr", alignItems: "start" }}
     >
       {/* Thumbnail */}
-      <div className="relative aspect-video overflow-hidden rounded-xl bg-[#e3e5e6]">
+      <a
+        href={`https://www.youtube.com/watch?v=${v.youtube_video_id}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="relative block aspect-video overflow-hidden rounded-xl bg-[#e3e5e6]"
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`https://img.youtube.com/vi/${v.youtube_video_id}/mqdefault.jpg`}
@@ -719,157 +617,166 @@ function ActividadRow({
             {formatDuration(v.duracion_segundos)}
           </span>
         )}
-      </div>
+      </a>
 
-      {/* Middle */}
+      {/* Body */}
       <div className="min-w-0">
-        <div className="mb-1 flex items-center gap-2">
-          {c.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={c.avatar_url}
-              alt={c.nombre || "Creador"}
-              className="h-6 w-6 rounded-full object-cover"
-            />
-          ) : (
-            <div
-              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white"
-              style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
-            >
-              {(c.nombre || "C").charAt(0).toUpperCase()}
-            </div>
-          )}
-          <span className="text-sm font-semibold text-[#2c2f30]">
-            {c.nombre || "Creador"}
-          </span>
+        <div className="text-[15px] font-semibold text-[#2c2f30]">
+          {normalizeTitle(v.titulo)}
         </div>
-        <div className="truncate text-[15px] font-semibold text-[#2c2f30]">
-          {v.titulo}
-        </div>
-        {tab === "completados" && (
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="text-[13px] text-[#5b5e60]">
-              Completado {formatDateRelative(intercambio.created_at)}
-            </span>
-          </div>
-        )}
+        <blockquote className="mt-2 rounded-xl bg-[#f5f6f7] p-3 text-[14px] leading-relaxed text-[#2c2f30]">
+          &ldquo;{intercambio.texto_comentario}&rdquo;
+        </blockquote>
       </div>
-
-      {/* CTA */}
-      {tab === "pendientes" ? (
-        <button
-          onClick={handleClick}
-          className="inline-flex items-center gap-1.5 rounded-2xl px-4 py-2.5 text-[13px] font-semibold text-white transition-all hover:shadow-[0_0_0_6px_rgba(98,0,238,0.12)] active:scale-[0.97]"
-          style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
-        >
-          Comentar ahora
-          <ChevronRight />
-        </button>
-      ) : (
-        <button
-          onClick={handleClick}
-          className="inline-flex items-center gap-1.5 rounded-2xl bg-[#e3e5e6] px-4 py-2.5 text-[13px] font-semibold text-[#2c2f30] transition-colors hover:bg-[#dcdedf]"
-        >
-          <CheckIcon size={12} />
-          Ver video
-        </button>
-      )}
     </div>
   );
 }
 
-// --- Subcomponente de acciones — sección 5D de PROYECTO.md ---
-// (duplicado del de /dashboard/perfil; consolidar cuando se cree shared lib)
-
-function CampanaAcciones({
-  campanaId,
-  campanaEstado,
-  intercambiosRecibidos,
-  actionPending,
-  onPausar,
-  onActivar,
-  onFinalizar,
-  onEliminar,
+function RecibiendoCard({
+  campana,
+  calificandoId,
+  cerrandoCampanaId,
+  onRate,
+  onRequestClose,
 }: {
-  campanaId: string | null;
-  campanaEstado: string | null;
-  intercambiosRecibidos: number;
-  actionPending: string | null;
-  onPausar: () => void;
-  onActivar: () => void;
-  onFinalizar: () => void;
-  onEliminar: () => void;
+  campana: RecibiendoCampana;
+  calificandoId: string | null;
+  cerrandoCampanaId: string | null;
+  onRate: (intercambioId: string, estrellas: number) => void;
+  onRequestClose: () => void;
 }) {
-  if (!campanaId || !campanaEstado) return null;
-
-  const esActiva = campanaEstado === "activa" || campanaEstado === "abierta";
-  const esPausada = campanaEstado === "pausada";
-  if (!esActiva && !esPausada) return null;
-
-  const puedeEliminar = intercambiosRecibidos === 0;
-  const deshabilitado = actionPending === campanaId;
+  const todosCalificados =
+    campana.intercambios.length > 0 &&
+    campana.intercambios.every((i) => (i.estrellas ?? 0) > 0);
+  const cerrando = cerrandoCampanaId === campana.campana_id;
+  // El endpoint /api/campanas/finalizar solo acepta abierta/activa/pausada.
+  // Si backend auto-transicionó a "calificada" al último rating, ocultamos
+  // el botón — la campaña ya está cerrada funcionalmente.
+  const puedeCerrar =
+    todosCalificados &&
+    ["abierta", "activa", "pausada"].includes(campana.campana_estado);
 
   return (
-    <div className="flex shrink-0 flex-wrap justify-end gap-2">
-      {esActiva && (
-        <button
-          type="button"
-          onClick={onPausar}
-          disabled={deshabilitado}
-          className="rounded-full bg-[#e3e5e6] px-3.5 py-1.5 text-[13px] font-medium text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30] disabled:opacity-50"
+    <article className="rounded-3xl bg-white p-5">
+      {/* ===== Header: thumbnail + title ===== */}
+      <header className="flex items-center gap-4">
+        <a
+          href={`https://www.youtube.com/watch?v=${campana.youtube_video_id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="relative block aspect-video w-[140px] shrink-0 overflow-hidden rounded-xl bg-[#e3e5e6]"
         >
-          Pausar
-        </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`https://img.youtube.com/vi/${campana.youtube_video_id}/mqdefault.jpg`}
+            alt={campana.video_titulo}
+            className="h-full w-full object-cover"
+          />
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-white/60">
+            <PlayIcon size={24} />
+          </div>
+        </a>
+        <div className="min-w-0 flex-1">
+          <h3 className="m-0 line-clamp-2 font-headline text-[18px] font-bold leading-[1.25] text-[#2c2f30]">
+            {normalizeTitle(campana.video_titulo)}
+          </h3>
+          <p className="mt-1 text-[13px] text-[#5b5e60]">
+            {campana.intercambios.length} comentario
+            {campana.intercambios.length === 1 ? "" : "s"} recibido
+            {campana.intercambios.length === 1 ? "" : "s"}
+          </p>
+        </div>
+      </header>
+
+      {/* ===== Intercambios verificados ===== */}
+      <ul className="mt-5 flex flex-col gap-3">
+        {campana.intercambios.map((i) => {
+          const initials = getInitials(i.comentarista_nombre);
+          return (
+            <li
+              key={i.id}
+              className="rounded-2xl border border-[rgba(171,173,174,0.18)] bg-[#f8f9fa] p-4"
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                  style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+                >
+                  {initials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  {i.comentarista_canal ? (
+                    <a
+                      href={i.comentarista_canal}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[14px] font-bold text-[#2c2f30] hover:text-[#6200EE]"
+                    >
+                      {i.comentarista_nombre}
+                    </a>
+                  ) : (
+                    <p className="text-[14px] font-bold text-[#2c2f30]">
+                      {i.comentarista_nombre}
+                    </p>
+                  )}
+                  <p className="text-xs text-[#5b5e60]">
+                    {tiempoRelativo(i.created_at)}
+                  </p>
+                </div>
+              </div>
+
+              {i.texto_comentario && (
+                <blockquote className="mt-3 rounded-xl bg-white p-3 text-[14px] leading-relaxed text-[#2c2f30]">
+                  &ldquo;{i.texto_comentario}&rdquo;
+                </blockquote>
+              )}
+
+              <div className="mt-4">
+                <StarRating
+                  value={i.estrellas}
+                  disabled={calificandoId === i.id}
+                  onRate={(n) => onRate(i.id, n)}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* ===== Cerrar campaña ===== */}
+      {puedeCerrar && (
+        <div className="mt-5 flex justify-end">
+          <button
+            type="button"
+            onClick={onRequestClose}
+            disabled={cerrando}
+            className="inline-flex items-center gap-1.5 rounded-2xl px-5 py-3 text-[13px] font-semibold text-white transition-all hover:shadow-[0_0_0_6px_rgba(98,0,238,0.12)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+            style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+          >
+            {cerrando ? "Cerrando…" : "Cerrar campaña"}
+            {!cerrando && <ChevronRight />}
+          </button>
+        </div>
       )}
-      {esPausada && (
-        <button
-          type="button"
-          onClick={onActivar}
-          disabled={deshabilitado}
-          className="rounded-full bg-[rgba(98,0,238,0.1)] px-3.5 py-1.5 text-[13px] font-medium text-[#6200EE] transition-colors hover:bg-[rgba(98,0,238,0.16)] disabled:opacity-50"
-        >
-          Activar
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={onFinalizar}
-        disabled={deshabilitado}
-        className="rounded-full bg-[#e3e5e6] px-3.5 py-1.5 text-[13px] font-medium text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30] disabled:opacity-50"
-      >
-        Finalizar
-      </button>
-      {puedeEliminar && (
-        <button
-          type="button"
-          onClick={onEliminar}
-          disabled={deshabilitado}
-          className="rounded-full bg-[#fde4e4] px-3.5 py-1.5 text-[13px] font-medium text-[#c43535] transition-colors hover:bg-[#fbd0d0] disabled:opacity-50"
-        >
-          Eliminar
-        </button>
-      )}
-    </div>
+    </article>
   );
 }
 
-// --- Modal de confirmación (duplicado del de /dashboard/perfil) ---
-// Cerrable con Cancelar, ESC o click en backdrop. Deshabilita controles
-// mientras la acción está pendiente.
+// --- Modal de confirmación (mismo patrón que el resto del dashboard) ---
 
-function ConfirmModal({
-  state,
+function ConfirmCerrarModal({
+  open,
   pending,
   onCancel,
   onConfirm,
 }: {
-  state: { action: CampanaActionId; campanaId: string } | null;
+  open: boolean;
   pending: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
   useEffect(() => {
-    if (!state) return;
+    if (!open) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !pending) onCancel();
     };
@@ -880,11 +787,9 @@ function ConfirmModal({
       window.removeEventListener("keydown", handler);
       document.body.style.overflow = prev;
     };
-  }, [state, onCancel, pending]);
+  }, [open, onCancel, pending]);
 
-  if (!state) return null;
-
-  const { titulo, mensaje } = CONFIRM_TEXTS[state.action];
+  if (!open) return null;
 
   return (
     <div
@@ -896,7 +801,7 @@ function ConfirmModal({
       onClick={() => { if (!pending) onCancel(); }}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="confirm-title"
+      aria-labelledby="confirm-cerrar-title"
     >
       <style>{`
         @keyframes comentaloFade { from { opacity: 0 } to { opacity: 1 } }
@@ -911,13 +816,13 @@ function ConfirmModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h3
-          id="confirm-title"
+          id="confirm-cerrar-title"
           className="font-headline text-xl font-extrabold tracking-[-0.02em] text-[#2c2f30]"
         >
-          {titulo}
+          Cerrar campaña
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-[#5b5e60]">
-          {mensaje}
+          La campaña quedará finalizada en tu historial. Esta acción no se puede deshacer.
         </p>
         <div className="mt-6 flex gap-2">
           <button
