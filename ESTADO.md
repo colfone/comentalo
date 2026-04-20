@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.10 — 19 de abril de 2026
+## Version actual: v4.11 — 20 de abril de 2026
 
 ## Registro de versiones
 
@@ -52,6 +52,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.8 | Rediseño Crear campaña + detalle intercambio | 19 abril 2026 | Rediseño /dashboard/registrar-video "Crear campaña" con nav floating Cola/Mi actividad/Perfil, banner amarillo de advertencia previo al grid, flujo 2 pasos (seleccionar video / pegar link → configurar campaña), cards tipo/tono con descripción, helper normalizeTitle (NFKC para letras matemáticas + regex emojis/banderas + sentence case saltando puntuación inicial). Commit del detalle del intercambio /dashboard/intercambiar/[campanaId] |
 | v4.9 | Nav unificado + modal verificación + consolidación | 19 abril 2026 | Nav floating unificado en las 6 pantallas de dashboard: Inicio/Comentar/Mi actividad/Perfil (labels finales tras varias iteraciones — "Cola" pasó a "Comentar"; "Mis campañas" se introdujo y luego se fusionó dentro de /dashboard/actividad como tab "Recibiendo"). Rediseño /dashboard principal a nav floating glass + vocabulario "Comentarios dados/recibidos" + normalizeTitle. Paso 2 de Crear campaña cambiado a campo libre "Notas para los comentaristas" (elimina selectores tipo/tono, mantiene 300 chars). /dashboard/actividad con tabs top-level Comentando/Recibiendo — Recibiendo fusiona Mi campaña activa + lista de campañas con botones Pausar/Eliminar (solo confirm dialog, sin API). /dashboard/intercambiar con 4 stats reales conectados a Supabase (Comentarios totales, Comentarios este mes, Reputación con Sin activar <20 calificados, Campañas activas). Botón cerrar sesión recuperado en /dashboard/perfil. Modal obligatorio de verificación de canal en 4 pasos sobre /dashboard/layout.tsx cuando canal_verificado=false — paso 4 éxito con recordatorio de borrar código. Nueva columna usuarios.canal_verificado BOOLEAN DEFAULT false. Endpoint /api/canal/verificar-codigo reescrito con acciones iniciar/verificar. Fix avatar con referrerPolicy="no-referrer". PROYECTO.md sección 5D nueva — Estados y acciones de campañas (Activa/Pausada/Finalizada/Eliminada + tabla de acciones + reglas) |
 | v4.10 | APIs campañas + modal confirmación + fix detalle intercambio | 19 abril 2026 | 4 endpoints nuevos (POST /api/campanas/pausar, /activar, /finalizar, /eliminar) según sección 5D con validación de ownership via service client y mapa de transiciones válidas. Migración expand_campanas_estado: CHECK expandido a 'abierta/completada/calificada/activa/pausada/finalizada' (vocabulario dual por ahora — abierta sigue viva para campañas legacy). Subcomponente CampanaAcciones en /dashboard/perfil y tab Recibiendo de /dashboard/actividad muestra Pausar/Finalizar/Eliminar (activa) o Activar/Finalizar/Eliminar (pausada); Eliminar solo si intercambios_completados=0; terminal states ocultan botones. ConfirmModal personalizado reemplaza window.confirm() en las 3 pantallas (perfil + actividad + detalle intercambio) — overlay fade + card pop con cubic-bezier, Confirmar gradient primary, Cancelar gris, dismissable por ESC/backdrop. Fix crítico: /dashboard/intercambiar/[campanaId] mostraba "No encontramos este intercambio" porque los joins !inner a campanas/videos/usuarios eran bloqueados por RLS (policies solo permiten leer al dueño del video, no al comentarista). Nueva RPC get_intercambio_detalle LANGUAGE sql SECURITY DEFINER que bypasea RLS con filtro por auth.uid(); detail page migrado a supabase.rpc(). normalizeTitle aplicado a títulos de videos en cola /dashboard/intercambiar |
+| v4.11 | Bugs Mi actividad + cola + cookies + vocabulario intercambios | 20 abril 2026 | RPC get_mis_intercambios_comentarista (LANGUAGE sql, SECURITY DEFINER): resuelve bug del tab "Pendientes" de /dashboard/actividad que mostraba 0 filas por el mismo patrón RLS+joins!inner que afectó al detail page en v4.10. Frontend migrado a supabase.rpc(). RPC asignar_intercambio reescrito a LANGUAGE sql con fix: c.estado IN ('abierta', 'activa') — campañas que pasaron por Pausar → Activar (quedan en 'activa') volvían invisibles en la cola. Fix /dashboard/layout.tsx: getUser() → getSession() para evitar error de Next 16 "Cookies can only be modified in a Server Action or Route Handler" cuando Supabase intentaba refrescar token desde server component. Endpoint /api/intercambios/copiar eliminó guard 409 para soportar re-copia en estado pendiente (flujo "Volver a intentarlo"). Refactor completo de /dashboard/intercambiar/[campanaId]: eliminado countdown por completo (state, tick, interval, render, helper getMinWaitSeconds, import useCallback), pantalla "Intercambio en revisión" reescrita como "No encontramos tu comentario" con botones Volver a intentarlo / Cancelar (usa ConfirmCancelarModal), modal motivacional "Antes de comentar" simplificado a un solo botón "Abrir video en YouTube →" con texto nuevo sobre ayuda al creador sin imponer tiempo mínimo. Texto helper rediseñado para no parecer botón. Chip "Verificando" → "No encontramos tu comentario" en /dashboard/actividad (otras 4 ocurrencias de "Verificando" en la app auditadas y confirmadas como contextos distintos — no tocadas) |
 
 ## Stack confirmado
 
@@ -561,6 +562,8 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 | `calcular_reputacion` | `p_comentarista_id UUID` | JSON `{ ok, total_calificados, porcentaje, nivel, activo }` | Calcula % positivas, determina nivel, actualiza usuarios.reputacion. Activo solo con >= 20 calificados (sesion 5) |
 | `confirmar_intercambio` | `p_comentarista_id UUID, p_campana_id UUID` | JSON `{ ok, intercambio_id, campana_id, video_id }` o `{ ok, error, mensaje }` | Valida reserva vigente, INSERT en intercambios, libera las 2 reservas del usuario. SECURITY DEFINER (v4.5) |
 | `get_intercambio_detalle` | `p_campana_id UUID` | JSON `{ ok, intercambio, video, creador }` o `{ ok, error, mensaje }` | LANGUAGE sql SECURITY DEFINER. Deriva comentarista_id de auth.uid() y retorna detalle plano del intercambio + video + creador, bypasseando RLS que bloqueaba al comentarista (v4.10) |
+| `get_mis_intercambios_comentarista` | ninguno | JSON array `[{ id, campana_id, texto_comentario, estado, created_at, video, creador }, ...]` | LANGUAGE sql SECURITY DEFINER. Lista intercambios pendiente/verificado del comentarista autenticado (via auth.uid()) con video + creador embedded, ordenados por created_at desc, LIMIT 100. Bypasea RLS por el mismo patrón que get_intercambio_detalle (v4.11) |
+| `asignar_intercambio` (v4.11) | `p_comentarista_id UUID` | JSON `{ ok, videos }` o `{ ok, error, mensaje }` | Reescrito a LANGUAGE sql. Fix: c.estado IN ('abierta', 'activa'). Guardrails inline en WHERE del INSERT (video activo, <3 pendientes, sin reservas previas), CASE final decide mensaje de retorno. FOR UPDATE OF c SKIP LOCKED preservado en CTE |
 
 ## pg_cron Jobs en Supabase
 
@@ -602,6 +605,8 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 | `20260419180000_add_canal_verificado.sql` | Columna canal_verificado BOOLEAN DEFAULT false en usuarios (gate del modal de verificacion) | Aplicada |
 | `20260419200000_expand_campanas_estado.sql` | CHECK de campanas.estado expandido para aceptar activa/pausada/finalizada ademas del vocabulario viejo | Aplicada |
 | `20260419210000_rpc_get_intercambio_detalle.sql` | RPC LANGUAGE sql SECURITY DEFINER que retorna intercambio+video+creador bypasseando RLS para el comentarista autenticado | Aplicada |
+| `20260420000000_rpc_get_mis_intercambios_comentarista.sql` | RPC LANGUAGE sql SECURITY DEFINER que lista intercambios del comentarista con video+creador embedded, bypasseando RLS | Aplicada |
+| `20260420010000_asignar_intercambio_language_sql.sql` | Reescritura LANGUAGE sql del RPC asignar_intercambio + fix estado IN ('abierta','activa') para incluir campañas activadas tras pausar | Aplicada |
 
 ## Deploy en produccion
 
@@ -627,6 +632,7 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 
 ### Pendientes inmediatos
 
+- Modal "Antes de comentar" al presionar "Ir al video en YouTube" — abandonado esta sesión por el error de cookies en layout. Re-implementar tras confirmar que el fix getSession() estabiliza el entorno
 - Pantalla Calificar campaña — /dashboard/calificar/[campanaId] pendiente de rediseño
 - Deprecar /verificar-codigo (página antigua) — el endpoint /api/canal/verificar-codigo ya no la soporta, puede borrarse
 - Actualizar PROYECTO.md secciones 9.5 y 10.10 (reflejar el nuevo flujo de verificación en dos pasos: registro en /verificar-canal + re-verificación en modal del dashboard)
@@ -634,6 +640,8 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 - Refactor importante: consolidar duplicados — `normalizeTitle` helper en 5 archivos, iconos de nav (Home/Swap/Inbox/User/Bell) en 6, `ConfirmModal` + `CampanaAcciones` + `CONFIRM_TEXTS` + `@keyframes comentaloFade/Pop` en 3 archivos. Candidato: `src/lib/titulo.ts` + `src/components/dashboard/{nav,campana-acciones,confirm-modal}.tsx`. Ahorra ~400 líneas
 - Backfill opcional de usuarios legacy: `UPDATE usuarios SET canal_verificado = true WHERE canal_youtube_id IS NOT NULL` si no se quiere forzar re-verificación a usuarios ya registrados
 - Vocabulario dual en campanas.estado: hoy 'abierta' y 'activa' coexisten con semántica idéntica. Migrar todas las campañas 'abierta' → 'activa' (UPDATE + actualizar /api/videos/registrar y /api/campanas/lanzar) cuando se aborde el cambio a campañas-por-tiempo
+- Fix definitivo del error de cookies: try/catch alrededor de `cookieStore.set()` en src/lib/supabase/server.ts. Permite volver a usar getUser() en layouts (más seguro que getSession) sin romper Next 16
+- Deuda del countdown eliminado: `timestamp_copia` sigue guardándose en DB aunque el frontend ya no lo usa. Campo queda inocuo pero sin propósito — candidato a drop en limpieza futura
 
 ### Cambio estructural pendiente — Campañas por tiempo
 
