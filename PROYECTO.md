@@ -2,7 +2,7 @@
 
 Documento Maestro del Proyecto
 
-Versión 4.2 — Abril 2026
+Versión 4.4 — Abril 2026
 
 *Comunidad de intercambio de comentarios reales entre creadores de YouTube en Latinoamérica*
 
@@ -43,6 +43,8 @@ Versión 4.2 — Abril 2026
 | 4.0 | Abril 2026 | Agregada seccion 6G — Sistema de notificaciones con 5 tipos, panel de campana en dashboard, Realtime |
 | 4.1 | Abril 2026 | Landing page profesional con sistema de diseno oficial. Color primary #6200EE. Seccion 6H — Sistema de diseno |
 | 4.2 | Abril 2026 | Cambio estructural — campañas por tiempo (10 días fijos, sin límite de intercambios, cierre automático al vencer). Actualizada sección 5C completa y sección 6.2 |
+| 4.3 | Abril 2026 | Agregada sección 5E — Sistema de saldo de comentarios. Máximo 10, campaña se pausa al llegar a 0 |
+| 4.4 | Abril 2026 | Eliminado límite de tiempo de campañas — la campaña vive por saldo, no por tiempo |
 
 # **1. Visión General del Proyecto**
 
@@ -404,10 +406,9 @@ Una campaña es la unidad de trabajo central de Comentalo. Cada campaña tiene u
 
 | Elemento | Definición |
 | --- | --- |
-| Duración | 10 días fijos desde el momento en que se lanza |
 | Intercambios por campaña | Sin límite — recibe todos los comentarios verificados que lleguen en 10 días |
 | Inicio | El creador lanza la campaña para un video específico |
-| Cierre automático | La campaña se cierra sola al vencer los 10 días |
+| Pausa automática | La campaña se pausa cuando el saldo de comentarios llega a 0 |
 | Cierre manual | El creador puede pausarla o finalizarla antes del vencimiento |
 | Nueva campaña | El creador puede lanzar otra campaña del mismo video inmediatamente después de que la anterior termine |
 
@@ -418,13 +419,12 @@ Paso 2 — El sistema verifica que el video cumple la regla de vistas (ver 5C.4)
 Paso 3 — La campaña queda activa durante 10 días en la cola.
 Paso 4 — Los comentaristas participan libremente durante esos 10 días.
 Paso 5 — El creador califica los comentarios recibidos en cualquier momento durante o después de la campaña.
-Paso 6 — Al vencer los 10 días la campaña se cierra automáticamente. El creador puede lanzar una nueva campaña del mismo video inmediatamente.
+Paso 6 — La campaña se mantiene activa mientras el creador tenga saldo. Si el saldo llega a 0 la campaña se pausa automáticamente y se reactiva cuando el creador comenta más videos.
 
 ## 5C.3 Reglas de las Campañas
 
 | Parámetro | Valor |
 | --- | --- |
-| Duración | 10 días fijos |
 | Intercambios por campaña | Sin límite |
 | Campañas simultáneas por video | 1 — no puede haber dos campañas abiertas en el mismo video |
 | Condición para lanzar otra campaña | La campaña anterior debe estar cerrada (finalizada o vencida) |
@@ -470,6 +470,37 @@ Para lanzar una campaña el video debe tener al menos 10 vistas por cada campañ
 - Solo se puede eliminar una campaña que no haya recibido ningún comentario verificado
 - Al pausar — los comentaristas que tenían ese video asignado reciben otro video automáticamente
 - Al finalizar — la campaña cierra inmediatamente sin importar cuántos días llevaba activa
+
+# 5E. Sistema de Saldo de Comentarios
+
+## 5E.1 La Regla
+Para recibir comentarios en una campaña activa, el creador debe mantener un saldo positivo de comentarios dados. El saldo es el único motor de la campaña — no el tiempo.
+
+## 5E.2 Mecánica del Saldo
+
+| Parámetro | Valor |
+| --- | --- |
+| Saldo máximo acumulable | 10 comentarios |
+| Cómo se suma | Cada comentario verificado suma 1 al saldo |
+| Cómo se resta | Cada comentario recibido en la campaña resta 1 del saldo |
+| Saldo inicial | 0 — el creador debe comentar antes de recibir |
+| Campaña sin saldo | Se pausa automáticamente al llegar a 0 |
+| Recarga de saldo | El creador puede comentar más en cualquier momento hasta el máximo de 10 |
+
+## 5E.3 Flujo del Saldo
+- El creador puede comentar videos hasta alcanzar su saldo máximo de 10
+- No es necesario esperar a que el saldo llegue a 0 para comentar más
+- Cuando su campaña activa recibe un comentario verificado, el saldo baja 1
+- Si el saldo llega a 0 la campaña se pausa automáticamente y el creador recibe notificación
+- Cuando el saldo sube de 0 la campaña se reactiva automáticamente
+- Sin campaña activa no se puede participar comentando videos de otros
+
+## 5E.4 Por Qué Este Modelo
+- Evita que alguien cree una campaña y espere comentarios sin participar
+- Permite flexibilidad — el usuario puede comentar 2 hoy y 8 mañana
+- El ecosistema se mantiene equilibrado — nadie recibe más de lo que da
+- El máximo de 10 incentiva participación activa sin ser restrictivo
+- Sin límite de tiempo — la campaña dura exactamente lo que el usuario participa
 
 # **6. Verificación y Sistema de Reputación**
 
