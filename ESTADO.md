@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.8 — 19 de abril de 2026
+## Version actual: v4.9 — 19 de abril de 2026
 
 ## Registro de versiones
 
@@ -50,6 +50,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.6 | Sesión prototipo | 18 abril 2026 | Nueva landing Paso 1/3, nueva /verificar-canal Paso 2/3 con auto-registro directo, nueva /bienvenida Paso 3/3, flujo /verificar-codigo deprecado |
 | v4.7 | Sesión prototipo día 2 | 18 abril 2026 | Cola rediseñada, Mi actividad nueva, Perfil nuevo, Detalle del intercambio nuevo, flujo onboarding completo en producción |
 | v4.8 | Rediseño Crear campaña + detalle intercambio | 19 abril 2026 | Rediseño /dashboard/registrar-video "Crear campaña" con nav floating Cola/Mi actividad/Perfil, banner amarillo de advertencia previo al grid, flujo 2 pasos (seleccionar video / pegar link → configurar campaña), cards tipo/tono con descripción, helper normalizeTitle (NFKC para letras matemáticas + regex emojis/banderas + sentence case saltando puntuación inicial). Commit del detalle del intercambio /dashboard/intercambiar/[campanaId] |
+| v4.9 | Nav unificado + modal verificación + consolidación | 19 abril 2026 | Nav floating unificado en las 6 pantallas de dashboard: Inicio/Comentar/Mi actividad/Perfil (labels finales tras varias iteraciones — "Cola" pasó a "Comentar"; "Mis campañas" se introdujo y luego se fusionó dentro de /dashboard/actividad como tab "Recibiendo"). Rediseño /dashboard principal a nav floating glass + vocabulario "Comentarios dados/recibidos" + normalizeTitle. Paso 2 de Crear campaña cambiado a campo libre "Notas para los comentaristas" (elimina selectores tipo/tono, mantiene 300 chars). /dashboard/actividad con tabs top-level Comentando/Recibiendo — Recibiendo fusiona Mi campaña activa + lista de campañas con botones Pausar/Eliminar (solo confirm dialog, sin API). /dashboard/intercambiar con 4 stats reales conectados a Supabase (Comentarios totales, Comentarios este mes, Reputación con Sin activar <20 calificados, Campañas activas). Botón cerrar sesión recuperado en /dashboard/perfil. Modal obligatorio de verificación de canal en 4 pasos sobre /dashboard/layout.tsx cuando canal_verificado=false — paso 4 éxito con recordatorio de borrar código. Nueva columna usuarios.canal_verificado BOOLEAN DEFAULT false. Endpoint /api/canal/verificar-codigo reescrito con acciones iniciar/verificar. Fix avatar con referrerPolicy="no-referrer". PROYECTO.md sección 5D nueva — Estados y acciones de campañas (Activa/Pausada/Finalizada/Eliminada + tabla de acciones + reglas) |
 
 ## Stack confirmado
 
@@ -377,6 +378,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | nombre | TEXT | nullable (sesion 3) |
 | avatar_url | TEXT | nullable (sesion 3) |
 | videos_al_registro | INTEGER | NOT NULL, DEFAULT 0 (sesion 3) |
+| canal_verificado | BOOLEAN | NOT NULL, DEFAULT false (v4.9) |
 
 RLS habilitado. Politicas: `usuarios_select_own`, `usuarios_insert_own`.
 
@@ -508,9 +510,13 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 | `/` | `src/app/page.tsx` | Dynamic (server) | Redirige a /login o /dashboard segun sesion |
 | `/login` | `src/app/login/page.tsx` | Static (client) | Landing page con hero, como funciona, footer + login con Google |
 | `/auth/callback` | `src/app/auth/callback/route.ts` | Dynamic (route handler) | Callback OAuth + verificacion YouTube |
-| `/dashboard` | `src/app/dashboard/page.tsx` | Dynamic (server) | Dashboard con perfil, boton intercambiar y lista de videos |
-| `/dashboard/registrar-video` | `src/app/dashboard/registrar-video/page.tsx` | Static (client) | Grid de videos + formulario de registro |
-| `/dashboard/intercambiar` | `src/app/dashboard/intercambiar/page.tsx` | Static (client) | Flujo completo del comentarista |
+| `/dashboard/*` | `src/app/dashboard/layout.tsx` | Dynamic (server) | Gate server-side de verificacion — rendera modal 4 pasos sobre children cuando canal_verificado = false (v4.9) |
+| `/dashboard` | `src/app/dashboard/page.tsx` + `dashboard-client.tsx` | Dynamic (server→client) | Home: nav floating glass con tab Inicio activo, sidebar 4 stats + reputacion, grid "Mis campañas" con tabs En curso/Completados, El Manifiesto, footer |
+| `/dashboard/actividad` | `src/app/dashboard/actividad/page.tsx` | Static (client) | Mi actividad: tabs top-level Comentando (pendientes + completados) y Recibiendo (mi campana activa + lista de todas mis campanas con Pausar/Eliminar + CTA Crear campana) |
+| `/dashboard/perfil` | `src/app/dashboard/perfil/page.tsx` | Static (client) | Perfil: hero con avatar + reputacion + suscriptores, 4 stats, seccion Mis campanas con Pausar/Eliminar, boton cerrar sesion al final |
+| `/dashboard/registrar-video` | `src/app/dashboard/registrar-video/page.tsx` | Static (client) | Crear campana: flujo 2 pasos con banner amarillo, grid de videos, card paste-link, campo libre "Notas para los comentaristas" + advertencia YouTube Studio, exito con CTA "Ir a comentar" |
+| `/dashboard/intercambiar` | `src/app/dashboard/intercambiar/page.tsx` | Static (client) | Comentar: cola de 2 videos simultaneos, 4 stats reales (Comentarios totales / Comentarios este mes / Reputacion / Campanas activas), subtexto "Tu comentas. La comunidad te comenta. Asi crecemos todos." |
+| `/dashboard/intercambiar/[campanaId]` | `src/app/dashboard/intercambiar/[campanaId]/page.tsx` | Dynamic (client) | Detalle del intercambio — layout 2 columnas (video + compose | sidebar creador + tarea) |
 | `/dashboard/calificar/[campanaId]` | `src/app/dashboard/calificar/[campanaId]/page.tsx` | Dynamic (client) | Calificacion de intercambios por campana |
 | `/dashboard/campana/[campanaId]` | `src/app/dashboard/campana/[campanaId]/page.tsx` | Dynamic (client) | Detalle de campana con intercambios y calificacion inline |
 | `/verificar-canal` | `src/app/verificar-canal/page.tsx` | Static (client) | Ingreso de link del canal + verificacion de requisitos |
@@ -523,7 +529,7 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 | Ruta | Metodo | Descripcion |
 | --- | --- | --- |
 | `/api/canal/verificar-requisitos` | POST | Resuelve link de canal, verifica requisitos 4B, genera codigo COMENTALO-XXXX |
-| `/api/canal/verificar-codigo` | POST | Lee descripcion publica del canal, busca codigo, registra usuario |
+| `/api/canal/verificar-codigo` | POST | Reescrito v4.9: dos acciones. `{action:"iniciar"}` genera/reutiliza codigo COMENTALO-XXXX en verificaciones_canal; `{action:"verificar", codigo}` lee descripcion publica del canal via YouTube API y al encontrarlo marca usuarios.canal_verificado = true |
 | `/api/cron/verificaciones` | GET | Ejecuta RPC procesar_verificaciones_pendientes (protegido con CRON_SECRET) |
 | `/api/videos/registrar` | POST | Registra video: valida propiedad, inserta en DB, crea campana si vistas >= 10 |
 | `/api/videos/verificar-canal` | GET | Verifica que un videoId pertenece al canal del usuario autenticado |
@@ -584,6 +590,9 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 | `20260416212103_verificacion_codigo_canal.sql` | Tabla verificaciones_canal para flujo de codigo en descripcion | Aplicada |
 | `20260416220953_fix_campanas_insert_policy.sql` | INSERT y UPDATE policies en campanas | Aplicada |
 | `20260416234737_notificaciones.sql` | Tabla notificaciones + RLS + Realtime | Aplicada |
+| `20260417160000_calificacion_estrellas.sql` | Columna estrellas en intercambios + RPC calcular_reputacion actualizado | Aplicada |
+| `20260418120000_reserva_multiples_videos.sql` | Tabla reservas_intercambio + RPCs asignar_intercambio / confirmar_intercambio reescritos (2 videos simultaneos) | Aplicada |
+| `20260419180000_add_canal_verificado.sql` | Columna canal_verificado BOOLEAN DEFAULT false en usuarios (gate del modal de verificacion) | Aplicada |
 
 ## Deploy en produccion
 
@@ -610,9 +619,12 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 ### Pendientes inmediatos
 
 - Pantalla Calificar campaña — /dashboard/calificar/[campanaId] pendiente de rediseño
-- Dashboard principal — /dashboard pendiente de rediseño o deprecar si el nuevo nav lo reemplaza
-- Deprecar /verificar-codigo y limpiar tabla verificaciones_canal
-- Actualizar PROYECTO.md secciones 9.5 y 10.10
+- Deprecar /verificar-codigo (página antigua) — el endpoint /api/canal/verificar-codigo ya no la soporta, puede borrarse
+- Actualizar PROYECTO.md secciones 9.5 y 10.10 (reflejar el nuevo flujo de verificación en dos pasos: registro en /verificar-canal + re-verificación en modal del dashboard)
+- API wiring de botones Pausar / Eliminar en /dashboard/actividad (tab Recibiendo) y /dashboard/perfil (hoy solo window.confirm, sin endpoint). Requiere estados nuevos en campanas.estado (hoy CHECK IN 'abierta','completada','calificada' — agregar 'pausada' y 'finalizada' según sección 5D de PROYECTO.md)
+- Duplicación: la sección "Mis campañas" aparece tanto en /dashboard/perfil como en /dashboard/actividad tab Recibiendo. Decidir cuál es la fuente de verdad y eliminar la otra
+- Refactor: consolidar duplicados — `normalizeTitle` helper en 4 archivos, iconos de nav (Home/Swap/Inbox/User/Bell) en 6. Candidato `src/lib/titulo.ts` + `src/components/dashboard/nav.tsx`
+- Backfill opcional de usuarios legacy: `UPDATE usuarios SET canal_verificado = true WHERE canal_youtube_id IS NOT NULL` si no se quiere forzar re-verificación a usuarios ya registrados
 
 ### Cambio estructural pendiente — Campañas por tiempo
 
