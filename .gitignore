@@ -41,3 +41,8 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# secretos locales — nunca al repo
+Credenciales.txt
+credenciales*
+*.secrets

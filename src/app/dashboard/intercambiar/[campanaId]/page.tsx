@@ -423,29 +423,15 @@ export default function DetalleIntercambioPage({
   // --- Actions ---
 
   async function handleCopiar() {
-    if (!intercambio || !video || saving) return;
+    if (!video || saving) return;
     if (comentario.trim().length < 20) return;
     setSaving(true);
     try {
       try { await navigator.clipboard.writeText(comentario); } catch { /* fallback silencioso */ }
-      const res = await fetch("/api/intercambios/copiar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          intercambio_id: intercambio.id,
-          texto_comentario: comentario,
-          duracion_video_segundos: video.duracion_segundos || 0,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Error al guardar el comentario.");
-        return;
-      }
+      // Ya no persistimos el texto en DB — el intercambio se crea sólo
+      // cuando YouTube confirma el comentario en /verificar.
       setCopied(true);
       setPhase("copied");
-    } catch {
-      alert("Error de conexión al guardar el comentario.");
     } finally {
       setSaving(false);
     }
@@ -464,13 +450,16 @@ export default function DetalleIntercambioPage({
   }
 
   async function handleYaPublique() {
-    if (!intercambio || verificando || verificandoEn !== null) return;
+    if (!video || verificando || verificandoEn !== null) return;
     setVerificando(true);
     try {
       const res = await fetch("/api/intercambios/verificar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ intercambio_id: intercambio.id }),
+        body: JSON.stringify({
+          campana_id: campanaId,
+          texto_comentario: comentario,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -622,7 +611,7 @@ export default function DetalleIntercambioPage({
         {phase !== "loading" && phase !== "error" && video && creador && (
           <div
             className="grid gap-6"
-            style={{ gridTemplateColumns: "minmax(0, 1fr) 380px" }}
+            style={{ gridTemplateColumns: phase === "compose" ? "minmax(0, 1fr)" : "minmax(0, 1fr) 380px" }}
           >
             {/* ===== MAIN COLUMN ===== */}
             <div className="flex flex-col gap-4">
@@ -749,18 +738,36 @@ export default function DetalleIntercambioPage({
                     Mínimo 20 caracteres.
                   </p>
 
-                  {/* Tipo y tono — etiquetas informativas (read-only) */}
-                  {(video.tipo_intercambio || video.tono) && (
-                    <div className="mb-4 flex flex-wrap gap-2">
-                      {video.tipo_intercambio && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold" style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}>
-                          Tipo: {tipoLabels[video.tipo_intercambio] || video.tipo_intercambio}
-                        </span>
+                  {/* Instrucciones del creador — esenciales, encima del textarea.
+                      Reemplaza al panel lateral en esta fase. */}
+                  {((video.tipo_intercambio && video.tono) || video.descripcion) && (
+                    <div className="mb-5 rounded-xl bg-[#eff1f2] p-4">
+                      {video.tipo_intercambio && video.tono && (
+                        <p className="m-0 text-[14px] leading-[1.55] text-[#2c2f30]">
+                          <b className="font-semibold">
+                            {creador.canal_url?.match(/@[^/?#]+/)?.[0] ??
+                              (creador.nombre ? creador.nombre.split(" ")[0] : "Este creador")}
+                          </b>{" "}
+                          prefiere comentarios de tipo{" "}
+                          <b className="font-semibold">
+                            {tipoLabels[video.tipo_intercambio] || video.tipo_intercambio}
+                          </b>{" "}
+                          con tono{" "}
+                          <b className="font-semibold">
+                            {tonoLabels[video.tono] || video.tono}
+                          </b>.
+                        </p>
                       )}
-                      {video.tono && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold" style={{ background: "rgba(232, 119, 34, 0.1)", color: "#E87722" }}>
-                          Tono: {tonoLabels[video.tono] || video.tono}
-                        </span>
+                      {video.descripcion && (
+                        <div
+                          className={`${
+                            video.tipo_intercambio && video.tono ? "mt-3 " : ""
+                          }rounded-lg bg-white p-3`}
+                        >
+                          <p className="m-0 whitespace-pre-wrap text-[13px] leading-[1.5] text-[#5b5e60]">
+                            {video.descripcion}
+                          </p>
+                        </div>
                       )}
                     </div>
                   )}
@@ -1009,6 +1016,9 @@ export default function DetalleIntercambioPage({
             </div>
 
             {/* ===== SIDEBAR ===== */}
+            {/* En el Paso 2 (compose) el sidebar desaparece — las instrucciones
+                del creador se muestran encima del textarea en su lugar. */}
+            {phase !== "compose" && (
             <aside className="flex flex-col gap-3 self-start lg:sticky lg:top-24">
               {/* Instrucciones del creador */}
               <div className="rounded-3xl bg-white p-[18px]">
@@ -1059,6 +1069,7 @@ export default function DetalleIntercambioPage({
                 </div>
               </div>
             </aside>
+            )}
           </div>
         )}
       </main>
