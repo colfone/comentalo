@@ -2,7 +2,7 @@
 
 Documento Maestro del Proyecto
 
-Versión 4.4 — Abril 2026
+Versión 4.5 — Abril 2026
 
 *Comunidad de intercambio de comentarios reales entre creadores de YouTube en Latinoamérica*
 
@@ -45,6 +45,7 @@ Versión 4.4 — Abril 2026
 | 4.2 | Abril 2026 | Cambio estructural — campañas por tiempo (10 días fijos, sin límite de intercambios, cierre automático al vencer). Actualizada sección 5C completa y sección 6.2 |
 | 4.3 | Abril 2026 | Agregada sección 5E — Sistema de saldo de comentarios. Máximo 10, campaña se pausa al llegar a 0 |
 | 4.4 | Abril 2026 | Eliminado límite de tiempo de campañas — la campaña vive por saldo, no por tiempo |
+| 4.5 | Abril 2026 | Agregada sección 5F — Sistema de créditos. Máximo 10, campaña se pausa al llegar a 0, borradores 2 horas, notificación por email via Resend |
 
 # **1. Visión General del Proyecto**
 
@@ -501,6 +502,53 @@ Para recibir comentarios en una campaña activa, el creador debe mantener un sal
 - El ecosistema se mantiene equilibrado — nadie recibe más de lo que da
 - El máximo de 10 incentiva participación activa sin ser restrictivo
 - Sin límite de tiempo — la campaña dura exactamente lo que el usuario participa
+
+# 5F. Sistema de Créditos
+
+## 5F.1 Qué son los Créditos
+
+Los créditos son la unidad de intercambio de Comentalo. Representan el balance entre comentarios dados y comentarios recibidos. Sin créditos no se puede tener una campaña activa.
+
+## 5F.2 Mecánica de los Créditos
+
+| Parámetro | Valor |
+| --- | --- |
+| Nombre | Créditos |
+| Saldo máximo acumulable | 10 créditos |
+| Cómo se gana | Cada comentario verificado suma 1 crédito |
+| Cómo se gasta | Cada comentario recibido en campaña activa resta 1 crédito |
+| Saldo inicial | 0 — el creador debe comentar antes de recibir |
+| Campaña sin créditos | Se pausa automáticamente al llegar a 0 |
+| Reactivación automática | Cuando el saldo sube de 0 la campaña se reactiva sola |
+| Visible en | Menú superior del dashboard + perfil del usuario |
+
+## 5F.3 Reglas de los Créditos
+
+- El creador no puede comentar su propio video
+- Si la campaña está pausada por créditos en 0, los videos del creador no aparecen en la cola
+- El saldo nunca baja de 0 — si llega a 0 la campaña se pausa, no se generan créditos negativos
+- El creador puede recargar créditos en cualquier momento comentando más videos, hasta el máximo de 10
+
+## 5F.4 Caso de Simultaneidad
+
+Si dos usuarios verifican un comentario en el mismo video al mismo tiempo y el saldo del creador llega a 0 por el primero:
+- El segundo comentarista recibe 1 crédito de compensación automáticamente — no pierde su esfuerzo
+- Ese crédito puede usarse en cualquier otra campaña activa
+
+## 5F.5 Notificación por Créditos en 0
+
+Cuando la campaña se pausa por créditos en 0, el creador recibe:
+- Notificación dentro de la plataforma
+- Email automático via Resend con el mensaje: "Tu campaña se pausó porque tus créditos llegaron a 0. Comenta más videos para reactivarla automáticamente."
+
+## 5F.6 Borradores de Comentario
+
+Cuando un usuario inicia un intercambio pero no lo completa, el sistema guarda un borrador por 2 horas:
+- El borrador guarda: videoId, texto escrito y segundos vistos del video
+- Si el usuario vuelve dentro de 2 horas, continúa desde donde dejó
+- Si pasan 2 horas sin volver, el borrador se elimina automáticamente
+- Si el creador elimina el video, todos los borradores asociados se eliminan inmediatamente
+- El video sigue disponible en la cola para otros usuarios — el borrador no es una reserva exclusiva
 
 # **6. Verificación y Sistema de Reputación**
 
