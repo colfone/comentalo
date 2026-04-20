@@ -474,6 +474,30 @@ El creador tiene plan base — 2 videos activos, 10 intercambios por campana. Ac
 
 - Video A agoto sus 20 intercambios — necesita expansion adicional para mas campanas
 
+# **5D. Estados y Acciones de Campañas**
+
+## Estados posibles de una campaña
+
+- Activa — recibiendo comentarios normalmente
+- Pausada — el creador la pausó temporalmente, no recibe comentarios
+- Finalizada — cerrada voluntariamente por el creador o por vencimiento de 10 días
+- Eliminada — borrada permanentemente, no aparece en ninguna vista
+
+## Acciones disponibles por estado
+
+| Estado | Activar | Pausar | Finalizar | Eliminar |
+| --- | --- | --- | --- | --- |
+| Activa | — | ✅ | ✅ | ✅ solo si 0 comentarios |
+| Pausada | ✅ | — | ✅ | ✅ solo si 0 comentarios |
+| Finalizada | — | — | — | — |
+
+## Reglas
+
+- Una campaña finalizada queda en el historial permanentemente — no se puede eliminar
+- Solo se puede eliminar una campaña que no haya recibido ningún comentario verificado
+- Al pausar — los comentaristas que tenían ese video asignado reciben otro video automáticamente
+- Al finalizar — la campaña cierra inmediatamente sin importar cuántos días llevaba activa
+
 # **6. Verificación y Sistema de Reputación**
 
 ## **6.1 Sistema de Verificación V1**
