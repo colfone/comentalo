@@ -48,8 +48,10 @@ function formatDuration(sec: number | null): string {
   return s > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${m} min`;
 }
 
-function reputacionNivel(rep: number | null): { color: string; label: string; dot: string } {
-  // Promedio de estrellas 1-5 (seccion 6.3 del PROYECTO.md tras v4.4)
+function reputacionNivel(rep: number | null, totalCalificados: number): { color: string; label: string; dot: string } {
+  // Promedio de estrellas 1-5 (seccion 6.3 del PROYECTO.md tras v4.4).
+  // Se activa con >= 20 intercambios calificados (igual que /dashboard/perfil).
+  if (totalCalificados < 20) return { color: "#8a8d8f", label: "Sin activar", dot: "#dcdedf" };
   if (rep == null) return { color: "#8a8d8f", label: "—", dot: "#dcdedf" };
   if (rep >= 4.0) return { color: "#2c2f30", label: `${rep.toFixed(1)}★`, dot: "#22c55e" };
   if (rep >= 3.0) return { color: "#2c2f30", label: `${rep.toFixed(1)}★`, dot: "#eab308" };
@@ -59,6 +61,11 @@ function reputacionNivel(rep: number | null): { color: string; label: string; do
 
 // --- Icons (inline) ---
 
+const HomeIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1v-9.5z" />
+  </svg>
+);
 const SwapIcon = ({ size = 16 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M7 4v14m0 0-3-3m3 3 3-3M17 20V6m0 0 3 3m-3-3-3 3" />
@@ -81,16 +88,21 @@ const BellIcon = ({ size = 18 }: { size?: number }) => (
     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
   </svg>
 );
-const FlameIcon = ({ size = 18 }: { size?: number }) => (
+const CommentIcon = ({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M8.5 14.5a3.5 3.5 0 1 0 7 0c0-1.5-.5-2-2-3.5s-1.5-3 0-5C10.5 6 7 9 7 12.5a5 5 0 0 0 5 5" />
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
 );
-const UsersIcon = ({ size = 18 }: { size?: number }) => (
+const CalendarIcon = ({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" />
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <path d="M16 2v4M8 2v4M3 10h18" />
+  </svg>
+);
+const MegaphoneIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m3 11 18-5v12L3 13v-2z" />
+    <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
   </svg>
 );
 const PlayIcon = ({ size = 32 }: { size?: number }) => (
@@ -117,10 +129,10 @@ export default function ColaPage() {
   const [confirmingCampanaId, setConfirmingCampanaId] = useState<string | null>(null);
 
   const [stats, setStats] = useState({
+    comentariosTotales: "—",
     comentariosMes: "—",
-    rachaDias: "—",
-    subs: "—",
-    reputacion: reputacionNivel(null),
+    reputacion: reputacionNivel(null, 0),
+    campanasActivas: "—",
   });
 
   // --- Load cola ---
@@ -161,7 +173,7 @@ export default function ColaPage() {
 
       const { data: usuario } = await supabase
         .from("usuarios")
-        .select("id, suscriptores_al_registro, reputacion")
+        .select("id, reputacion")
         .eq("auth_id", user.id)
         .maybeSingle();
 
@@ -171,17 +183,50 @@ export default function ColaPage() {
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
 
-      const { count } = await supabase
+      // Comentarios totales (verificados, todos los tiempos)
+      const { count: totales } = await supabase
         .from("intercambios")
         .select("*", { count: "exact", head: true })
         .eq("comentarista_id", usuario.id)
+        .eq("estado", "verificado");
+
+      // Comentarios este mes (verificados, mes actual)
+      const { count: delMes } = await supabase
+        .from("intercambios")
+        .select("*", { count: "exact", head: true })
+        .eq("comentarista_id", usuario.id)
+        .eq("estado", "verificado")
         .gte("created_at", startOfMonth.toISOString());
 
+      // Total calificados (para decidir Sin activar vs estrellas)
+      const { data: calificados } = await supabase
+        .from("intercambios")
+        .select("estrellas")
+        .eq("comentarista_id", usuario.id)
+        .not("estrellas", "is", null);
+      const totalCalificados = calificados?.length ?? 0;
+
+      // Campañas activas (estado abierta) de todos los videos del usuario
+      const { data: misVideos } = await supabase
+        .from("videos")
+        .select("id")
+        .eq("usuario_id", usuario.id);
+      const videoIds = (misVideos ?? []).map((v) => v.id);
+      let campanasActivas = 0;
+      if (videoIds.length > 0) {
+        const { count: activas } = await supabase
+          .from("campanas")
+          .select("*", { count: "exact", head: true })
+          .in("video_id", videoIds)
+          .eq("estado", "abierta");
+        campanasActivas = activas ?? 0;
+      }
+
       setStats({
-        comentariosMes: (count ?? 0).toString(),
-        rachaDias: "—",
-        subs: formatSubs(usuario.suscriptores_al_registro || 0),
-        reputacion: reputacionNivel(usuario.reputacion),
+        comentariosTotales: (totales ?? 0).toString(),
+        comentariosMes: (delMes ?? 0).toString(),
+        reputacion: reputacionNivel(usuario.reputacion, totalCalificados),
+        campanasActivas: campanasActivas.toString(),
       });
     })();
   }, []);
@@ -238,12 +283,19 @@ export default function ColaPage() {
           {/* Nav items */}
           <nav className="ml-4 flex gap-0.5">
             <a
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
+            >
+              <HomeIcon />
+              Inicio
+            </a>
+            <a
               href="/dashboard/intercambiar"
               className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium transition-colors"
               style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}
             >
               <SwapIcon />
-              Cola
+              Comentar
             </a>
             <a
               href="/dashboard/actividad"
@@ -279,14 +331,13 @@ export default function ColaPage() {
         {/* ===== HERO ===== */}
         <div className="py-6">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.05em] text-[#6200EE]">
-            Tu cola · {videos.length} asignados
+            Comentar · {videos.length} asignados
           </p>
           <h1 className="max-w-[820px] font-headline text-[clamp(40px,6vw,72px)] font-bold leading-[1.02] tracking-[-0.03em] text-[#2c2f30]">
             Creadores esperando tu comentario.
           </h1>
           <p className="mt-4 max-w-[620px] text-base leading-[1.55] text-[#5b5e60]">
-            Cada comentario tuyo activa un intercambio en tu próximo video. Elige uno,
-            míralo, comenta de verdad.
+            Tú comentas. La comunidad te comenta. Así crecemos todos.
           </p>
         </div>
 
@@ -295,13 +346,31 @@ export default function ColaPage() {
           className="mt-5 grid gap-0.5 overflow-hidden rounded-3xl bg-[#eff1f2] p-0.5"
           style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
         >
+          {/* Comentarios totales */}
+          <div className="flex items-center gap-3.5 bg-white px-5 py-[18px]">
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+              style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}
+            >
+              <CommentIcon />
+            </div>
+            <div>
+              <div className="font-headline text-2xl font-bold leading-none text-[#2c2f30]">
+                {stats.comentariosTotales}
+              </div>
+              <div className="mt-1 text-[13px] leading-[1.5] text-[#5b5e60]">
+                Comentarios totales
+              </div>
+            </div>
+          </div>
+
           {/* Comentarios este mes */}
           <div className="flex items-center gap-3.5 bg-white px-5 py-[18px]">
             <div
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
               style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}
             >
-              <SwapIcon size={18} />
+              <CalendarIcon />
             </div>
             <div>
               <div className="font-headline text-2xl font-bold leading-none text-[#2c2f30]">
@@ -309,42 +378,6 @@ export default function ColaPage() {
               </div>
               <div className="mt-1 text-[13px] leading-[1.5] text-[#5b5e60]">
                 Comentarios este mes
-              </div>
-            </div>
-          </div>
-
-          {/* Racha activa */}
-          <div className="flex items-center gap-3.5 bg-white px-5 py-[18px]">
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}
-            >
-              <FlameIcon />
-            </div>
-            <div>
-              <div className="font-headline text-2xl font-bold leading-none text-[#2c2f30]">
-                {stats.rachaDias}
-              </div>
-              <div className="mt-1 text-[13px] leading-[1.5] text-[#5b5e60]">
-                Racha activa
-              </div>
-            </div>
-          </div>
-
-          {/* Subs en tu canal */}
-          <div className="flex items-center gap-3.5 bg-white px-5 py-[18px]">
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}
-            >
-              <UsersIcon />
-            </div>
-            <div>
-              <div className="font-headline text-2xl font-bold leading-none text-[#2c2f30]">
-                {stats.subs}
-              </div>
-              <div className="mt-1 text-[13px] leading-[1.5] text-[#5b5e60]">
-                Subs en tu canal
               </div>
             </div>
           </div>
@@ -366,6 +399,24 @@ export default function ColaPage() {
               </div>
               <div className="mt-1 text-[13px] leading-[1.5] text-[#5b5e60]">
                 Reputación
+              </div>
+            </div>
+          </div>
+
+          {/* Campañas activas */}
+          <div className="flex items-center gap-3.5 bg-white px-5 py-[18px]">
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+              style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}
+            >
+              <MegaphoneIcon />
+            </div>
+            <div>
+              <div className="font-headline text-2xl font-bold leading-none text-[#2c2f30]">
+                {stats.campanasActivas}
+              </div>
+              <div className="mt-1 text-[13px] leading-[1.5] text-[#5b5e60]">
+                Campañas activas
               </div>
             </div>
           </div>

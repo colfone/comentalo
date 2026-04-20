@@ -81,6 +81,50 @@ function formatViews(n: number): string {
   return String(n);
 }
 
+// Duplicado de /dashboard/registrar-video — NFKC + emojis/banderas + sentence case.
+function normalizeTitle(titulo: string): string {
+  if (!titulo) return '';
+  const plano = titulo.normalize('NFKC');
+  const sinEmojis = plano
+    .replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}\u200D\uFE0F]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!sinEmojis) return '';
+  const lower = sinEmojis.toLowerCase();
+  const firstLetter = lower.search(/\p{L}/u);
+  if (firstLetter < 0) return lower;
+  return lower.slice(0, firstLetter) + lower[firstLetter].toUpperCase() + lower.slice(firstLetter + 1);
+}
+
+// --- Icons (inline, mismos SVG del resto de /dashboard) ---
+const HomeIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1v-9.5z" />
+  </svg>
+);
+const SwapIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M7 4v14m0 0-3-3m3 3 3-3M17 20V6m0 0 3 3m-3-3-3 3" />
+  </svg>
+);
+const InboxIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M22 13h-6l-2 3h-4l-2-3H2" />
+    <path d="M5.5 5h13l3 8v6a2 2 0 0 1-2 2H4.5a2 2 0 0 1-2-2v-6z" />
+  </svg>
+);
+const UserNavIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
+  </svg>
+);
+const BellIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
+  </svg>
+);
+
 export default function DashboardClient({
   user,
   usuario,
@@ -223,72 +267,102 @@ export default function DashboardClient({
   // --- Render ---
   return (
     <div className="min-h-screen bg-[#f5f6f7]">
-      {/* ===== HEADER ===== */}
-      <header className="fixed top-0 z-50 w-full border-b border-black/5 bg-white/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <a href="/dashboard" className="font-headline text-xl font-bold tracking-tighter text-[#2c2f30]">
-            Comentalo<span className="text-[#E87722]">.</span>
-          </a>
-
-          <nav className="hidden items-center gap-8 md:flex">
-            <a href="/dashboard/registrar-video" className="text-sm text-[#595c5d] transition-colors hover:text-[#2c2f30]">Mis videos</a>
-            <a href="/dashboard/intercambiar" className="text-sm text-[#595c5d] transition-colors hover:text-[#2c2f30]">Comunidad</a>
-            <a href="/dashboard" className="border-b-2 border-[#6200EE] pb-0.5 text-sm font-semibold text-[#2c2f30]">Dashboard</a>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            {/* Bell */}
-            <div className="relative">
-              <button onClick={() => setNotifOpen(!notifOpen)} className="relative rounded-full p-2 text-[#595c5d] transition-colors hover:bg-[#eff1f2]">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                </svg>
-                {noLeidas > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-[#E87722] text-[9px] font-bold text-white">
-                    {noLeidas > 9 ? "9+" : noLeidas}
-                  </span>
-                )}
-              </button>
-
-              {notifOpen && (
-                <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-black/5 bg-white shadow-xl">
-                  <div className="border-b border-black/5 px-4 py-3">
-                    <p className="text-sm font-semibold text-[#2c2f30]">Notificaciones</p>
-                  </div>
-                  <div className="max-h-80 overflow-y-auto">
-                    {notificaciones.length === 0 ? (
-                      <p className="px-4 py-6 text-center text-xs text-[#595c5d]">Sin notificaciones</p>
-                    ) : notificaciones.map((n) => (
-                      <button key={n.id} onClick={() => { if (!n.leida) handleMarcarLeida(n.id); if (n.url_destino) { setNotifOpen(false); router.push(n.url_destino); } }} className={`block w-full border-b border-black/5 px-4 py-3 text-left transition-colors hover:bg-[#f5f6f7] ${!n.leida ? "bg-[#6200EE]/5" : ""}`}>
-                        <div className="flex items-start gap-2">
-                          {!n.leida && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#E87722]" />}
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium text-[#2c2f30]">{n.titulo}</p>
-                            <p className="mt-0.5 text-xs text-[#595c5d]">{n.mensaje}</p>
-                            <p className="mt-1 text-[10px] text-[#595c5d]/60">{tiempoRelativo(n.created_at)}</p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Avatar */}
-            <button
-              onClick={async () => { const s = createSupabaseBrowserClient(); await s.auth.signOut(); window.location.href = "/login"; }}
-              title="Cerrar sesion"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white"
+      {/* ===== TOP FLOATING NAV ===== */}
+      <header className="sticky top-3 z-30 mx-auto mt-3 max-w-[1240px] px-4">
+        <div
+          className="flex items-center gap-4 rounded-full border border-white/60 bg-white/80 px-5 py-2 pr-2.5 shadow-[0_8px_32px_rgba(44,47,48,0.08)]"
+          style={{ backdropFilter: "blur(24px) saturate(1.2)", WebkitBackdropFilter: "blur(24px) saturate(1.2)" }}
+        >
+          <a href="/dashboard" className="flex items-center gap-2.5">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-[10px] font-headline text-base font-bold text-white"
               style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
             >
-              {initials}
+              C
+            </div>
+            <span className="font-headline text-lg font-bold tracking-[-0.02em] text-[#2c2f30]">
+              Comentalo
+            </span>
+          </a>
+
+          <nav className="ml-4 flex gap-0.5">
+            <a
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium transition-colors"
+              style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}
+            >
+              <HomeIcon />
+              Inicio
+            </a>
+            <a
+              href="/dashboard/intercambiar"
+              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
+            >
+              <SwapIcon />
+              Comentar
+            </a>
+            <a
+              href="/dashboard/actividad"
+              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
+            >
+              <InboxIcon />
+              Mi actividad
+            </a>
+            <a
+              href="/dashboard/perfil"
+              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
+            >
+              <UserNavIcon />
+              Perfil
+            </a>
+          </nav>
+
+          <div className="flex-1" />
+
+          {/* Bell con dropdown de notificaciones (único de /dashboard — no en sibling pages) */}
+          <div className="relative">
+            <button
+              type="button"
+              aria-label="Notificaciones"
+              onClick={() => setNotifOpen(!notifOpen)}
+              className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[#e9ebec] text-[#5b5e60] transition-colors hover:bg-[#e3e5e6]"
+            >
+              <BellIcon />
+              {noLeidas > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-[#E87722] text-[9px] font-bold text-white ring-2 ring-white">
+                  {noLeidas > 9 ? "9+" : noLeidas}
+                </span>
+              )}
             </button>
+
+            {notifOpen && (
+              <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-black/5 bg-white shadow-xl">
+                <div className="border-b border-black/5 px-4 py-3">
+                  <p className="text-sm font-semibold text-[#2c2f30]">Notificaciones</p>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {notificaciones.length === 0 ? (
+                    <p className="px-4 py-6 text-center text-xs text-[#595c5d]">Sin notificaciones</p>
+                  ) : notificaciones.map((n) => (
+                    <button key={n.id} onClick={() => { if (!n.leida) handleMarcarLeida(n.id); if (n.url_destino) { setNotifOpen(false); router.push(n.url_destino); } }} className={`block w-full border-b border-black/5 px-4 py-3 text-left transition-colors hover:bg-[#f5f6f7] ${!n.leida ? "bg-[#6200EE]/5" : ""}`}>
+                      <div className="flex items-start gap-2">
+                        {!n.leida && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#E87722]" />}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-[#2c2f30]">{n.titulo}</p>
+                          <p className="mt-0.5 text-xs text-[#595c5d]">{n.mensaje}</p>
+                          <p className="mt-1 text-[10px] text-[#595c5d]/60">{tiempoRelativo(n.created_at)}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 pt-24 pb-12">
+      <main className="mx-auto max-w-7xl px-6 pt-8 pb-12">
         {/* ===== PROFILE SECTION ===== */}
         <section className="mb-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-5">
@@ -343,7 +417,7 @@ export default function DashboardClient({
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
             </svg>
-            Intercambiar
+            Ir a la cola
           </a>
         </section>
 
@@ -355,8 +429,8 @@ export default function DashboardClient({
 
             {/* Stat cards */}
             {[
-              { icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>, color: "#6200EE", label: "Intercambios dados", value: stats.intercambiosDados },
-              { icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" /></svg>, color: "#E87722", label: "Intercambios recibidos", value: stats.intercambiosRecibidos },
+              { icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>, color: "#6200EE", label: "Comentarios dados", value: stats.intercambiosDados },
+              { icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" /></svg>, color: "#E87722", label: "Comentarios recibidos", value: stats.intercambiosRecibidos },
               { icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>, color: "#6200EE", label: "Campanas completadas", value: stats.campanasCompletadas },
             ].map((s) => (
               <div key={s.label} className="rounded-3xl border border-black/5 bg-white p-5">
@@ -395,7 +469,7 @@ export default function DashboardClient({
             {/* Header + tabs */}
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-xs font-semibold uppercase tracking-widest text-[#595c5d]">
-                Mis videos ({videosActivos.length}/2 activos)
+                Mis campañas
               </h3>
               <div className="flex gap-1 rounded-xl bg-[#eff1f2] p-1">
                 <button
@@ -434,7 +508,7 @@ export default function DashboardClient({
                           onError={(e) => { (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23595c5d'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E"; }}
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-sm font-semibold text-[#2c2f30]">{video.titulo}</p>
+                          <p className="line-clamp-2 text-sm font-semibold text-[#2c2f30]">{normalizeTitle(video.titulo)}</p>
                           <div className="mt-1 flex items-center gap-2">
                             <span className="text-xs text-[#595c5d]">{formatViews(video.vistas)} vistas</span>
                             <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
@@ -472,7 +546,7 @@ export default function DashboardClient({
                           <div className="flex items-center justify-between">
                             <p className="text-xs text-[#595c5d]">Campana</p>
                             <p className="text-xs font-semibold text-[#6200EE]">
-                              {activeCampana.intercambios_completados} / 10 intercambios
+                              {activeCampana.intercambios_completados} comentarios
                             </p>
                           </div>
                           <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#eff1f2]">
@@ -532,7 +606,7 @@ export default function DashboardClient({
             {/* Register / limit */}
             {puedeRegistrar ? (
               <a href="/dashboard/registrar-video" className="mt-4 block rounded-xl border-2 border-dashed border-[#6200EE]/20 py-4 text-center text-sm font-semibold text-[#6200EE] transition-colors hover:border-[#6200EE]/40 hover:bg-[#6200EE]/5">
-                + Registrar video
+                + Crear campaña
               </a>
             ) : (
               <div className="mt-4 rounded-xl bg-[#eff1f2] p-4 text-center">

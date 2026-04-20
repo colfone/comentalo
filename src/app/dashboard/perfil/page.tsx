@@ -71,8 +71,28 @@ function initials(nombre: string | null): string {
   return parts.map((p) => p[0]).join("").toUpperCase() || "C";
 }
 
+// Duplicado de /dashboard/registrar-video — NFKC + emojis/banderas + sentence case.
+function normalizeTitle(titulo: string): string {
+  if (!titulo) return '';
+  const plano = titulo.normalize('NFKC');
+  const sinEmojis = plano
+    .replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}\u200D\uFE0F]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!sinEmojis) return '';
+  const lower = sinEmojis.toLowerCase();
+  const firstLetter = lower.search(/\p{L}/u);
+  if (firstLetter < 0) return lower;
+  return lower.slice(0, firstLetter) + lower[firstLetter].toUpperCase() + lower.slice(firstLetter + 1);
+}
+
 // --- Icons ---
 
+const HomeIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1v-9.5z" />
+  </svg>
+);
 const SwapIcon = ({ size = 16 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M7 4v14m0 0-3-3m3 3 3-3M17 20V6m0 0 3 3m-3-3-3 3" />
@@ -245,11 +265,18 @@ export default function PerfilPage() {
 
           <nav className="ml-4 flex gap-0.5">
             <a
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
+            >
+              <HomeIcon />
+              Inicio
+            </a>
+            <a
               href="/dashboard/intercambiar"
               className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
             >
               <SwapIcon />
-              Cola
+              Comentar
             </a>
             <a
               href="/dashboard/actividad"
@@ -361,10 +388,10 @@ export default function PerfilPage() {
           ))}
         </div>
 
-        {/* ===== MIS VIDEOS ===== */}
+        {/* ===== MIS CAMPAÑAS ===== */}
         <div className="rounded-3xl bg-white p-6">
           <h3 className="m-0 mb-4 font-headline text-xl font-semibold text-[#2c2f30]">
-            Mis videos registrados
+            Mis campañas
           </h3>
 
           {loading && videos.length === 0 && (
@@ -404,7 +431,7 @@ export default function PerfilPage() {
                     {/* Info */}
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[15px] font-semibold text-[#2c2f30]">
-                        {v.titulo}
+                        {normalizeTitle(v.titulo)}
                       </div>
                       <div className="mt-1 text-[13px] text-[#5b5e60]">
                         {v.intercambios_recibidos}/10 comentarios · {formatSubs(v.vistas)} vistas
@@ -418,6 +445,32 @@ export default function PerfilPage() {
                     >
                       {estadoChip.label}
                     </span>
+
+                    {/* Acciones */}
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm("¿Pausar esta campaña? Los comentaristas no podrán comentar tu video mientras esté pausada.")) {
+                            // TODO: wiring a API /api/campanas/pausar — pendiente
+                          }
+                        }}
+                        className="rounded-full bg-[#e3e5e6] px-3.5 py-1.5 text-[13px] font-medium text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30]"
+                      >
+                        Pausar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm("¿Eliminar esta campaña? Esta acción no se puede deshacer.")) {
+                            // TODO: wiring a API /api/campanas/eliminar — pendiente
+                          }
+                        }}
+                        className="rounded-full bg-[#fde4e4] px-3.5 py-1.5 text-[13px] font-medium text-[#c43535] transition-colors hover:bg-[#fbd0d0]"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -430,7 +483,7 @@ export default function PerfilPage() {
             className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-[#e3e5e6] px-4 py-3 text-[13px] font-semibold text-[#6200EE] transition-colors hover:bg-[#dcdedf]"
           >
             <PlusIcon />
-            Registrar otro video
+            Crear campaña
           </a>
         </div>
       </main>

@@ -86,6 +86,11 @@ function formatCountdown(seconds: number): string {
 
 // --- Icons ---
 
+const HomeIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1v-9.5z" />
+  </svg>
+);
 const SwapIcon = ({ size = 16 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M7 4v14m0 0-3-3m3 3 3-3M17 20V6m0 0 3 3m-3-3-3 3" />
@@ -449,8 +454,11 @@ export default function DetalleIntercambioPage({
             </span>
           </Link>
           <nav className="ml-4 flex gap-0.5">
+            <a href="/dashboard" className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]">
+              <HomeIcon /> Inicio
+            </a>
             <Link href="/dashboard/intercambiar" className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium transition-colors" style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}>
-              <SwapIcon /> Cola
+              <SwapIcon /> Comentar
             </Link>
             <a href="/dashboard/actividad" className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]">
               <InboxIcon /> Mi actividad
