@@ -197,6 +197,24 @@ export async function POST(request: Request) {
     .update({ intercambios_completados: newCompleted })
     .eq("id", campana.id);
 
+  // --- Sistema de créditos (PROYECTO.md 5F) ---
+  // RPC atómica: +1 al comentarista (tope 10), -1 al creador (piso 0),
+  // y pausa la campaña si el saldo del creador queda en 0.
+  // Si falla, loguear pero no interrumpir — el intercambio ya está
+  // verificado y eso es lo importante.
+  const { error: creditosError } = await serviceClient.rpc(
+    "aplicar_creditos_intercambio",
+    {
+      p_comentarista_id: usuario.id,
+      p_creador_id: video.usuario_id,
+      p_campana_id: campanaId,
+    }
+  );
+
+  if (creditosError) {
+    console.error("Error aplicando créditos:", creditosError);
+  }
+
   await crearNotificacion({
     usuario_id: usuario.id,
     tipo: "intercambio_verificado",
