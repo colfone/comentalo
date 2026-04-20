@@ -142,6 +142,7 @@ export default function ColaPage() {
   const [blocked, setBlocked] = useState<string | null>(null);
 
   const [confirmingCampanaId, setConfirmingCampanaId] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [stats, setStats] = useState({
     comentariosTotales: "—",
@@ -248,6 +249,7 @@ export default function ColaPage() {
 
   async function handleComentar(video: AssignedVideo) {
     if (confirmingCampanaId) return;
+    setErrorMsg(null);
     setConfirmingCampanaId(video.campana_id);
     try {
       const res = await fetch("/api/intercambios/confirmar", {
@@ -258,18 +260,17 @@ export default function ColaPage() {
       const data = await res.json();
       if (!res.ok || !data.ok) {
         if (data.error_code === "RESERVA_EXPIRADA") {
-          alert("La reserva expiró. Recargando la cola...");
           window.location.reload();
           return;
         }
-        alert(data.mensaje || data.error || "No se pudo confirmar.");
+        setErrorMsg(data.mensaje || data.error || "No se pudo confirmar. Intenta de nuevo.");
         setConfirmingCampanaId(null);
         return;
       }
       // Navega al detalle — pendiente de construir (ver ESTADO.md Pendientes)
       router.push(`/dashboard/intercambiar/${video.campana_id}`);
     } catch {
-      alert("Error de conexión.");
+      setErrorMsg("Error de conexión. Intenta de nuevo.");
       setConfirmingCampanaId(null);
     }
   }
@@ -559,6 +560,10 @@ export default function ColaPage() {
                 );
               })}
             </div>
+          )}
+
+          {errorMsg && (
+            <p className="text-red-500 text-sm text-center mt-2">{errorMsg}</p>
           )}
         </div>
       </main>
