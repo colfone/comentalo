@@ -309,69 +309,6 @@ export default function PerfilPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f6f7]">
-      {/* ===== TOP FLOATING NAV ===== */}
-      <header className="sticky top-3 z-30 mx-auto mt-3 max-w-[1240px] px-4">
-        <div
-          className="flex items-center gap-4 rounded-full border border-white/60 bg-white/80 px-5 py-2 pr-2.5 shadow-[0_8px_32px_rgba(44,47,48,0.08)]"
-          style={{ backdropFilter: "blur(24px) saturate(1.2)", WebkitBackdropFilter: "blur(24px) saturate(1.2)" }}
-        >
-          <a href="/dashboard/intercambiar" className="flex items-center gap-2.5">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-[10px] font-headline text-base font-bold text-white"
-              style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
-            >
-              C
-            </div>
-            <span className="font-headline text-lg font-bold tracking-[-0.02em] text-[#2c2f30]">
-              Comentalo
-            </span>
-          </a>
-
-          <nav className="ml-4 flex gap-0.5">
-            <a
-              href="/dashboard"
-              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
-            >
-              <HomeIcon />
-              Inicio
-            </a>
-            <a
-              href="/dashboard/intercambiar"
-              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
-            >
-              <SwapIcon />
-              Comentar
-            </a>
-            <a
-              href="/dashboard/actividad"
-              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
-            >
-              <InboxIcon />
-              Mi actividad
-            </a>
-            <a
-              href="/dashboard/perfil"
-              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium transition-colors"
-              style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}
-            >
-              <UserIcon />
-              Perfil
-            </a>
-          </nav>
-
-          <div className="flex-1" />
-
-          <button
-            type="button"
-            aria-label="Notificaciones"
-            className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[#e9ebec] text-[#5b5e60] transition-colors hover:bg-[#e3e5e6]"
-          >
-            <BellIcon />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#E87722] ring-2 ring-white" />
-          </button>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-[1240px] px-6 pb-16 pt-8">
         {/* ===== HERO ===== */}
         <div className="py-5">

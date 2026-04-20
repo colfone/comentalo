@@ -140,21 +140,6 @@ export default function DashboardClient({
   const [eliminando, setEliminando] = useState<string | null>(null);
   const [lanzando, setLanzando] = useState<string | null>(null);
 
-  // Notifications
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [notificaciones, setNotificaciones] = useState<
-    {
-      id: string;
-      tipo: string;
-      titulo: string;
-      mensaje: string;
-      leida: boolean;
-      url_destino: string | null;
-      created_at: string;
-    }[]
-  >([]);
-  const [noLeidas, setNoLeidas] = useState(0);
-
   const repLevel = getReputationLevel(reputacion.promedio_estrellas, reputacion.activo);
   const promedioEstrellas = Number(reputacion.promedio_estrellas || 0).toFixed(1);
   const videosActivos = videos.filter((v) => v.estado === "activo");
@@ -170,43 +155,8 @@ export default function DashboardClient({
   );
   const filteredVideos = tab === "curso" ? videosEnCurso : videosCompletados;
 
-  // --- Notifications ---
-  async function fetchNotificaciones() {
-    try {
-      const res = await fetch("/api/notificaciones");
-      if (res.ok) {
-        const data = await res.json();
-        setNotificaciones(data.notificaciones || []);
-        setNoLeidas(data.no_leidas ?? 0);
-      }
-    } catch { /* silent */ }
-  }
-
-  async function handleMarcarLeida(notifId: string) {
-    setNotificaciones((prev) =>
-      prev.map((n) => (n.id === notifId ? { ...n, leida: true } : n))
-    );
-    setNoLeidas((prev) => Math.max(0, prev - 1));
-    await fetch("/api/notificaciones", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notificacion_id: notifId }),
-    });
-  }
-
-  function tiempoRelativo(fecha: string): string {
-    const diff = Date.now() - new Date(fecha).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "Ahora";
-    if (mins < 60) return `Hace ${mins} min`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `Hace ${hours}h`;
-    return `Hace ${Math.floor(hours / 24)}d`;
-  }
-
   // --- Realtime ---
   useEffect(() => {
-    fetchNotificaciones();
     const supabase = createSupabaseBrowserClient();
 
     const campanaChannel = supabase
@@ -219,15 +169,9 @@ export default function DashboardClient({
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "videos" }, () => router.refresh())
       .subscribe();
 
-    const notifChannel = supabase
-      .channel("dashboard-notificaciones")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notificaciones" }, () => fetchNotificaciones())
-      .subscribe();
-
     return () => {
       supabase.removeChannel(campanaChannel);
       supabase.removeChannel(videoChannel);
-      supabase.removeChannel(notifChannel);
     };
   }, [router]);
 
@@ -267,101 +211,6 @@ export default function DashboardClient({
   // --- Render ---
   return (
     <div className="min-h-screen bg-[#f5f6f7]">
-      {/* ===== TOP FLOATING NAV ===== */}
-      <header className="sticky top-3 z-30 mx-auto mt-3 max-w-[1240px] px-4">
-        <div
-          className="flex items-center gap-4 rounded-full border border-white/60 bg-white/80 px-5 py-2 pr-2.5 shadow-[0_8px_32px_rgba(44,47,48,0.08)]"
-          style={{ backdropFilter: "blur(24px) saturate(1.2)", WebkitBackdropFilter: "blur(24px) saturate(1.2)" }}
-        >
-          <a href="/dashboard" className="flex items-center gap-2.5">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-[10px] font-headline text-base font-bold text-white"
-              style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
-            >
-              C
-            </div>
-            <span className="font-headline text-lg font-bold tracking-[-0.02em] text-[#2c2f30]">
-              Comentalo
-            </span>
-          </a>
-
-          <nav className="ml-4 flex gap-0.5">
-            <a
-              href="/dashboard"
-              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium transition-colors"
-              style={{ background: "rgba(98, 0, 238, 0.08)", color: "#6200EE" }}
-            >
-              <HomeIcon />
-              Inicio
-            </a>
-            <a
-              href="/dashboard/intercambiar"
-              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
-            >
-              <SwapIcon />
-              Comentar
-            </a>
-            <a
-              href="/dashboard/actividad"
-              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
-            >
-              <InboxIcon />
-              Mi actividad
-            </a>
-            <a
-              href="/dashboard/perfil"
-              className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
-            >
-              <UserNavIcon />
-              Perfil
-            </a>
-          </nav>
-
-          <div className="flex-1" />
-
-          {/* Bell con dropdown de notificaciones (único de /dashboard — no en sibling pages) */}
-          <div className="relative">
-            <button
-              type="button"
-              aria-label="Notificaciones"
-              onClick={() => setNotifOpen(!notifOpen)}
-              className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[#e9ebec] text-[#5b5e60] transition-colors hover:bg-[#e3e5e6]"
-            >
-              <BellIcon />
-              {noLeidas > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-[#E87722] text-[9px] font-bold text-white ring-2 ring-white">
-                  {noLeidas > 9 ? "9+" : noLeidas}
-                </span>
-              )}
-            </button>
-
-            {notifOpen && (
-              <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-black/5 bg-white shadow-xl">
-                <div className="border-b border-black/5 px-4 py-3">
-                  <p className="text-sm font-semibold text-[#2c2f30]">Notificaciones</p>
-                </div>
-                <div className="max-h-80 overflow-y-auto">
-                  {notificaciones.length === 0 ? (
-                    <p className="px-4 py-6 text-center text-xs text-[#595c5d]">Sin notificaciones</p>
-                  ) : notificaciones.map((n) => (
-                    <button key={n.id} onClick={() => { if (!n.leida) handleMarcarLeida(n.id); if (n.url_destino) { setNotifOpen(false); router.push(n.url_destino); } }} className={`block w-full border-b border-black/5 px-4 py-3 text-left transition-colors hover:bg-[#f5f6f7] ${!n.leida ? "bg-[#6200EE]/5" : ""}`}>
-                      <div className="flex items-start gap-2">
-                        {!n.leida && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#E87722]" />}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-[#2c2f30]">{n.titulo}</p>
-                          <p className="mt-0.5 text-xs text-[#595c5d]">{n.mensaje}</p>
-                          <p className="mt-1 text-[10px] text-[#595c5d]/60">{tiempoRelativo(n.created_at)}</p>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-7xl px-6 pt-8 pb-12">
         {/* ===== PROFILE SECTION ===== */}
         <section className="mb-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
