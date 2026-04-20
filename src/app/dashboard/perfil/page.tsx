@@ -486,6 +486,21 @@ export default function PerfilPage() {
             Crear campaña
           </a>
         </div>
+
+        {/* ===== CERRAR SESIÓN ===== */}
+        <div className="mt-8 flex justify-center">
+          <button
+            type="button"
+            onClick={async () => {
+              const supabase = createSupabaseBrowserClient();
+              await supabase.auth.signOut();
+              router.replace("/");
+            }}
+            className="inline-flex items-center gap-2 rounded-full bg-[#e3e5e6] px-4 py-2 text-[13px] font-medium text-[#5b5e60] transition-colors hover:bg-[#fde4e4] hover:text-[#c43535]"
+          >
+            Cerrar sesión
+          </button>
+        </div>
       </main>
     </div>
   );

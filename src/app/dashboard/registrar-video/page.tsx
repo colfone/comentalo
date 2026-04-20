@@ -715,7 +715,7 @@ export default function CrearCampanaPage() {
                 className="mt-6 inline-flex rounded-xl px-8 py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
                 style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
               >
-                Ir a la cola
+                Ir a comentar
               </button>
             </div>
           </div>
