@@ -26,6 +26,8 @@ interface VideoRow {
   estado: string;
   created_at: string;
   intercambios_recibidos: number;
+  campana_id: string | null;
+  campana_estado: string | null;
 }
 
 interface Stats {
@@ -140,6 +142,31 @@ export default function PerfilPage() {
     calificacionPositiva: "—",
     campanasCompletadas: "—",
   });
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionPending, setActionPending] = useState<string | null>(null);
+
+  async function accionCampana(campanaId: string, endpoint: string) {
+    setActionPending(campanaId);
+    setActionError(null);
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campana_id: campanaId }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setActionError(data.error || "No se pudo completar la acción.");
+        return;
+      }
+      setRefreshKey((k) => k + 1);
+    } catch {
+      setActionError("Error de conexión.");
+    } finally {
+      setActionPending(null);
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -156,7 +183,7 @@ export default function PerfilPage() {
         if (!u) { router.replace("/verificar-canal"); return; }
         setUsuario(u as UsuarioInfo);
 
-        // --- Mis videos con conteo de intercambios recibidos (via campaña más reciente) ---
+        // --- Mis videos con campaña más reciente (id + estado + conteo) ---
         type VideoRaw = {
           id: string;
           youtube_video_id: string;
@@ -164,13 +191,13 @@ export default function PerfilPage() {
           vistas: number;
           estado: string;
           created_at: string;
-          campanas: { intercambios_completados: number; created_at: string }[];
+          campanas: { id: string; estado: string; intercambios_completados: number; created_at: string }[];
         };
         const { data: misVideos } = await supabase
           .from("videos")
           .select(`
             id, youtube_video_id, titulo, vistas, estado, created_at,
-            campanas ( intercambios_completados, created_at )
+            campanas ( id, estado, intercambios_completados, created_at )
           `)
           .eq("usuario_id", u.id)
           .order("created_at", { ascending: false });
@@ -187,6 +214,8 @@ export default function PerfilPage() {
             estado: v.estado,
             created_at: v.created_at,
             intercambios_recibidos: campanaReciente?.intercambios_completados ?? 0,
+            campana_id: campanaReciente?.id ?? null,
+            campana_estado: campanaReciente?.estado ?? null,
           };
         });
         setVideos(videoRows);
@@ -241,7 +270,7 @@ export default function PerfilPage() {
         setLoading(false);
       }
     })();
-  }, [router]);
+  }, [router, refreshKey]);
 
   return (
     <div className="min-h-screen bg-[#f5f6f7]">
@@ -394,6 +423,12 @@ export default function PerfilPage() {
             Mis campañas
           </h3>
 
+          {actionError && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-[#c43535]">
+              {actionError}
+            </div>
+          )}
+
           {loading && videos.length === 0 && (
             <div className="flex justify-center py-8">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#e9ebec] border-t-[#6200EE]" />
@@ -446,31 +481,17 @@ export default function PerfilPage() {
                       {estadoChip.label}
                     </span>
 
-                    {/* Acciones */}
-                    <div className="flex shrink-0 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (window.confirm("¿Pausar esta campaña? Los comentaristas no podrán comentar tu video mientras esté pausada.")) {
-                            // TODO: wiring a API /api/campanas/pausar — pendiente
-                          }
-                        }}
-                        className="rounded-full bg-[#e3e5e6] px-3.5 py-1.5 text-[13px] font-medium text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30]"
-                      >
-                        Pausar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (window.confirm("¿Eliminar esta campaña? Esta acción no se puede deshacer.")) {
-                            // TODO: wiring a API /api/campanas/eliminar — pendiente
-                          }
-                        }}
-                        className="rounded-full bg-[#fde4e4] px-3.5 py-1.5 text-[13px] font-medium text-[#c43535] transition-colors hover:bg-[#fbd0d0]"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
+                    {/* Acciones — sección 5D de PROYECTO.md */}
+                    <CampanaAcciones
+                      campanaId={v.campana_id}
+                      campanaEstado={v.campana_estado}
+                      intercambiosRecibidos={v.intercambios_recibidos}
+                      actionPending={actionPending}
+                      onPausar={() => v.campana_id && window.confirm("¿Pausar esta campaña? Los comentaristas no podrán comentar tu video mientras esté pausada.") && accionCampana(v.campana_id, "/api/campanas/pausar")}
+                      onActivar={() => v.campana_id && accionCampana(v.campana_id, "/api/campanas/activar")}
+                      onFinalizar={() => v.campana_id && window.confirm("¿Finalizar esta campaña? Quedará cerrada permanentemente y no se puede revertir.") && accionCampana(v.campana_id, "/api/campanas/finalizar")}
+                      onEliminar={() => v.campana_id && window.confirm("¿Eliminar esta campaña? Esta acción no se puede deshacer.") && accionCampana(v.campana_id, "/api/campanas/eliminar")}
+                    />
                   </div>
                 );
               })}
@@ -517,4 +538,83 @@ function chipForEstado(estado: string): { label: string; bg: string; color: stri
     default:
       return { label: estado, bg: "#e3e5e6", color: "#5b5e60" };
   }
+}
+
+// --- Subcomponente de acciones — sección 5D de PROYECTO.md ---
+// Muestra Pausar + Finalizar + Eliminar cuando la campaña está activa/abierta.
+// Muestra Activar + Finalizar + Eliminar cuando está pausada.
+// Eliminar solo si intercambios_recibidos === 0.
+// Oculta todo cuando el estado es terminal (completada/calificada/finalizada)
+// o cuando el video no tiene campaña asociada aún.
+
+function CampanaAcciones({
+  campanaId,
+  campanaEstado,
+  intercambiosRecibidos,
+  actionPending,
+  onPausar,
+  onActivar,
+  onFinalizar,
+  onEliminar,
+}: {
+  campanaId: string | null;
+  campanaEstado: string | null;
+  intercambiosRecibidos: number;
+  actionPending: string | null;
+  onPausar: () => void;
+  onActivar: () => void;
+  onFinalizar: () => void;
+  onEliminar: () => void;
+}) {
+  if (!campanaId || !campanaEstado) return null;
+
+  const esActiva = campanaEstado === "activa" || campanaEstado === "abierta";
+  const esPausada = campanaEstado === "pausada";
+  if (!esActiva && !esPausada) return null;
+
+  const puedeEliminar = intercambiosRecibidos === 0;
+  const deshabilitado = actionPending === campanaId;
+
+  return (
+    <div className="flex shrink-0 flex-wrap justify-end gap-2">
+      {esActiva && (
+        <button
+          type="button"
+          onClick={onPausar}
+          disabled={deshabilitado}
+          className="rounded-full bg-[#e3e5e6] px-3.5 py-1.5 text-[13px] font-medium text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30] disabled:opacity-50"
+        >
+          Pausar
+        </button>
+      )}
+      {esPausada && (
+        <button
+          type="button"
+          onClick={onActivar}
+          disabled={deshabilitado}
+          className="rounded-full bg-[rgba(98,0,238,0.1)] px-3.5 py-1.5 text-[13px] font-medium text-[#6200EE] transition-colors hover:bg-[rgba(98,0,238,0.16)] disabled:opacity-50"
+        >
+          Activar
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onFinalizar}
+        disabled={deshabilitado}
+        className="rounded-full bg-[#e3e5e6] px-3.5 py-1.5 text-[13px] font-medium text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30] disabled:opacity-50"
+      >
+        Finalizar
+      </button>
+      {puedeEliminar && (
+        <button
+          type="button"
+          onClick={onEliminar}
+          disabled={deshabilitado}
+          className="rounded-full bg-[#fde4e4] px-3.5 py-1.5 text-[13px] font-medium text-[#c43535] transition-colors hover:bg-[#fbd0d0] disabled:opacity-50"
+        >
+          Eliminar
+        </button>
+      )}
+    </div>
+  );
 }
