@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -151,33 +151,68 @@ export default function ColaPage() {
     campanasActivas: "—",
   });
 
-  // --- Load cola ---
-  useEffect(() => {
-    (async () => {
+  // Timer de reasignación silenciosa. Front dispara a 115s; la reserva del
+  // backend expira a 2 min, así que queda margen. Se cancela al clickear
+  // Comentar y al desmontar.
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function cargarCola(silent: boolean = false) {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (!silent) {
       setLoading(true);
       setEmpty(false);
       setBlocked(null);
-      try {
-        const res = await fetch("/api/intercambios/asignar");
-        const data = await res.json();
-        if (!res.ok) {
+    }
+    try {
+      const res = await fetch("/api/intercambios/asignar");
+      const data = await res.json();
+      if (!res.ok) {
+        if (!silent) {
+          setVideos([]);
           setBlocked(data.error || "Error al cargar la cola.");
-        } else if (!data.ok) {
-          if (data.error_code === "COLA_VACIA") setEmpty(true);
-          else if (data.error_code === "LIMITE_PENDIENTES_ALCANZADO")
-            setBlocked("Tienes 3 intercambios pendientes de verificación. Espera a que se resuelvan antes de continuar.");
-          else if (data.error_code === "USUARIO_SIN_VIDEO_ACTIVO")
-            setBlocked(data.mensaje);
-          else setBlocked(data.mensaje || "Error inesperado.");
-        } else {
-          setVideos(data.videos || []);
         }
-      } catch {
-        setBlocked("Error de conexión.");
-      } finally {
-        setLoading(false);
+        return;
       }
-    })();
+      if (!data.ok) {
+        setVideos([]);
+        setEmpty(false);
+        setBlocked(null);
+        if (data.error_code === "COLA_VACIA") setEmpty(true);
+        else if (data.error_code === "LIMITE_PENDIENTES_ALCANZADO")
+          setBlocked("Tienes 3 intercambios pendientes de verificación. Espera a que se resuelvan antes de continuar.");
+        else if (data.error_code === "USUARIO_SIN_VIDEO_ACTIVO")
+          setBlocked(data.mensaje);
+        else setBlocked(data.mensaje || "Error inesperado.");
+        return;
+      }
+      setEmpty(false);
+      setBlocked(null);
+      setVideos(data.videos || []);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => { cargarCola(true); }, 115_000);
+    } catch {
+      if (!silent) {
+        setVideos([]);
+        setBlocked("Error de conexión.");
+      }
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }
+
+  // --- Load cola ---
+  useEffect(() => {
+    cargarCola();
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- Load stats ---
@@ -249,6 +284,10 @@ export default function ColaPage() {
 
   async function handleComentar(video: AssignedVideo) {
     if (confirmingCampanaId) return;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
     setErrorMsg(null);
     setConfirmingCampanaId(video.campana_id);
     try {
