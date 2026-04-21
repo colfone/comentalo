@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.13 — 20 de abril de 2026
+## Version actual: v4.14 — 21 de abril de 2026
 
 ## Registro de versiones
 
@@ -55,6 +55,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.11 | Bugs Mi actividad + cola + cookies + vocabulario intercambios | 20 abril 2026 | RPC get_mis_intercambios_comentarista (LANGUAGE sql, SECURITY DEFINER): resuelve bug del tab "Pendientes" de /dashboard/actividad que mostraba 0 filas por el mismo patrón RLS+joins!inner que afectó al detail page en v4.10. Frontend migrado a supabase.rpc(). RPC asignar_intercambio reescrito a LANGUAGE sql con fix: c.estado IN ('abierta', 'activa') — campañas que pasaron por Pausar → Activar (quedan en 'activa') volvían invisibles en la cola. Fix /dashboard/layout.tsx: getUser() → getSession() para evitar error de Next 16 "Cookies can only be modified in a Server Action or Route Handler" cuando Supabase intentaba refrescar token desde server component. Endpoint /api/intercambios/copiar eliminó guard 409 para soportar re-copia en estado pendiente (flujo "Volver a intentarlo"). Refactor completo de /dashboard/intercambiar/[campanaId]: eliminado countdown por completo (state, tick, interval, render, helper getMinWaitSeconds, import useCallback), pantalla "Intercambio en revisión" reescrita como "No encontramos tu comentario" con botones Volver a intentarlo / Cancelar (usa ConfirmCancelarModal), modal motivacional "Antes de comentar" simplificado a un solo botón "Abrir video en YouTube →" con texto nuevo sobre ayuda al creador sin imponer tiempo mínimo. Texto helper rediseñado para no parecer botón. Chip "Verificando" → "No encontramos tu comentario" en /dashboard/actividad (otras 4 ocurrencias de "Verificando" en la app auditadas y confirmadas como contextos distintos — no tocadas) |
 | v4.12 | Sesión 20 abril tarde | 20 abril 2026 | Fix vocabulario "Comentario verificado". Refactor Mi actividad: 2 tabs Comentando/Recibiendo con calificación estrellas inline. Flujo intercambio por pasos con YT IFrame API y tracking 30s. Pantalla de rechazo con 4 causas + canal del usuario. Intercambio se crea SOLO al verificar exitosamente — elimina estado pendiente huérfano. RPC confirmar_intercambio reescrita sin INSERT intercambios. /api/intercambios/copiar eliminado. /api/intercambios/verificar reescrito: recibe campana_id + texto_comentario. PROYECTO.md v4.4 — campañas sin límite de tiempo controladas por créditos, secciones 5E y 5F. |
 | v4.13 | Sesión 20 abril noche | 20 abril 2026 | Flujo intercambio por pasos completo: Paso 1 video 30s, Paso 2 escribir con instrucciones creador, Paso 3 pegar en YouTube, Paso 4 verificación. Layout una columna 700px. Panel lateral eliminado. Botones morados (#6200EE / #ac8eff). Sin modal "Antes de comentar". RPC get_campana_para_comentar nueva. Intercambio se crea solo al verificar. Sistema de créditos: columna saldo_creditos, RPC aplicar_creditos_intercambio. Header unificado en layout con 💎 créditos + avatar + nombre canal. /api/intercambios/copiar eliminado. RPC confirmar_intercambio reescrita sin INSERT intercambios. |
+| v4.14 | Sesión 21 abril | 21 abril 2026 | Migraciones faltantes sesión 20 abril creadas en repo. Fix emojis YouTube en verificación (normalizarParaMatch quita ️). Modal de verificación animado con lupa + logo YouTube: estado buscando 5s obligatorio + segunda búsqueda 30s silenciosa. Reasignación silenciosa de cola cada 115s sin mensaje al usuario. TTL reservas 2 minutos. Botón copiar inline en Paso 3. Textos modal cancelación mejorados. Pantalla éxito con textos corregidos. router.refresh() en botón Aceptar para actualizar créditos en header. Fix RPC aplicar_creditos_intercambio: pausa TODAS las campañas del creador cuando saldo llega a 0. Badge naranja Pausada en dashboard. Campañas pausadas visibles en tab En curso. |
 
 ## Stack confirmado
 
@@ -634,15 +635,12 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 
 ### Pendientes inmediatos
 
-- Prueba end-to-end del flujo completo — verificar que intercambio se crea en estado verificado y créditos se actualizan correctamente
-- Paso 4 verificación — revisar pantalla de éxito y pantalla de rechazo visualmente
-- Migración supabase/migrations/20260420130000_sistema_creditos.sql y 20260420140000_rpc_aplicar_creditos.sql — documentadas en repo, ya aplicadas en producción via SQL Editor
-- Migración supabase/migrations/20260420150000_rpc_get_campana_para_comentar.sql — crear archivo de migración para documentar la RPC get_campana_para_comentar
-- Limpiar tabla verificaciones_pendientes y desactivar pg_cron procesar_verificaciones_pendientes
 - Deprecar /verificar-codigo
-- Borradores: guardar progreso 2 horas en reservas_intercambio
-- Créditos: reactivación automática de campaña cuando saldo sube de 0
+- Limpiar tabla verificaciones_pendientes y desactivar pg_cron procesar_verificaciones_pendientes
+- Reactivación automática de campaña cuando saldo sube de 0
 - Email via Resend cuando créditos llegan a 0
+- Crédito inicial al crear primera campaña (1 crédito de regalo para desbloquear ecosistema)
+- Texto breadcrumb "Volver a la cola" en /dashboard/intercambiar/[campanaId]
 
 ### Cambio estructural pendiente — Campañas por tiempo
 
