@@ -212,28 +212,15 @@ export default function CampanaDetallePage() {
 
   return (
     <div className="min-h-screen bg-[#f5f6f7]">
-      {/* ===== HEADER ===== */}
-      <header className="fixed top-0 z-50 w-full border-b border-black/5 bg-white/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <div className="flex items-center gap-6">
-            <a
-              href="/dashboard"
-              className="font-headline text-xl font-bold tracking-tighter text-[#2c2f30]"
-            >
-              Comentalo<span className="text-[#E87722]">.</span>
-            </a>
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-[#595c5d] transition-colors hover:bg-[#eff1f2] hover:text-[#2c2f30]"
-            >
-              <span aria-hidden>←</span>
-              <span>Volver al dashboard</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-6 pt-24 pb-12">
+      <main className="mx-auto max-w-7xl px-6 pt-8 pb-12">
+        {/* Back link */}
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="mb-5 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
+        >
+          <span aria-hidden>←</span>
+          Volver al inicio
+        </button>
         {/* ===== LOADING / ERROR ===== */}
         {loading && (
           <div className="flex items-center justify-center gap-3 py-24">
@@ -249,7 +236,7 @@ export default function CampanaDetallePage() {
               onClick={() => router.push("/dashboard")}
               className="mt-4 rounded-full bg-[#6200EE] px-5 py-2 text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
             >
-              Volver al dashboard
+              Volver al inicio
             </button>
           </div>
         )}

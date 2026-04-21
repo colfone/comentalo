@@ -246,11 +246,11 @@ export default function CrearCampanaPage() {
         {/* Back */}
         <button
           type="button"
-          onClick={() => router.push("/dashboard/intercambiar")}
+          onClick={() => router.push("/dashboard")}
           className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
         >
           <ChevronLeft />
-          Volver al dashboard
+          Volver al inicio
         </button>
 
         {/* Header */}

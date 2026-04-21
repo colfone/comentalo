@@ -104,7 +104,7 @@ export default function CalificarPage() {
                 href="/dashboard"
                 className="mt-4 inline-block text-sm text-[#E87722] hover:underline"
               >
-                Volver al dashboard
+                Volver al inicio
               </a>
             </div>
           )}
@@ -192,7 +192,7 @@ export default function CalificarPage() {
                 onClick={() => router.push("/dashboard")}
                 className="mt-6 w-full rounded-lg bg-[#6B3FA0] py-3 text-sm font-medium text-white transition-colors hover:bg-[#5a3588]"
               >
-                Volver al dashboard
+                Volver al inicio
               </button>
             </>
           )}

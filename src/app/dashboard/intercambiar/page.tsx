@@ -427,7 +427,7 @@ export default function ColaPage() {
                 className="mt-6 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white"
                 style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
               >
-                Volver al dashboard
+                Volver al inicio
               </a>
             </div>
           )}
