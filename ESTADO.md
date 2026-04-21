@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.15 — 21 de abril de 2026
+## Version actual: v4.16 — 21 de abril de 2026
 
 ## Registro de versiones
 
@@ -57,6 +57,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.13 | Sesión 20 abril noche | 20 abril 2026 | Flujo intercambio por pasos completo: Paso 1 video 30s, Paso 2 escribir con instrucciones creador, Paso 3 pegar en YouTube, Paso 4 verificación. Layout una columna 700px. Panel lateral eliminado. Botones morados (#6200EE / #ac8eff). Sin modal "Antes de comentar". RPC get_campana_para_comentar nueva. Intercambio se crea solo al verificar. Sistema de créditos: columna saldo_creditos, RPC aplicar_creditos_intercambio. Header unificado en layout con 💎 créditos + avatar + nombre canal. /api/intercambios/copiar eliminado. RPC confirmar_intercambio reescrita sin INSERT intercambios. |
 | v4.14 | Sesión 21 abril | 21 abril 2026 | Migraciones faltantes sesión 20 abril creadas en repo. Fix emojis YouTube en verificación (normalizarParaMatch quita ️). Modal de verificación animado con lupa + logo YouTube: estado buscando 5s obligatorio + segunda búsqueda 30s silenciosa. Reasignación silenciosa de cola cada 115s sin mensaje al usuario. TTL reservas 2 minutos. Botón copiar inline en Paso 3. Textos modal cancelación mejorados. Pantalla éxito con textos corregidos. router.refresh() en botón Aceptar para actualizar créditos en header. Fix RPC aplicar_creditos_intercambio: pausa TODAS las campañas del creador cuando saldo llega a 0. Badge naranja Pausada en dashboard. Campañas pausadas visibles en tab En curso. |
 | v4.15 | Sesión 21 abril (continuación) | 21 abril 2026 | Deprecar /verificar-codigo con redirect a /dashboard o /login. Limpiar pg_cron procesar-verificaciones-pendientes desactivado. RPC aplicar_creditos_intercambio v3: reactivación automática de campañas del comentarista cuando saldo sube de 0 a 1. Fix filtro "En curso" en dashboard incluye estados abierta/pausada/activa. Fix RPC pausa todas las campañas del creador cuando saldo llega a 0. |
+| v4.16 | Sesión 21 abril (cierre) | 21 abril 2026 | Trigger trg_credito_inicial_campana: 1 crédito inicial al crear primera campaña. Vocabulario auditado: "Ir a la cola" → "Comentar", "Volver a la cola" → "Volver", "Volver a la cola" CTA → "Volver a comentar". Pendiente anotado: nav header faltante en /dashboard/campana/[campanaId]. |
 
 ## Stack confirmado
 
@@ -637,8 +638,8 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 ### Pendientes inmediatos
 
 - Email via Resend cuando créditos llegan a 0
-- Crédito inicial al crear primera campaña (1 crédito de regalo para desbloquear ecosistema)
-- Texto breadcrumb "Volver a la cola" en /dashboard/intercambiar/[campanaId]
+- Nav header faltante en /dashboard/campana/[campanaId]
+- Crédito inicial al crear primera campaña — trigger creado, pendiente prueba con usuario nuevo real
 
 ### Cambio estructural pendiente — Campañas por tiempo
 
