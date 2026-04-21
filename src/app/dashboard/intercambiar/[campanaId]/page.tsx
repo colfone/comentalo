@@ -29,7 +29,9 @@ interface VideoData {
   vistas: number;
 }
 
-type Phase = "loading" | "error" | "watch" | "compose" | "copied" | "verifying" | "done" | "rechazado";
+type Phase = "loading" | "error" | "watch" | "compose" | "copied" | "verifying" | "done";
+
+type VerificacionModalPhase = "buscando" | "verificado" | "no_encontrado";
 
 // --- YouTube IFrame Player API types ---
 // Shim mínimo para no introducir un .d.ts global. Sólo lo que usamos.
@@ -170,11 +172,11 @@ export default function DetalleIntercambioPage({
   const [saving, setSaving] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [wentToYt, setWentToYt] = useState(false);
-  const [verificandoEn, setVerificandoEn] = useState<number | null>(null);
-  const [verificando, setVerificando] = useState(false);
-  const [primerIntentoFallido, setPrimerIntentoFallido] = useState(false);
+  const [modalPhase, setModalPhase] = useState<VerificacionModalPhase | null>(null);
+  const [moreInfoOpen, setMoreInfoOpen] = useState(false);
+  const verifyingRef = useRef(false);
+  const searchCancelledRef = useRef(false);
 
-  const [resultMessage, setResultMessage] = useState("");
   const [cancelando, setCancelando] = useState(false);
   const [confirmCancelar, setConfirmCancelar] = useState(false);
   const [miCanalUrl, setMiCanalUrl] = useState<string | null>(null);
@@ -185,8 +187,9 @@ export default function DetalleIntercambioPage({
   // --- Load campana + video + creador ---
   // Fetch directo a `campanas` con joins anidados. Ya no llamamos a
   // get_intercambio_detalle — el intercambio solo existe cuando se verifica.
-  // Estado inicial siempre "watch"; las transiciones a copied/done/rechazado
-  // las controla el flujo del usuario.
+  // Estado inicial siempre "watch"; las transiciones a copied/done las
+  // controla el flujo del usuario. El rechazo se maneja vía modalPhase,
+  // no vía phase.
   useEffect(() => {
     (async () => {
       try {
@@ -347,24 +350,13 @@ export default function DetalleIntercambioPage({
     };
   }, [video]);
 
-  // --- Tick del countdown de 30s tras presionar "Ya publiqué" ---
-  // Al llegar a 0 dispara handleYaPublique automáticamente.
+  // --- Cleanup: al desmontar, cancela la secuencia async de verificación.
+  // handleAbrirVerificacion chequea searchCancelledRef después de cada await.
   useEffect(() => {
-    if (verificandoEn === null) return;
-    if (verificandoEn <= 0) {
-      setVerificandoEn(null);
-      handleYaPublique();
-      return;
-    }
-    const id = setTimeout(
-      () => setVerificandoEn((n) => (n === null ? null : n - 1)),
-      1000
-    );
-    return () => clearTimeout(id);
-    // handleYaPublique es closure estable sobre intercambio; no lo incluimos
-    // en deps para evitar reinicios del timer.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verificandoEn]);
+    return () => {
+      searchCancelledRef.current = true;
+    };
+  }, []);
 
   // --- Actions ---
 
@@ -393,9 +385,7 @@ export default function DetalleIntercambioPage({
     );
   }
 
-  async function handleYaPublique() {
-    if (!video || verificando || verificandoEn !== null) return;
-    setVerificando(true);
+  async function callVerificar(): Promise<"verificado" | "no_encontrado"> {
     try {
       const res = await fetch("/api/intercambios/verificar", {
         method: "POST",
@@ -405,28 +395,50 @@ export default function DetalleIntercambioPage({
           texto_comentario: comentario,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setResultMessage(data.error || "Error al verificar.");
-        return;
-      }
-      if (data.resultado === "verificado") {
-        setPhase("done");
-        return;
-      }
-      // Resultado no verificado (la API responde "pendiente"):
-      //   — 1er intento: activamos countdown de 30s para 2º intento automático.
-      //   — 2º intento: mostramos pantalla de rechazo.
-      if (primerIntentoFallido) {
-        setPhase("rechazado");
-      } else {
-        setPrimerIntentoFallido(true);
-        setVerificandoEn(30);
-      }
+      const data = await res.json().catch(() => null);
+      return res.ok && data?.resultado === "verificado" ? "verificado" : "no_encontrado";
     } catch {
-      setResultMessage("Error de conexión al verificar.");
+      return "no_encontrado";
+    }
+  }
+
+  function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function handleAbrirVerificacion() {
+    if (!video || modalPhase !== null || verifyingRef.current) return;
+    setMoreInfoOpen(false);
+    setModalPhase("buscando");
+    verifyingRef.current = true;
+    searchCancelledRef.current = false;
+
+    try {
+      // Primera búsqueda: 5s piso + API en paralelo (espera al más lento).
+      const [, primeraResult] = await Promise.all([
+        sleep(5000),
+        callVerificar(),
+      ]);
+      if (searchCancelledRef.current) return;
+      if (primeraResult === "verificado") {
+        setModalPhase("verificado");
+        return;
+      }
+
+      // Segunda búsqueda: 25s silenciosos sin API.
+      await sleep(25000);
+      if (searchCancelledRef.current) return;
+
+      // API + 5s en paralelo (completa los 30s totales de segunda búsqueda).
+      const [, segundaResult] = await Promise.all([
+        sleep(5000),
+        callVerificar(),
+      ]);
+      if (searchCancelledRef.current) return;
+
+      setModalPhase(segundaResult === "verificado" ? "verificado" : "no_encontrado");
     } finally {
-      setVerificando(false);
+      verifyingRef.current = false;
     }
   }
 
@@ -477,8 +489,6 @@ export default function DetalleIntercambioPage({
   const disabledPublishReason =
     !copied ? "Copia el comentario primero" :
     !wentToYt ? "Visita YouTube primero" : "";
-  const enCountdown = verificandoEn !== null;
-  const botonOcupado = enCountdown || verificando;
   // Handle tipo "@agenciajaque1142" extraído de una URL como
   // "https://www.youtube.com/@agenciajaque1142". Si no podemos
   // parsear, caemos a la URL completa, y si no hay URL, null.
@@ -754,7 +764,7 @@ export default function DetalleIntercambioPage({
                     disabled={cancelando}
                     className="mt-2 w-full rounded-2xl border border-[#ac8eff] bg-white py-2.5 text-sm text-[#6200EE] transition-colors hover:bg-[#f5f0ff] disabled:opacity-50"
                   >
-                    {cancelando ? "Cancelando…" : "Cancelar intercambio"}
+                    {cancelando ? "Cancelando…" : "Salir"}
                   </button>
                   </div>
                 </>
@@ -792,37 +802,28 @@ export default function DetalleIntercambioPage({
                     💜 Dale like al video si te gustó — es parte de la cultura colaborativa de Comentalo.
                   </p>
 
-                  {/* Ya publiqué — solo aparece cuando el user ya fue a YouTube.
-                      Flujo de 2 intentos con countdown de 30s. */}
+                  {/* Ya publiqué — abre el modal de verificación. */}
                   {wentToYt && (
                     <button
-                      onClick={handleYaPublique}
-                      disabled={!canPublish || botonOcupado}
+                      onClick={handleAbrirVerificacion}
+                      disabled={!canPublish}
                       title={disabledPublishReason}
                       className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
-                      style={{ background: botonOcupado ? "#6b7280" : "#16a34a" }}
+                      style={{ background: "#16a34a" }}
                     >
-                      {enCountdown && verificandoEn !== null && verificandoEn > 0 ? (
-                        `Buscando tu comentario... ${verificandoEn}s`
-                      ) : botonOcupado ? (
-                        "Verificando..."
-                      ) : (
-                        <>
-                          <CheckIcon />
-                          Ya publiqué mi comentario
-                        </>
-                      )}
+                      <CheckIcon />
+                      Ya publiqué mi comentario
                     </button>
-                  )}
-
-                  {resultMessage && (
-                    <p className="mt-4 rounded-xl bg-red-50 p-3 text-xs text-red-600">{resultMessage}</p>
                   )}
 
                   <div className="mt-4 flex gap-3">
                     <button
                       type="button"
-                      onClick={() => setPhase("compose")}
+                      onClick={() => {
+                        setCopied(false);
+                        setWentToYt(false);
+                        setPhase("compose");
+                      }}
                       className="flex-1 rounded-lg border border-[#ac8eff] bg-white py-2.5 text-sm text-[#6200EE] transition-colors hover:bg-[#f5f0ff]"
                     >
                       ← Editar comentario
@@ -863,38 +864,140 @@ export default function DetalleIntercambioPage({
                     Comentario verificado ✨
                   </h2>
                   <p className="m-0 mb-6 text-sm opacity-90">
-                    Acabas de activar un intercambio para tu próximo video.
+                    Tu comentario fue verificado. Sigue comentando para recibir más.
                   </p>
                   <Link
                     href="/dashboard/intercambiar"
                     className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#6200EE]"
                   >
-                    Volver a la cola
+                    Comentar otro video
                   </Link>
                 </div>
               )}
 
-              {phase === "rechazado" && (
-                <div className="rounded-3xl bg-white p-8">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#E87722]/10 text-[#E87722]">
-                    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <circle cx="12" cy="12" r="9" />
-                      <path d="M12 8v4" />
-                      <path d="M12 16h.01" />
-                    </svg>
-                  </div>
-                  <h2 className="m-0 mb-4 text-center font-headline text-xl font-bold text-[#2c2f30]">
-                    No pudimos verificar tu comentario
-                  </h2>
-                  <ul className="mx-auto max-w-[560px] space-y-3 text-sm leading-[1.55] text-[#5b5e60]">
+          </div>
+        )}
+      </main>
+
+      {/* ===== Modal de verificación ===== */}
+      {modalPhase !== null && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{
+            background: "rgba(20, 20, 24, 0.48)",
+            animation: "verifyFade 160ms ease-out forwards",
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="verify-modal-title"
+        >
+          <style>{`
+            @keyframes verifyFade { from { opacity: 0 } to { opacity: 1 } }
+            @keyframes verifyPop {
+              from { opacity: 0; transform: scale(0.9) }
+              to   { opacity: 1; transform: scale(1) }
+            }
+          `}</style>
+          <div className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-8 text-center shadow-[0_24px_64px_rgba(20,20,24,0.24)]">
+            {modalPhase === "buscando" && (
+              <>
+                <div className="relative mx-auto mb-5 flex h-20 w-20 items-center justify-center">
+                  <svg viewBox="0 0 24 24" className="w-12 h-12" fill="#FF0000" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                  <span className="absolute -bottom-1 -right-1 text-3xl animate-bounce">🔍</span>
+                </div>
+                <h3
+                  id="verify-modal-title"
+                  className="m-0 font-headline text-xl font-bold text-[#2c2f30]"
+                >
+                  Buscando tu comentario en el video...
+                </h3>
+              </>
+            )}
+
+            {modalPhase === "verificado" && (
+              <>
+                <div
+                  className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full text-white"
+                  style={{
+                    background: "#16a34a",
+                    animation:
+                      "verifyPop 260ms cubic-bezier(0.2, 0.9, 0.3, 1.12) forwards",
+                  }}
+                >
+                  <CheckIcon size={32} />
+                </div>
+                <h3
+                  id="verify-modal-title"
+                  className="m-0 mb-2 font-headline text-xl font-bold text-[#2c2f30]"
+                >
+                  ¡Comentario verificado!
+                </h3>
+                <p className="m-0 mb-6 text-sm text-[#5b5e60]">
+                  Tu intercambio fue registrado exitosamente.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalPhase(null);
+                    setPhase("done");
+                    router.refresh();
+                  }}
+                  className="w-full rounded-2xl py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.01]"
+                  style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+                >
+                  Aceptar
+                </button>
+              </>
+            )}
+
+            {modalPhase === "no_encontrado" && (
+              <>
+                <div
+                  className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full text-3xl"
+                  style={{ background: "rgba(232, 119, 34, 0.12)" }}
+                >
+                  ⚠️
+                </div>
+                <h3
+                  id="verify-modal-title"
+                  className="m-0 mb-2 font-headline text-xl font-bold text-[#2c2f30]"
+                >
+                  No encontramos tu comentario
+                </h3>
+                <p className="m-0 mb-6 text-sm text-[#5b5e60]">
+                  Puede haber varias razones.
+                </p>
+
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMoreInfoOpen((v) => !v)}
+                    className="w-full rounded-2xl border border-[#ac8eff] bg-white py-3 text-sm font-semibold text-[#6200EE] transition-colors hover:bg-[#f5f0ff]"
+                  >
+                    {moreInfoOpen ? "Ocultar información" : "Más información"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalPhase(null);
+                      setMoreInfoOpen(false);
+                    }}
+                    className="w-full rounded-2xl py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.01]"
+                    style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+
+                {moreInfoOpen && (
+                  <ul className="mt-5 space-y-3 text-left text-sm leading-[1.55] text-[#5b5e60]">
                     {miCanalHandle && (
                       <li>
                         <strong className="font-semibold text-[#2c2f30]">Canal incorrecto</strong> — tu canal registrado en Comentalo es <strong className="font-semibold text-[#2c2f30]">{miCanalHandle}</strong>. Si tienes múltiples canales en YouTube, asegúrate de haber comentado con ese canal específico.
                       </li>
                     )}
-                    <li>
-                      <strong className="font-semibold text-[#2c2f30]">Verificaste muy rápido</strong> — YouTube tarda unos segundos en indexar comentarios nuevos. Puedes volver a intentarlo.
-                    </li>
                     <li>
                       <strong className="font-semibold text-[#2c2f30]">El texto no coincide</strong> — el comentario publicado en YouTube debe ser exactamente el que copiaste desde Comentalo.
                     </li>
@@ -905,39 +1008,12 @@ export default function DetalleIntercambioPage({
                       <strong className="font-semibold text-[#2c2f30]">El video tiene moderación estricta</strong> — el creador puede tener activada la revisión manual de comentarios en YouTube Studio.
                     </li>
                   </ul>
-                  <div className="mx-auto mt-6 flex max-w-[360px] flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Vuelve a compose (saltamos watch — ya vimos el video).
-                        // Resetea copied/wentToYt para que pueda editar el
-                        // textarea y re-copiar, y primerIntentoFallido para
-                        // tener otro ciclo completo de 2 intentos.
-                        setResultMessage("");
-                        setPrimerIntentoFallido(false);
-                        setCopied(false);
-                        setWentToYt(false);
-                        setPhase("compose");
-                      }}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.01]"
-                      style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
-                    >
-                      Volver a intentarlo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmCancelar(true)}
-                      className="w-full rounded-2xl bg-[#e3e5e6] py-3 text-sm font-semibold text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30]"
-                    >
-                      Cancelar intercambio
-                    </button>
-                  </div>
-                </div>
-              )}
-
+                )}
+              </>
+            )}
           </div>
-        )}
-      </main>
+        </div>
+      )}
 
       <ConfirmCancelarModal
         open={confirmCancelar}
@@ -1009,10 +1085,10 @@ function ConfirmCancelarModal({
           id="confirm-cancelar-title"
           className="font-headline text-xl font-extrabold tracking-[-0.02em] text-[#2c2f30]"
         >
-          Cancelar intercambio
+          Cancelar
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-[#5b5e60]">
-          ¿Cancelar este intercambio? El video volverá a la cola para otro creador.
+          ¿Seguro que quieres salir? Perderás el progreso de este comentario.
         </p>
         <div className="mt-6 flex gap-2">
           <button

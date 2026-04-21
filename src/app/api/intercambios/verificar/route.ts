@@ -22,6 +22,19 @@ function createServiceClient() {
   );
 }
 
+// YouTube normaliza el texto de comentarios eliminando Variation Selectors
+// (U+FE00..U+FE0F, p.ej. el que convierte ❤ en emoji ❤️) y Zero Width Joiner
+// (U+200D, usado en emojis compuestos). Normalizamos ambos lados antes del
+// match literal. Regex construida en runtime para mantener el source ASCII.
+const VS = String.fromCodePoint(0xfe00);
+const VS16 = String.fromCodePoint(0xfe0f);
+const ZWJ = String.fromCodePoint(0x200d);
+const NORMALIZATION_REGEX = new RegExp(`[${VS}-${VS16}${ZWJ}]`, "g");
+
+function normalizarParaMatch(s: string): string {
+  return s.normalize("NFC").replace(NORMALIZATION_REGEX, "");
+}
+
 export async function POST(request: Request) {
   // --- Auth ---
   const cookieStore = await cookies();
@@ -153,9 +166,10 @@ export async function POST(request: Request) {
           snippet.authorChannelId?.value === usuario.canal_youtube_id;
         const originalText = snippet.textOriginal ?? "";
         const displayText = snippet.textDisplay ?? "";
+        const textoNormalizado = normalizarParaMatch(textoComentario);
         const matchesText =
-          originalText.includes(textoComentario) ||
-          displayText.includes(textoComentario);
+          normalizarParaMatch(originalText).includes(textoNormalizado) ||
+          normalizarParaMatch(displayText).includes(textoNormalizado);
         if (matchesChannel && matchesText) {
           commentFound = true;
           break;
