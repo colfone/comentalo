@@ -172,6 +172,7 @@ export default function DetalleIntercambioPage({
   const [saving, setSaving] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [wentToYt, setWentToYt] = useState(false);
+  const [justCopiedInline, setJustCopiedInline] = useState(false);
   const [modalPhase, setModalPhase] = useState<VerificacionModalPhase | null>(null);
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const verifyingRef = useRef(false);
@@ -373,6 +374,12 @@ export default function DetalleIntercambioPage({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleCopiarInline() {
+    try { await navigator.clipboard.writeText(comentario); } catch { /* noop */ }
+    setJustCopiedInline(true);
+    setTimeout(() => setJustCopiedInline(false), 2000);
   }
 
   function handleIrAYouTube() {
@@ -784,8 +791,26 @@ export default function DetalleIntercambioPage({
                   </p>
 
                   {/* Display del comentario copiado (sólo lectura) */}
-                  <div className="rounded-xl bg-[#eff1f2] p-4 text-[15px] leading-[1.5] text-[#2c2f30] whitespace-pre-wrap">
+                  <div className="relative rounded-xl bg-[#eff1f2] p-4 pr-12 text-[15px] leading-[1.5] text-[#2c2f30] whitespace-pre-wrap">
                     {comentario}
+                    <button
+                      type="button"
+                      onClick={handleCopiarInline}
+                      aria-label="Copiar comentario"
+                      className="absolute right-2 top-2 flex items-center gap-1 rounded-lg bg-white/80 px-2 py-1 text-xs font-medium text-[#5b5e60] shadow-sm backdrop-blur-sm transition-colors hover:bg-white hover:text-[#2c2f30]"
+                    >
+                      {justCopiedInline ? (
+                        <>
+                          <span style={{ color: "#16a34a" }}>✓</span>
+                          <span>Copiado</span>
+                        </>
+                      ) : (
+                        <>
+                          <span aria-hidden="true">📋</span>
+                          <span>Copiar</span>
+                        </>
+                      )}
+                    </button>
                   </div>
 
                   {/* Ir a YouTube */}
