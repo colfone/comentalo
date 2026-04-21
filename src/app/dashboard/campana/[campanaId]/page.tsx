@@ -3,6 +3,21 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
+// Duplicado de /dashboard/registrar-video — NFKC + emojis/banderas + sentence case.
+function normalizeTitle(titulo: string): string {
+  if (!titulo) return '';
+  const plano = titulo.normalize('NFKC');
+  const sinEmojis = plano
+    .replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}\u200D\uFE0F]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!sinEmojis) return '';
+  const lower = sinEmojis.toLowerCase();
+  const firstLetter = lower.search(/\p{L}/u);
+  if (firstLetter < 0) return lower;
+  return lower.slice(0, firstLetter) + lower[firstLetter].toUpperCase() + lower.slice(firstLetter + 1);
+}
+
 interface Intercambio {
   id: string;
   comentarista_id: string;
@@ -95,7 +110,7 @@ interface VideoInfo {
   youtube_video_id: string;
 }
 
-type TabFilter = "todos" | "verificados" | "pendientes";
+type TabFilter = "todos" | "verificados";
 
 function getInitials(name: string | null): string {
   if (!name) return "C";
@@ -189,17 +204,10 @@ export default function CampanaDetallePage() {
   }
 
   const verificados = intercambios.filter((i) => i.estado === "verificado");
-  const pendientes = intercambios.filter((i) => i.estado === "pendiente");
 
-  const filtered =
-    tab === "verificados"
-      ? verificados
-      : tab === "pendientes"
-      ? pendientes
-      : intercambios;
+  const filtered = tab === "verificados" ? verificados : intercambios;
 
   const progreso = campana?.intercambios_completados ?? 0;
-  const progresoPct = Math.min(100, (progreso / 10) * 100);
 
   const campanaLabel =
     campana?.estado === "abierta"
@@ -255,7 +263,7 @@ export default function CampanaDetallePage() {
                 >
                   <img
                     src={`https://img.youtube.com/vi/${video.youtube_video_id}/maxresdefault.jpg`}
-                    alt={video.titulo}
+                    alt={normalizeTitle(video.titulo)}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                   />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-300 group-hover:bg-black/40">
@@ -276,31 +284,18 @@ export default function CampanaDetallePage() {
                   {campanaLabel}
                 </span>
                 <h1 className="mt-4 font-headline text-4xl font-extrabold tracking-tight text-[#2c2f30]">
-                  {video.titulo}
+                  {normalizeTitle(video.titulo)}
                 </h1>
 
-                <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {/* Progreso */}
+                <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {/* Comentarios */}
                   <div className="rounded-2xl border border-[rgba(171,173,174,0.15)] bg-white p-4">
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-[#595c5d]">
-                      Progreso
+                      Comentarios
                     </p>
                     <p className="mt-1 font-headline text-3xl font-extrabold text-[#6200EE]">
                       {progreso}
-                      <span className="text-base font-bold text-[#595c5d]">
-                        /10
-                      </span>
                     </p>
-                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#f5f6f7]">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${progresoPct}%`,
-                          background:
-                            "linear-gradient(90deg, #6200EE, #ac8eff)",
-                        }}
-                      />
-                    </div>
                   </div>
 
                   {/* Verificados */}
@@ -312,20 +307,7 @@ export default function CampanaDetallePage() {
                       {verificados.length}
                     </p>
                     <p className="mt-3 text-xs text-[#595c5d]">
-                      Intercambios confirmados
-                    </p>
-                  </div>
-
-                  {/* Pendientes */}
-                  <div className="rounded-2xl border border-[rgba(171,173,174,0.15)] bg-white p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#595c5d]">
-                      Pendientes
-                    </p>
-                    <p className="mt-1 font-headline text-3xl font-extrabold text-[#E87722]">
-                      {pendientes.length}
-                    </p>
-                    <p className="mt-3 text-xs text-[#595c5d]">
-                      En verificación
+                      Comentarios confirmados
                     </p>
                   </div>
                 </div>
@@ -336,7 +318,7 @@ export default function CampanaDetallePage() {
             <section>
               <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <h2 className="font-headline text-2xl font-extrabold tracking-tight text-[#2c2f30]">
-                  Intercambios recibidos
+                  Comentarios recibidos
                 </h2>
 
                 {/* Tabs */}
@@ -347,10 +329,6 @@ export default function CampanaDetallePage() {
                       {
                         key: "verificados",
                         label: `Verificados (${verificados.length})`,
-                      },
-                      {
-                        key: "pendientes",
-                        label: `Pendientes (${pendientes.length})`,
                       },
                     ] as { key: TabFilter; label: string }[]
                   ).map((t) => (
