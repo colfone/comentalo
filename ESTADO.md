@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.12 — 20 de abril de 2026
+## Version actual: v4.13 — 20 de abril de 2026
 
 ## Registro de versiones
 
@@ -54,6 +54,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.10 | APIs campañas + modal confirmación + fix detalle intercambio | 19 abril 2026 | 4 endpoints nuevos (POST /api/campanas/pausar, /activar, /finalizar, /eliminar) según sección 5D con validación de ownership via service client y mapa de transiciones válidas. Migración expand_campanas_estado: CHECK expandido a 'abierta/completada/calificada/activa/pausada/finalizada' (vocabulario dual por ahora — abierta sigue viva para campañas legacy). Subcomponente CampanaAcciones en /dashboard/perfil y tab Recibiendo de /dashboard/actividad muestra Pausar/Finalizar/Eliminar (activa) o Activar/Finalizar/Eliminar (pausada); Eliminar solo si intercambios_completados=0; terminal states ocultan botones. ConfirmModal personalizado reemplaza window.confirm() en las 3 pantallas (perfil + actividad + detalle intercambio) — overlay fade + card pop con cubic-bezier, Confirmar gradient primary, Cancelar gris, dismissable por ESC/backdrop. Fix crítico: /dashboard/intercambiar/[campanaId] mostraba "No encontramos este intercambio" porque los joins !inner a campanas/videos/usuarios eran bloqueados por RLS (policies solo permiten leer al dueño del video, no al comentarista). Nueva RPC get_intercambio_detalle LANGUAGE sql SECURITY DEFINER que bypasea RLS con filtro por auth.uid(); detail page migrado a supabase.rpc(). normalizeTitle aplicado a títulos de videos en cola /dashboard/intercambiar |
 | v4.11 | Bugs Mi actividad + cola + cookies + vocabulario intercambios | 20 abril 2026 | RPC get_mis_intercambios_comentarista (LANGUAGE sql, SECURITY DEFINER): resuelve bug del tab "Pendientes" de /dashboard/actividad que mostraba 0 filas por el mismo patrón RLS+joins!inner que afectó al detail page en v4.10. Frontend migrado a supabase.rpc(). RPC asignar_intercambio reescrito a LANGUAGE sql con fix: c.estado IN ('abierta', 'activa') — campañas que pasaron por Pausar → Activar (quedan en 'activa') volvían invisibles en la cola. Fix /dashboard/layout.tsx: getUser() → getSession() para evitar error de Next 16 "Cookies can only be modified in a Server Action or Route Handler" cuando Supabase intentaba refrescar token desde server component. Endpoint /api/intercambios/copiar eliminó guard 409 para soportar re-copia en estado pendiente (flujo "Volver a intentarlo"). Refactor completo de /dashboard/intercambiar/[campanaId]: eliminado countdown por completo (state, tick, interval, render, helper getMinWaitSeconds, import useCallback), pantalla "Intercambio en revisión" reescrita como "No encontramos tu comentario" con botones Volver a intentarlo / Cancelar (usa ConfirmCancelarModal), modal motivacional "Antes de comentar" simplificado a un solo botón "Abrir video en YouTube →" con texto nuevo sobre ayuda al creador sin imponer tiempo mínimo. Texto helper rediseñado para no parecer botón. Chip "Verificando" → "No encontramos tu comentario" en /dashboard/actividad (otras 4 ocurrencias de "Verificando" en la app auditadas y confirmadas como contextos distintos — no tocadas) |
 | v4.12 | Sesión 20 abril tarde | 20 abril 2026 | Fix vocabulario "Comentario verificado". Refactor Mi actividad: 2 tabs Comentando/Recibiendo con calificación estrellas inline. Flujo intercambio por pasos con YT IFrame API y tracking 30s. Pantalla de rechazo con 4 causas + canal del usuario. Intercambio se crea SOLO al verificar exitosamente — elimina estado pendiente huérfano. RPC confirmar_intercambio reescrita sin INSERT intercambios. /api/intercambios/copiar eliminado. /api/intercambios/verificar reescrito: recibe campana_id + texto_comentario. PROYECTO.md v4.4 — campañas sin límite de tiempo controladas por créditos, secciones 5E y 5F. |
+| v4.13 | Sesión 20 abril noche | 20 abril 2026 | Flujo intercambio por pasos completo: Paso 1 video 30s, Paso 2 escribir con instrucciones creador, Paso 3 pegar en YouTube, Paso 4 verificación. Layout una columna 700px. Panel lateral eliminado. Botones morados (#6200EE / #ac8eff). Sin modal "Antes de comentar". RPC get_campana_para_comentar nueva. Intercambio se crea solo al verificar. Sistema de créditos: columna saldo_creditos, RPC aplicar_creditos_intercambio. Header unificado en layout con 💎 créditos + avatar + nombre canal. /api/intercambios/copiar eliminado. RPC confirmar_intercambio reescrita sin INSERT intercambios. |
 
 ## Stack confirmado
 
@@ -633,14 +634,15 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 
 ### Pendientes inmediatos
 
-- Implementar sistema de créditos: columna saldo_creditos en usuarios (INTEGER DEFAULT 0, MAX 10). Verificar suma 1 crédito al comentarista. Recibir comentario resta 1 crédito al creador. Campaña se pausa automáticamente cuando saldo llega a 0.
-- Mostrar créditos en menú superior del dashboard
-- Email via Resend cuando créditos llegan a 0
-- Borradores: guardar progreso 2 horas en reservas_intercambio (campos texto_borrador, segundos_vistos)
-- Paso 2 flujo intercambiar: mover instrucciones creador encima del textarea, eliminar panel lateral
-- Paso 3: texto solo lectura, botón "← Editar comentario"
-- Deprecar /verificar-codigo
+- Prueba end-to-end del flujo completo — verificar que intercambio se crea en estado verificado y créditos se actualizan correctamente
+- Paso 4 verificación — revisar pantalla de éxito y pantalla de rechazo visualmente
+- Migración supabase/migrations/20260420130000_sistema_creditos.sql y 20260420140000_rpc_aplicar_creditos.sql — documentadas en repo, ya aplicadas en producción via SQL Editor
+- Migración supabase/migrations/20260420150000_rpc_get_campana_para_comentar.sql — crear archivo de migración para documentar la RPC get_campana_para_comentar
 - Limpiar tabla verificaciones_pendientes y desactivar pg_cron procesar_verificaciones_pendientes
+- Deprecar /verificar-codigo
+- Borradores: guardar progreso 2 horas en reservas_intercambio
+- Créditos: reactivación automática de campaña cuando saldo sube de 0
+- Email via Resend cuando créditos llegan a 0
 
 ### Cambio estructural pendiente — Campañas por tiempo
 
