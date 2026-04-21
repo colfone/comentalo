@@ -172,7 +172,7 @@ export default function ColaPage() {
       if (!res.ok) {
         if (!silent) {
           setVideos([]);
-          setBlocked(data.error || "Error al cargar la cola.");
+          setBlocked(data.error || "Error al cargar.");
         }
         return;
       }

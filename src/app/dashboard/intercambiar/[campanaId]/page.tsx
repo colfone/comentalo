@@ -512,7 +512,7 @@ export default function DetalleIntercambioPage({
           className="mb-5 inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
         >
           <ChevronLeft />
-          Volver a la cola
+          Volver
         </button>
 
         {phase === "loading" && (
@@ -525,7 +525,7 @@ export default function DetalleIntercambioPage({
           <div className="mx-auto max-w-md rounded-3xl bg-white p-10 text-center">
             <p className="text-sm text-[#2c2f30]">{errorMsg}</p>
             <Link href="/dashboard/intercambiar" className="mt-6 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white" style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}>
-              Volver a la cola
+              Volver a comentar
             </Link>
           </div>
         )}
