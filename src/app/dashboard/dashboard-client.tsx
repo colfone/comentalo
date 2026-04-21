@@ -148,7 +148,7 @@ export default function DashboardClient({
 
   // Filtered videos by tab
   const videosEnCurso = videos.filter((v) =>
-    v.campanas.some((c) => c.estado === "abierta")
+    v.campanas.some((c) => c.estado === "abierta" || c.estado === "pausada")
   );
   const videosCompletados = videos.filter((v) =>
     v.campanas.some((c) => c.estado === "completada" || c.estado === "calificada")
@@ -361,10 +361,11 @@ export default function DashboardClient({
                           <div className="mt-1 flex items-center gap-2">
                             <span className="text-xs text-[#595c5d]">{formatViews(video.vistas)} vistas</span>
                             <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                              video.estado === "activo" ? "bg-green-100 text-green-700"
+                              activeCampana?.estado === "pausada" ? "bg-[#E87722]/10 text-[#E87722]"
+                              : video.estado === "activo" ? "bg-green-100 text-green-700"
                               : video.estado === "suspendido" ? "bg-red-100 text-red-700"
                               : "bg-gray-100 text-gray-600"
-                            }`}>{video.estado}</span>
+                            }`}>{activeCampana?.estado === "pausada" ? "Pausada" : video.estado}</span>
                           </div>
                           {video.puede_eliminar && (
                             <button onClick={() => handleEliminar(video.id)} disabled={eliminando === video.id} className="mt-1 text-[10px] text-red-400 hover:underline disabled:opacity-50">
@@ -407,10 +408,12 @@ export default function DashboardClient({
                           <div className="mt-3 flex items-center justify-between">
                             <span className={`text-xs font-medium ${
                               activeCampana.estado === "completada" ? "text-[#E87722]"
+                              : activeCampana.estado === "pausada" ? "text-[#E87722]"
                               : activeCampana.estado === "calificada" ? "text-green-600"
                               : "text-[#595c5d]"
                             }`}>
                               {activeCampana.estado === "abierta" ? "En curso"
+                              : activeCampana.estado === "pausada" ? "Pausada"
                               : activeCampana.estado === "completada" ? "Esperando calificacion"
                               : "Calificada"}
                             </span>
