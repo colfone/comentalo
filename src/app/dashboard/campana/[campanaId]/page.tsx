@@ -207,8 +207,6 @@ export default function CampanaDetallePage() {
 
   const filtered = tab === "verificados" ? verificados : intercambios;
 
-  const progreso = campana?.intercambios_completados ?? 0;
-
   const campanaLabel =
     campana?.estado === "abierta"
       ? "CAMPAÑA ACTIVA"
@@ -287,27 +285,13 @@ export default function CampanaDetallePage() {
                   {normalizeTitle(video.titulo)}
                 </h1>
 
-                <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {/* Comentarios */}
+                <div className="mt-6 max-w-xs">
                   <div className="rounded-2xl border border-[rgba(171,173,174,0.15)] bg-white p-4">
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-[#595c5d]">
-                      Comentarios
+                      Comentarios verificados
                     </p>
                     <p className="mt-1 font-headline text-3xl font-extrabold text-[#6200EE]">
-                      {progreso}
-                    </p>
-                  </div>
-
-                  {/* Verificados */}
-                  <div className="rounded-2xl border border-[rgba(171,173,174,0.15)] bg-white p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#595c5d]">
-                      Verificados
-                    </p>
-                    <p className="mt-1 font-headline text-3xl font-extrabold text-green-600">
                       {verificados.length}
-                    </p>
-                    <p className="mt-3 text-xs text-[#595c5d]">
-                      Comentarios confirmados
                     </p>
                   </div>
                 </div>
