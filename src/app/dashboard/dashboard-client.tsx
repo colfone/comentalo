@@ -148,7 +148,7 @@ export default function DashboardClient({
 
   // Filtered videos by tab
   const videosEnCurso = videos.filter((v) =>
-    v.campanas.some((c) => c.estado === "abierta" || c.estado === "pausada")
+    v.campanas.some((c) => c.estado === "abierta" || c.estado === "pausada" || c.estado === "activa")
   );
   const videosCompletados = videos.filter((v) =>
     v.campanas.some((c) => c.estado === "completada" || c.estado === "calificada")
