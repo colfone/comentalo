@@ -2,7 +2,7 @@
 
 Documento Maestro del Proyecto
 
-Versión 4.5 — Abril 2026
+Versión 4.6 — Abril 2026
 
 *Comunidad de intercambio de comentarios reales entre creadores de YouTube en Latinoamérica*
 
@@ -46,6 +46,7 @@ Versión 4.5 — Abril 2026
 | 4.3 | Abril 2026 | Agregada sección 5E — Sistema de saldo de comentarios. Máximo 10, campaña se pausa al llegar a 0 |
 | 4.4 | Abril 2026 | Eliminado límite de tiempo de campañas — la campaña vive por saldo, no por tiempo |
 | 4.5 | Abril 2026 | Agregada sección 5F — Sistema de créditos. Máximo 10, campaña se pausa al llegar a 0, borradores 2 horas, notificación por email via Resend |
+| 4.6 | Abril 2026 | Actualizado flujo 5.4 a asistente de 4 pasos con video embedido 30s. Sección 6B.3 actualizada — intercambio se crea solo al verificar, sin estado pendiente. Sección 6C reemplazada por política de verificación fallida. Sección 6D eliminada. |
 
 # **1. Visión General del Proyecto**
 
@@ -282,53 +283,13 @@ Con esa información la plataforma genera automáticamente instrucciones claras 
 
 El creador colaborador sigue este flujo dentro de Comentalo:
 
-Paso 1 — Ve la cola de videos disponibles para intercambiar y elige uno.
+Paso 1 — Ve el video embedido directamente en Comentalo. Debe ver al menos 30 segundos antes de poder continuar. Una barra de progreso muestra el tiempo acumulado. El botón "Comentar este video" se habilita al llegar a 30 segundos.
 
-Paso 2 — Lee el resumen del video y las instrucciones del creador.
+Paso 2 — Lee las instrucciones del creador (tipo de comentario, tono, notas). Redacta su comentario en la casilla de texto (mínimo 20 caracteres). Presiona "Copiar comentario" — el texto queda copiado en su portapapeles.
 
-Paso 3 — Redacta su comentario directamente en la casilla de texto de Comentalo.
+Paso 3 — Va a YouTube, abre el video y pega el comentario. Un recordatorio le sugiere dar like al video como buena práctica. Puede volver a editar el comentario con "← Editar comentario" o cancelar el intercambio.
 
-Paso 4 — Presiona el boton Copiar — el texto queda copiado en su portapapeles y Comentalo guarda internamente el texto, el timestamp, el videoId y el channelId del usuario.
-
-Paso 5 — Va a YouTube, abre el video y pega el comentario. Se recomienda ver el video antes de publicar para que el comentario sea genuino.
-
-| **Buena practica de la comunidad** Recuerda darle Like al video antes de comentar. Es un buen gesto entre creadores y hace que tu participacion sea mas genuina. No es un requisito — es parte de la cultura colaborativa de Comentalo. |
-| --- |
-
-Paso 6 — Regresa a Comentalo. El boton Ya publique se habilita automaticamente despues de un tiempo minimo proporcional a la duracion del video.
-
-Paso 7 — Presiona Ya publique. La plataforma consulta la API de YouTube buscando ese texto especifico en el video. Si lo encuentra, el intercambio queda verificado automaticamente.
-
-| **Por que existe el tiempo minimo de espera** Si el comentarista publica el comentario en los primeros segundos del video y lo abandona inmediatamente, YouTube registra una tasa de rebote alta que hunde el video en el algoritmo. El tiempo minimo incentiva una visualizacion mas organica y protege el Watch Time del creador. |
-| --- |
-
-### **Tabla de tiempos minimos**
-
-| **Duracion del video** | **Tiempo minimo entre Copiar y Ya publique** |
-| --- | --- |
-| Menos de 2 minutos | 1 minuto |
-| 2 a 5 minutos | 2 minutos |
-| 5 a 10 minutos | 3 minutos |
-| 10 a 30 minutos | 5 minutos |
-| Mas de 30 minutos | 5 minutos — techo maximo absoluto |
-
-El techo maximo de 5 minutos aplica sin importar la duracion del video. Esto protege la experiencia del comentarista en videos largos como podcasts o tutoriales extensos, sin sacrificar la señal de Watch Time que el tiempo minimo genera para el algoritmo de YouTube.
-
-El boton Ya publique muestra un contador regresivo visible para el usuario. No es una restriccion oculta — es transparente y el comentarista sabe por que existe.
-
-| **El limite estrategico de Comentalo** Comentalo solo garantiza y verifica intercambios de comentarios. Todo lo demas — likes, visualizacion completa, suscripciones — se fomenta como buena practica comunitaria, nunca como moneda de cambio transaccional. Esto posiciona a Comentalo como una herramienta legitima de networking entre creadores, alejada del concepto de granja de clics. |
-| --- |
-
-| **Por que el boton Copiar es clave** Al presionar Copiar, Comentalo registra el texto exacto del comentario. Esto permite que la verificacion via API sea precisa — no busca cualquier comentario del usuario, sino el texto especifico que redacto en la plataforma. Ademas reduce errores de copiado parcial y simplifica la experiencia del usuario. |
-| --- |
-
-| **Dato guardado al presionar Copiar** | **Para que sirve** |
-| --- | --- |
-| Texto del comentario | Verificacion exacta via API de YouTube |
-| Timestamp del copiado | Calcular el tiempo minimo de espera y auditoria |
-| Duracion del video | Determinar el tiempo minimo requerido segun la tabla |
-| VideoId del video destino | Identificar donde buscar en la API |
-| ChannelId del usuario | Confirmar que el autor es el usuario registrado |
+Paso 4 — Regresa a Comentalo y presiona "Ya publiqué mi comentario". La plataforma consulta la API de YouTube buscando ese texto específico. Si lo encuentra → intercambio verificado. Si no lo encuentra → segundo intento automático a los 30 segundos. Si tampoco lo encuentra → pantalla de rechazo con causas posibles.
 
 ## **5.5 Límites Base — Sin Expansión**
 
@@ -596,17 +557,20 @@ Los comentarios publicos de cualquier video de YouTube se pueden leer usando sol
 
 ## **6B.3 Flujo de Verificación Automática**
 
-Paso 1 — El creador colaborador comenta el video en YouTube normalmente desde su cuenta.
+Paso 1 — El creador colaborador comenta el video en YouTube desde su cuenta registrada en Comentalo.
 
-Paso 2 — Regresa a Comentalo. El boton Ya publique se habilita automaticamente una vez que el contador regresivo de tiempo minimo haya finalizado — ver seccion 5.4 tabla de tiempos minimos (1 a 5 minutos segun la duracion del video). Solo entonces puede presionar Ya publique.
+Paso 2 — Regresa a Comentalo y presiona "Ya publiqué mi comentario".
 
-Paso 3 — La plataforma consulta la API de YouTube con el videoId del video y su propia API key.
+Paso 3 — La plataforma consulta la API de YouTube con el videoId y su propia API key buscando el texto exacto del comentario publicado por el canal registrado del usuario.
 
-Paso 4 — Busca entre los comentarios públicos si existe uno publicado por el canal registrado del usuario.
+Paso 4 — Si encuentra el comentario → intercambio verificado automáticamente ✅. Se crea el registro del intercambio en la base de datos con estado verificado.
 
-Paso 5 — Si existe → intercambio verificado automáticamente ✅
+Paso 5 — Si no encuentra el comentario → segundo intento automático a los 30 segundos.
 
-Paso 6 — Si no existe → intercambio rechazado ❌ y se notifica al usuario.
+Paso 6 — Si el segundo intento también falla → pantalla de rechazo ❌. El usuario puede reintentar manualmente o cancelar. No se crea ningún registro en la base de datos.
+
+| IMPORTANTE | El intercambio solo se registra en la base de datos cuando es verificado exitosamente. No existe estado pendiente. |
+| --- | --- |
 
 ## **6B.4 Ventajas de este Sistema**
 
@@ -631,127 +595,16 @@ El login con Google es obligatorio al registrarse — pero solo pide el scope ba
 | OAuth del usuario | ⚠️ Opcional | Útil para registro, no necesario para verificar |
 | API key propia + videoId | ✅ Sí — método elegido | Gratis, automático, imposible de falsificar |
 
-# **6C. Sistema de Intercambios Pendientes — Retencion por YouTube**
+# 6C. Política de Verificación Fallida
 
-## **6C.1 El Problema Descubierto**
+Si la API de YouTube no encuentra el comentario después de 2 intentos, el intercambio se considera fallido. El sistema muestra al usuario las posibles causas:
 
-La API de YouTube solo devuelve comentarios en estado publicado (published). Sin embargo YouTube puede retener automaticamente un comentario en estado heldForReview o likelySpam — invisible para la API publica. Esto significa que un usuario puede haber comentado honestamente pero la plataforma no encuentra su comentario al verificar.
+- Canal incorrecto — el comentario debe publicarse con el canal registrado en Comentalo
+- YouTube tardó en indexar — puede ocurrir en cuentas nuevas o con poca actividad
+- El texto no coincide — el comentario publicado debe ser exactamente el copiado desde Comentalo
+- El video tiene moderación estricta — el creador tiene activada la revisión manual en YouTube Studio
 
-| **Estados internos de YouTube que afectan la verificacion** published → visible publicamente, la API lo detecta. heldForReview → retenido por filtros de YouTube, la API NO lo ve. likelySpam → marcado como probable spam, la API NO lo ve. rejected → rechazado por el creador, la API NO lo ve. |
-| --- |
-
-## **6C.2 Cuando Ocurre la Retencion**
-
-YouTube retiene comentarios automaticamente en estos casos:
-
-- La cuenta del comentarista es nueva o tiene poco historial en YouTube
-
-- El comentario contiene patrones de texto que YouTube detecta como potencialmente inapropiados
-
-- El canal receptor tiene configurada moderacion Estricta o Retener todos en YouTube Studio
-
-- El creador tiene palabras bloqueadas que coinciden con el texto del comentario
-
-Segun la documentacion oficial de YouTube, los comentarios retenidos pueden permanecer hasta 60 dias en estado heldForReview antes de que YouTube los elimine automaticamente si el creador no toma accion.
-
-| **Implicacion critica para Comentalo** Un comentario puede estar retenido hasta 60 dias. Por eso Comentalo no puede esperar ese tiempo — el sistema asigna inmediatamente un segundo comentarista disponible para que el creador no espere. El intercambio original se resuelve en paralelo mediante Exponential Backoff en un maximo de 24 horas. |
-| --- |
-
-## **6C.3 El Flujo de Intercambio Pendiente**
-
-Paso 1 — El comentarista A presiona Ya publique en Comentalo.
-
-Paso 2 — La plataforma consulta la API de YouTube buscando el texto especifico del comentario.
-
-Paso 3A — Si el comentario aparece → intercambio verificado automaticamente. Flujo normal.
-
-Paso 3B — Si el comentario NO aparece → dos cosas ocurren en paralelo:
-
-ACCION 1 — Proteger al creador: El sistema asigna inmediatamente otro comentarista disponible (comentarista B) para ese intercambio. El creador recibe su intercambio sin esperar. No sabe que hubo un pendiente.
-
-ACCION 2 — Resolver el pendiente: El intercambio del comentarista A queda en estado PENDIENTE. Solo ese intercambio especifico queda bloqueado — los demas intercambios de A siguen fluyendo con normalidad.
-
-Paso 4 — La plataforma reintenta verificar el comentario de A usando Exponential Backoff: a los 30 minutos, luego 2 horas, luego 8 horas, luego 24 horas. Esto protege la cuota de API.
-
-Paso 5A — Si el comentario aparece en cualquiera de los reintentos → intercambio de A verificado. A recibe su intercambio activado. El creador tiene ahora 2 comentarios — uno de A y uno de B. Eso es bueno para el creador.
-
-Paso 5B — Si despues de 24 horas el comentario no aparece → revision manual del equipo de Comentalo. Si se confirma invalido, A pierde esa oportunidad y debe continuar con otros videos.
-
-## **6C.4 Lo que Ve Cada Usuario**
-
-### **El comentarista ve:**
-
-| **Mensaje al comentarista** Tu intercambio esta siendo revisado por YouTube. Esto es normal y puede tardar hasta 24 horas. Los demas intercambios siguen funcionando con normalidad. |
-| --- |
-
-### **El creador del video ve:**
-
-| **Mensaje al creador** 1 intercambio en revision por YouTube — se resolvera en maximo 24 horas. |
-| --- |
-
-## **6C.5 Politica de Reputacion**
-
-Si YouTube rechaza el comentario como spam — el intercambio se anula sin consecuencias inmediatas para la reputacion del usuario. Sin embargo la plataforma registra internamente cuantas veces le ocurre a cada usuario. Si el patron se repite con frecuencia, el equipo de Comentalo toma decisiones caso a caso. No hay regla automatica — hay monitoreo inteligente.
-
-| **Escenario** | **Consecuencia para el comentarista** | **Consecuencia para el creador** |
-| --- | --- | --- |
-| Comentario verificado normalmente | Intercambio activo | Recibe el intercambio |
-| Comentario retenido, liberado antes de 24h | Intercambio activo con retraso | Recibe el intercambio |
-| Comentario retenido, no liberado en 24h — valido por revision manual del equipo | Intercambio activo | Recibe el intercambio |
-| Comentario invalido despues de 24h | Pierde esa oportunidad, continua con otros videos | No recibe ese intercambio |
-| Patron repetido de comentarios rechazados | Monitoreo del equipo, decision caso a caso | No aplica |
-
-## **6C.6 Impacto en la Cuota de API**
-
-Con Exponential Backoff el sistema realiza un maximo de 4 consultas adicionales por intercambio pendiente (a los 30min, 2h, 8h y 24h), en lugar de las 24 consultas originales del modelo de reintentos cada 2 horas. Esto representa un ahorro del 83% de cuota por intercambio pendiente. Con el limite gratuito de 10,000 unidades diarias esto es perfectamente viable en V1. Cada consulta cuesta 1 unidad de cuota.
-
-# **6D. Suspension Automatica de Video por Patron de Pendientes**
-
-## **6D.1 La Regla**
-
-| **Regla de suspension automatica** Si 3 o mas intercambios del mismo video quedan en estado pendiente dentro de un periodo de 24 horas — el video queda suspendido automaticamente en Comentalo por posible moderacion estricta activada en YouTube. |
-| --- |
-
-## **6D.2 Por Que 3 y No Menos**
-
-1 o 2 pendientes pueden ser coincidencia — comentaristas con cuentas nuevas en YouTube cuyas cuentas estan siendo verificadas por el algoritmo. No es suficiente evidencia para culpar al video.
-
-3 pendientes en el mismo video en menos de 24 horas es un patron claro que apunta al video, no a los comentaristas. La probabilidad de que 3 comentaristas diferentes fallen por razones independientes en el mismo dia es muy baja.
-
-## **6D.3 Diagnostico — Video vs Comentarista**
-
-| **Patron detectado** | **Diagnostico probable** | **Accion** |
-| --- | --- | --- |
-| 3+ pendientes en el mismo video en 24h | Video tiene moderacion estricta activada | Video suspendido — notificar al creador |
-| 3+ pendientes del mismo comentarista en videos diferentes | Cuenta del comentarista marcada como spam por YouTube | Revision de reputacion del comentarista — seccion 6.3 |
-| 1-2 pendientes en el mismo video | Coincidencia — comentaristas con cuentas nuevas | Flujo normal de pendientes — seccion 6C |
-
-## **6D.4 El Flujo de Suspension**
-
-Paso 1 — El sistema detecta el tercer intercambio pendiente en el mismo video en menos de 24 horas.
-
-Paso 2 — El video queda suspendido automaticamente en Comentalo. No acepta nuevos intercambios.
-
-Paso 3 — El creador recibe una notificacion explicando la situacion.
-
-| **Notificacion al creador** Detectamos que 3 intercambios de tu video no se estan verificando automaticamente. Esto suele ocurrir cuando el video tiene moderacion estricta o revision manual activada en YouTube Studio. Revisa tu configuracion de comentarios, corrígela y reactiva tu video desde tu dashboard. |
-| --- |
-
-Paso 4 — El creador corrige la configuracion de comentarios en YouTube Studio.
-
-Paso 5 — El creador reactiva el video manualmente desde su dashboard en Comentalo.
-
-Paso 6 — El sistema verifica que los nuevos intercambios se esten publicando correctamente antes de confirmar la reactivacion.
-
-## **6D.5 Que Pasa con los Comentaristas Afectados**
-
-Los comentaristas que tenian intercambios pendientes en el video suspendido no pierden su oportunidad. El sistema les reasigna automaticamente otro video disponible en la cola.
-
-Su intercambio original queda anulado sin consecuencias para su reputacion — el problema era del video, no de ellos.
-
-## **6D.6 Reincidencia**
-
-Si el mismo video es suspendido por segunda vez despues de ser reactivado — el equipo de Comentalo lo revisa manualmente antes de permitir una segunda reactivacion. El creador debe demostrar que corrigio la configuracion.
+El usuario puede reintentar manualmente presionando "Volver a intentarlo" o cancelar el intercambio. No hay penalización en la reputación por un intento fallido.
 
 # **6G. Sistema de Notificaciones**
 
