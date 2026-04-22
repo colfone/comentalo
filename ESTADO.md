@@ -646,6 +646,9 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
   - +1 crédito al calificar comentario
   - Expiración automática de campañas a los 30 días (pg_cron)
 - Email via Resend cuando créditos llegan a 0
+- Ecosistema administrativo — sesión dedicada:
+  - Panel de administración interno para el equipo de Comentalo (gestión de usuarios, baneos, monitoreo)
+  - Pantalla de créditos del usuario: saldo actual + extracto de movimientos con fecha, descripción y monto (+/-) — similar a un estado de cuenta bancario
 
 ### Cambio estructural pendiente — Campañas por tiempo
 
