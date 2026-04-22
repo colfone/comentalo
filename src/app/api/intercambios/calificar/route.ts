@@ -203,6 +203,16 @@ export async function POST(request: Request) {
     .update({ estrellas, calificacion: calificacionDerivada })
     .eq("id", body.intercambio_id);
 
+  // +1 crédito al creador por calificar (modelo v2).
+  // No es fatal: si falla, la calificación ya quedó guardada.
+  const { error: creditoError } = await serviceClient.rpc(
+    "aplicar_credito_calificacion",
+    { p_usuario_id: usuario.id }
+  );
+  if (creditoError) {
+    console.error("Error aplicando crédito por calificar:", creditoError);
+  }
+
   // Check if all 10 verified intercambios in this campaign are now calificados
   const { count: sinCalificar } = await serviceClient
     .from("intercambios")
