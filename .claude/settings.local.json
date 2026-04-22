@@ -45,7 +45,8 @@
       "Bash(powershell.exe -Command \"Remove-Item -Recurse -Force .next -ErrorAction Stop; Write-Host 'DELETED'\")",
       "Bash(supabase --version)",
       "Bash(echo \"tsc_exit=$?\")",
-      "Bash(echo \"tsc=$?\")"
+      "Bash(echo \"tsc=$?\")",
+      "Bash(echo \"---exit: $?---\")"
     ]
   }
 }
