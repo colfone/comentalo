@@ -47,6 +47,7 @@ Versión 4.6 — Abril 2026
 | 4.4 | Abril 2026 | Eliminado límite de tiempo de campañas — la campaña vive por saldo, no por tiempo |
 | 4.5 | Abril 2026 | Agregada sección 5F — Sistema de créditos. Máximo 10, campaña se pausa al llegar a 0, borradores 2 horas, notificación por email via Resend |
 | 4.6 | Abril 2026 | Actualizado flujo 5.4 a asistente de 4 pasos con video embedido 30s. Sección 6B.3 actualizada — intercambio se crea solo al verificar, sin estado pendiente. Sección 6C reemplazada por política de verificación fallida. Sección 6D eliminada. |
+| 4.7 | Abril 2026 | Modelo de créditos v2: sin techo, 60 créditos de bienvenida al registrarse, −30 al abrir campaña, +1 por comentario verificado dado o por calificación con estrellas recibida. Campañas 30 días fijos (unificado 5C). Eliminada sección 5E (fusionada en 5F). Descartados borradores de comentario y crédito de compensación por simultaneidad. Reactivación automática de todas las campañas del creador cuando saldo sube de 0 |
 
 # **1. Visión General del Proyecto**
 
@@ -362,13 +363,13 @@ En V1 la cola es estrictamente FIFO (First In, First Out) — el video que lleva
 
 # 5C. El Modelo de Campanas
 
-Una campaña es la unidad de trabajo central de Comentalo. Cada campaña tiene una duración fija de 10 días y recibe todos los comentarios verificados que lleguen durante ese periodo, sin límite de cantidad.
+Una campaña es la unidad de trabajo central de Comentalo. Cada campaña tiene una duración fija de 30 días y recibe todos los comentarios verificados que lleguen durante ese periodo, sin límite de cantidad.
 
 ## 5C.1 Que es una Campaña
 
 | Elemento | Definición |
 | --- | --- |
-| Intercambios por campaña | Sin límite — recibe todos los comentarios verificados que lleguen en 10 días |
+| Intercambios por campaña | Sin límite — recibe todos los comentarios verificados que lleguen en 30 días |
 | Inicio | El creador lanza la campaña para un video específico |
 | Pausa automática | La campaña se pausa cuando el saldo de comentarios llega a 0 |
 | Cierre manual | El creador puede pausarla o finalizarla antes del vencimiento |
@@ -378,8 +379,8 @@ Una campaña es la unidad de trabajo central de Comentalo. Cada campaña tiene u
 
 Paso 1 — El creador lanza una campaña para su video.
 Paso 2 — El sistema verifica que el video cumple la regla de vistas (ver 5C.4).
-Paso 3 — La campaña queda activa durante 10 días en la cola.
-Paso 4 — Los comentaristas participan libremente durante esos 10 días.
+Paso 3 — La campaña queda activa durante 30 días en la cola.
+Paso 4 — Los comentaristas participan libremente durante esos 30 días.
 Paso 5 — El creador califica los comentarios recibidos en cualquier momento durante o después de la campaña.
 Paso 6 — La campaña se mantiene activa mientras el creador tenga saldo. Si el saldo llega a 0 la campaña se pausa automáticamente y se reactiva cuando el creador comenta más videos.
 
@@ -390,7 +391,7 @@ Paso 6 — La campaña se mantiene activa mientras el creador tenga saldo. Si el
 | Intercambios por campaña | Sin límite |
 | Campañas simultáneas por video | 1 — no puede haber dos campañas abiertas en el mismo video |
 | Condición para lanzar otra campaña | La campaña anterior debe estar cerrada (finalizada o vencida) |
-| Cierre automático | Al vencer los 10 días |
+| Cierre automático | Al vencer los 30 días |
 
 ## 5C.4 La Regla de Vistas
 
@@ -415,7 +416,7 @@ Para lanzar una campaña el video debe tener al menos 10 vistas por cada campañ
 
 - Activa — recibiendo comentarios normalmente
 - Pausada — el creador la pausó temporalmente, no recibe comentarios
-- Finalizada — cerrada voluntariamente por el creador o por vencimiento de 10 días
+- Finalizada — cerrada voluntariamente por el creador o por vencimiento de 30 días
 - Eliminada — borrada permanentemente, no aparece en ninguna vista
 
 ## Acciones disponibles por estado
@@ -433,83 +434,57 @@ Para lanzar una campaña el video debe tener al menos 10 vistas por cada campañ
 - Al pausar — los comentaristas que tenían ese video asignado reciben otro video automáticamente
 - Al finalizar — la campaña cierra inmediatamente sin importar cuántos días llevaba activa
 
-# 5E. Sistema de Saldo de Comentarios
-
-## 5E.1 La Regla
-Para recibir comentarios en una campaña activa, el creador debe mantener un saldo positivo de comentarios dados. El saldo es el único motor de la campaña — no el tiempo.
-
-## 5E.2 Mecánica del Saldo
-
-| Parámetro | Valor |
-| --- | --- |
-| Saldo máximo acumulable | 10 comentarios |
-| Cómo se suma | Cada comentario verificado suma 1 al saldo |
-| Cómo se resta | Cada comentario recibido en la campaña resta 1 del saldo |
-| Saldo inicial | 0 — el creador debe comentar antes de recibir |
-| Campaña sin saldo | Se pausa automáticamente al llegar a 0 |
-| Recarga de saldo | El creador puede comentar más en cualquier momento hasta el máximo de 10 |
-
-## 5E.3 Flujo del Saldo
-- El creador puede comentar videos hasta alcanzar su saldo máximo de 10
-- No es necesario esperar a que el saldo llegue a 0 para comentar más
-- Cuando su campaña activa recibe un comentario verificado, el saldo baja 1
-- Si el saldo llega a 0 la campaña se pausa automáticamente y el creador recibe notificación
-- Cuando el saldo sube de 0 la campaña se reactiva automáticamente
-- Sin campaña activa no se puede participar comentando videos de otros
-
-## 5E.4 Por Qué Este Modelo
-- Evita que alguien cree una campaña y espere comentarios sin participar
-- Permite flexibilidad — el usuario puede comentar 2 hoy y 8 mañana
-- El ecosistema se mantiene equilibrado — nadie recibe más de lo que da
-- El máximo de 10 incentiva participación activa sin ser restrictivo
-- Sin límite de tiempo — la campaña dura exactamente lo que el usuario participa
-
 # 5F. Sistema de Créditos
 
 ## 5F.1 Qué son los Créditos
 
-Los créditos son la unidad de intercambio de Comentalo. Representan el balance entre comentarios dados y comentarios recibidos. Sin créditos no se puede tener una campaña activa.
+Los créditos son la unidad de intercambio de Comentalo. Representan el balance entre comentarios dados y comentarios recibidos. Abrir una campaña cuesta créditos, recibir comentarios los consume, dar comentarios o recibir calificaciones los gana.
 
 ## 5F.2 Mecánica de los Créditos
 
 | Parámetro | Valor |
 | --- | --- |
-| Nombre | Créditos |
-| Saldo máximo acumulable | 10 créditos |
-| Cómo se gana | Cada comentario verificado suma 1 crédito |
-| Cómo se gasta | Cada comentario recibido en campaña activa resta 1 crédito |
-| Saldo inicial | 0 — el creador debe comentar antes de recibir |
-| Campaña sin créditos | Se pausa automáticamente al llegar a 0 |
-| Reactivación automática | Cuando el saldo sube de 0 la campaña se reactiva sola |
-| Visible en | Menú superior del dashboard + perfil del usuario |
+| Saldo máximo | Sin techo — el usuario acumula ilimitado |
+| Saldo al registrarse | 60 créditos de bienvenida |
+| Gana +1 | Cada comentario verificado dado |
+| Gana +1 | Cada comentario recibido que califica con estrellas |
+| Gasta −1 | Cada comentario recibido en campaña activa |
+| Gasta −30 | Al abrir una campaña (incluyendo las primeras) |
+| Visible en | Header del dashboard + perfil del usuario |
 
-## 5F.3 Reglas de los Créditos
+## 5F.3 Saldo Inicial y Primeras Campañas
+
+Al registrarse el usuario recibe 60 créditos de bienvenida. Con esos 60 créditos puede abrir 2 campañas completas (30 × 2 = 60). A partir de la tercera campaña debe ganar créditos antes de abrirla.
+
+## 5F.4 Duración de la Campaña
+
+Todas las campañas duran 30 días fijos desde su apertura, incluyendo las primeras. Al vencer los 30 días la campaña se cierra automáticamente sin importar el saldo del creador.
+
+## 5F.5 Pausa y Reactivación Automática
+
+| Condición | Resultado |
+| --- | --- |
+| Saldo del creador llega a 0 | Todas sus campañas activas se pausan automáticamente |
+| Saldo del creador sube de 0 | Todas sus campañas pausadas se reactivan automáticamente |
+
+Mientras una campaña esté pausada sus videos no aparecen en la cola. La pausa no detiene el reloj de los 30 días — el tiempo sigue corriendo.
+
+## 5F.6 Campañas Simultáneas
+
+No hay límite de campañas simultáneas por usuario. El límite práctico es el saldo de créditos: con 60 créditos se pueden abrir 2 campañas; con 120 se pueden abrir 4.
+
+## 5F.7 Reglas Adicionales
 
 - El creador no puede comentar su propio video
-- Si la campaña está pausada por créditos en 0, los videos del creador no aparecen en la cola
-- El saldo nunca baja de 0 — si llega a 0 la campaña se pausa, no se generan créditos negativos
-- El creador puede recargar créditos en cualquier momento comentando más videos, hasta el máximo de 10
+- El saldo nunca baja de 0 — si llega a 0 las campañas se pausan, no se generan créditos negativos
+- El comentario del creador debe verificarse exitosamente contra YouTube para sumar crédito. El sistema normaliza el texto quitando Variation Selectors (U+FE00..U+FE0F) y Zero Width Joiner (U+200D) antes del match literal, para tolerar cómo YouTube procesa emojis
+- La calificación con estrellas que suma crédito al creador es independiente del número de estrellas — cualquier calificación cuenta
 
-## 5F.4 Caso de Simultaneidad
+## 5F.8 Notificación por Créditos en 0
 
-Si dos usuarios verifican un comentario en el mismo video al mismo tiempo y el saldo del creador llega a 0 por el primero:
-- El segundo comentarista recibe 1 crédito de compensación automáticamente — no pierde su esfuerzo
-- Ese crédito puede usarse en cualquier otra campaña activa
-
-## 5F.5 Notificación por Créditos en 0
-
-Cuando la campaña se pausa por créditos en 0, el creador recibe:
+Cuando una o más campañas se pausan por créditos en 0, el creador recibe:
 - Notificación dentro de la plataforma
-- Email automático via Resend con el mensaje: "Tu campaña se pausó porque tus créditos llegaron a 0. Comenta más videos para reactivarla automáticamente."
-
-## 5F.6 Borradores de Comentario
-
-Cuando un usuario inicia un intercambio pero no lo completa, el sistema guarda un borrador por 2 horas:
-- El borrador guarda: videoId, texto escrito y segundos vistos del video
-- Si el usuario vuelve dentro de 2 horas, continúa desde donde dejó
-- Si pasan 2 horas sin volver, el borrador se elimina automáticamente
-- Si el creador elimina el video, todos los borradores asociados se eliminan inmediatamente
-- El video sigue disponible en la cola para otros usuarios — el borrador no es una reserva exclusiva
+- Email automático via Resend (pendiente de implementación) con el mensaje: "Tus campañas se pausaron porque tus créditos llegaron a 0. Comenta más videos o recibe calificaciones para reactivarlas automáticamente."
 
 # **6. Verificación y Sistema de Reputación**
 
@@ -1083,5 +1058,9 @@ Vista /perfil o /dashboard/perfil que muestra: card con avatar del canal, nombre
 ## **10.10 Revisar flujo de verificación de canal — Pendiente**
 
 El prototipo de Design muestra verificación por link del canal. El flujo actual en producción (v1.7) usa código en la descripción (COMENTALO-XXXX). Evaluar si simplificar a verificación por link directo es más amigable para el usuario antes del lanzamiento con fundadores.
+
+## **10.11 Trigger de créditos al registrarse — Pendiente**
+
+El trigger `trg_credito_inicial_campana` (migración `20260421160000`) otorga 1 crédito al crear la primera campaña. Con el modelo v4.7 ese trigger queda obsoleto — debe ser reemplazado por un trigger que otorgue 60 créditos al registrarse (sobre la tabla `usuarios` o vía auth hook). Migración pendiente: dropear el trigger actual y crear el nuevo.
 
 comentalo.com — Documento Maestro V4.1 — Abril 2026
