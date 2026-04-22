@@ -254,6 +254,7 @@ export async function POST(request: Request) {
 
   // Check regla de vistas (seccion 5C.4) — primera campana necesita >= 10 vistas
   let campanaCreada = false;
+  let creditosInsuficientes = false;
 
   if (vistas >= VISTAS_PRIMERA_CAMPANA) {
     const serviceClient = createClient(
@@ -269,6 +270,12 @@ export async function POST(request: Request) {
 
     if (campanaError) {
       console.error("Error creating campana:", campanaError);
+      if (
+        campanaError.code === "P0001" &&
+        campanaError.message?.includes("Créditos insuficientes")
+      ) {
+        creditosInsuficientes = true;
+      }
       // Video se registro pero la campana fallo — no es fatal
     } else {
       campanaCreada = true;
@@ -282,8 +289,11 @@ export async function POST(request: Request) {
     vistas,
     duracion_segundos: duracionSegundos,
     campana_creada: campanaCreada,
+    creditos_insuficientes: creditosInsuficientes,
     mensaje: campanaCreada
       ? "Video registrado y primera campana lanzada."
-      : "Video registrado. Se activara automaticamente cuando alcance 10 vistas en YouTube.",
+      : creditosInsuficientes
+        ? "Video registrado. No tienes créditos suficientes para abrir la campaña. Gana más créditos comentando videos y lánzala desde Mis campañas."
+        : "Video registrado. Se activara automaticamente cuando alcance 10 vistas en YouTube.",
   });
 }

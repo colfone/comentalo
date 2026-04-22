@@ -138,6 +138,18 @@ export async function POST(request: Request) {
 
   if (insertError) {
     console.error("Error creating campana:", insertError);
+    if (
+      insertError.code === "P0001" &&
+      insertError.message?.includes("Créditos insuficientes")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "No tienes créditos suficientes para abrir esta campaña. Necesitas 30 💎 créditos.",
+        },
+        { status: 402 }
+      );
+    }
     return NextResponse.json(
       { error: "Error al lanzar la campana." },
       { status: 500 }
