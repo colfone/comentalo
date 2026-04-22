@@ -661,4 +661,49 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 
 ---
 
+## Feature pendiente — Intercambio de Likes de YouTube
+
+Analizado y diseñado en sesión paralela. Listo para implementar en una sesión futura dedicada. No tocar hasta entonces.
+
+### Qué es
+Un segundo tipo de campaña dentro de Comentalo donde los creadores intercambian likes reales entre sí, con el mismo modelo de créditos y cola que ya existe para comentarios.
+
+### Por qué es viable
+La API pública de YouTube (statistics.likeCount) siempre devuelve el entero exacto sin redondeo. Esto permite verificación automática real por delta de likes, sin OAuth, sin permisos especiales del usuario.
+
+### Cómo funciona la verificación
+1. Al asignar el video, el RPC consulta YouTube API y guarda likes_snapshot en reservas_intercambio
+2. El colaborador va a YouTube y da like desde su canal registrado
+3. Presiona "Ya di like" en Comentalo
+4. La plataforma consulta YouTube API de nuevo y compara con el snapshot
+5. Si likes_actual > likes_snapshot → verificado ✅
+6. Si no cambió → reintento automático a los 30 segundos
+7. Si sigue igual → rechazo con mensaje específico
+
+### Reglas
+- Solo un colaborador puede tener el video asignado para likes a la vez — resuelto con SELECT FOR UPDATE SKIP LOCKED existente
+- El like es binario — no existe caso edge de doble like
+- Intercambio de like verificado es permanente aunque el colaborador quite el like después — misma política que comentarios (sección 4C.3 PROYECTO.md)
+- Al registrar campaña de likes, verificar que el video tiene likeCount visible en la API
+
+### Único caso edge real
+Like previo — el colaborador ya había dado like antes de que se le asignara. Solución: mensaje específico "¿Ya habías dado like a este video antes? Cancela y te asignamos otro."
+
+### Qué hay que construir
+- Campo tipo en tabla campanas — valores 'comentario' o 'like'
+- Campo likes_snapshot INTEGER en tabla reservas_intercambio
+- RPC de asignación actualizado para hacer snapshot al asignar
+- Endpoint /api/intercambios/verificar-like
+- Vista del colaborador simplificada — sin redacción de texto, sin timer 30s de watch time
+- Al registrar campaña — validar que likeCount está visible en la API
+
+### Pendiente de definir antes de implementar
+- ¿Los créditos de likes y comentarios son el mismo saldo o saldos separados?
+- ¿El colaborador debe ver el video X segundos antes de poder dar like?
+
+### Lo que NO cambia
+El sistema de créditos, la cola, la reputación, las notificaciones y los RPCs de asignación base funcionan igual. La arquitectura existente ya soporta este feature con cambios mínimos.
+
+---
+
 REGLA: Al finalizar cada sesion, actualizar este archivo incrementando la version y documentando todo lo que cambio.
