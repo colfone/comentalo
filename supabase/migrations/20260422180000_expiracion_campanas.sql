@@ -61,9 +61,9 @@ BEGIN
 END;
 $$;
 
--- 6. pg_cron job diario a las 03:00 UTC (idempotente)
-DELETE FROM cron.job WHERE jobname = 'cerrar-campanas-vencidas';
-
+-- 6. pg_cron job diario a las 03:00 UTC.
+-- cron.schedule(jobname, ...) es idempotente en pg_cron 1.5+: si el
+-- job con ese nombre ya existe, se actualiza en vez de fallar.
 SELECT cron.schedule(
   'cerrar-campanas-vencidas',
   '0 3 * * *',
