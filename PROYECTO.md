@@ -48,6 +48,7 @@ Versión 4.6 — Abril 2026
 | 4.5 | Abril 2026 | Agregada sección 5F — Sistema de créditos. Máximo 10, campaña se pausa al llegar a 0, borradores 2 horas, notificación por email via Resend |
 | 4.6 | Abril 2026 | Actualizado flujo 5.4 a asistente de 4 pasos con video embedido 30s. Sección 6B.3 actualizada — intercambio se crea solo al verificar, sin estado pendiente. Sección 6C reemplazada por política de verificación fallida. Sección 6D eliminada. |
 | 4.7 | Abril 2026 | Modelo de créditos v2: sin techo, 60 créditos de bienvenida al registrarse, −30 al abrir campaña, +1 por comentario verificado dado o por calificación con estrellas recibida. Campañas 30 días fijos (unificado 5C). Eliminada sección 5E (fusionada en 5F). Descartados borradores de comentario y crédito de compensación por simultaneidad. Reactivación automática de todas las campañas del creador cuando saldo sube de 0 |
+| 4.8 | Abril 2026 | Regla de calificación obligatoria: campaña se pausa si acumula más de 3 comentarios sin calificar por más de 72 horas. Tabla configuracion actualizada al modelo v2: eliminados 3 parámetros obsoletos, agregados creditos_bienvenida=60, costo_campana_creditos=30, creditos_por_comentar=1, horas_limite_calificacion=72, max_sin_calificar=3. |
 
 # **1. Visión General del Proyecto**
 
@@ -497,6 +498,8 @@ El creador que recibe tiene 72 horas para calificar el intercambio. Si no hace n
 ## **6.2 Calificación de Comentarios**
 
 La calificación es por estrellas del 1 al 5. La calificación es simple y rápida — 5 estrellas interactivas por intercambio. Sin texto. Sin explicaciones. En 30 segundos se califican los 10. Si el creador no califica en 72 horas → se autocalifican con 5 estrellas con notificación previa a las 48 horas.
+
+Si el creador acumula más de 3 comentarios verificados sin calificar durante más de 72 horas, su campaña activa se pausa automáticamente hasta que califique los pendientes. Al calificar, la campaña se reactiva de forma automática.
 
 Etiquetas de referencia: 1★ Muy malo / 2★ Malo / 3★ Regular / 4★ Bueno / 5★ Excelente
 
