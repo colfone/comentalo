@@ -182,7 +182,7 @@ export default function ColaPage() {
         setBlocked(null);
         if (data.error_code === "COLA_VACIA") setEmpty(true);
         else if (data.error_code === "LIMITE_PENDIENTES_ALCANZADO")
-          setBlocked("Tienes 3 intercambios pendientes de verificación. Espera a que se resuelvan antes de continuar.");
+          setBlocked("No puedes comentar más videos en este momento. Intenta más tarde.");
         else if (data.error_code === "USUARIO_SIN_VIDEO_ACTIVO")
           setBlocked(data.mensaje);
         else setBlocked(data.mensaje || "Error inesperado.");

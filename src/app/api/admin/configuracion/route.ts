@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminForApi } from "@/lib/supabase/admin-guard";
+import { invalidateConfigCache } from "@/lib/config/get-config";
 
 // GET  /api/admin/configuracion           — lista parámetros ordenados por clave
 // PUT  /api/admin/configuracion  { clave, valor }  — actualiza un parámetro
@@ -133,6 +134,9 @@ export async function PUT(request: Request) {
       { status: 500 }
     );
   }
+
+  // Tirar el cache in-memory — próximas lecturas ven el nuevo valor.
+  invalidateConfigCache();
 
   return NextResponse.json({ parametro: actualizado });
 }

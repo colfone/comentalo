@@ -438,7 +438,7 @@ export default function DashboardClient({
                             </button>
                           ) : (
                             <p className="text-center text-xs text-[#595c5d]">
-                              Necesita {10 - video.vistas} vistas mas ({video.vistas}/10)
+                              Necesita {10 - video.vistas} vistas mas ({video.vistas})
                             </p>
                           )}
                         </div>

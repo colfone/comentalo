@@ -42,7 +42,7 @@ export async function GET() {
     );
   }
 
-  // RPC reserva hasta 2 videos por 5 minutos y devuelve data completa
+  // RPC reserva hasta 2 videos por 2 minutos y devuelve data completa
   const { data: rpcResult, error: rpcError } = await supabase.rpc(
     "asignar_intercambio",
     { p_comentarista_id: usuario.id }
