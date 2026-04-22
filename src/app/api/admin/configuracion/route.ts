@@ -122,7 +122,6 @@ export async function PUT(request: Request) {
     .update({
       valor,
       updated_at: new Date().toISOString(),
-      updated_by: auth.ctx.usuarioId,
     })
     .eq("clave", clave)
     .select("clave, valor, tipo, descripcion, updated_at, updated_by")

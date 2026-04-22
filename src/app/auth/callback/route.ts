@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { isAdminEmail } from "@/lib/supabase/admin-guard";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -38,6 +39,11 @@ export async function GET(request: Request) {
   }
 
   const user = sessionData.session.user;
+
+  // Admins van directo al panel — no necesitan canal linkeado.
+  if (isAdminEmail(user.email)) {
+    return NextResponse.redirect(`${origin}/admin`);
+  }
 
   // Check if user already has a linked channel
   const { data: existingAccount } = await supabase

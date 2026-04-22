@@ -13,8 +13,16 @@ export async function createSupabaseServerClient() {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
-          for (const { name, value, options } of cookiesToSet) {
-            cookieStore.set(name, value, options);
+          // Llamado desde layouts/pages Next 16 prohíbe cookieStore.set().
+          // El refresh real de la sesión lo hace el middleware; acá sólo
+          // propagamos cambios cuando el contexto lo permite (route handlers,
+          // server actions). Tragarnos el error evita unhandledRejection.
+          try {
+            for (const { name, value, options } of cookiesToSet) {
+              cookieStore.set(name, value, options);
+            }
+          } catch {
+            // no-op
           }
         },
       },
