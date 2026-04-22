@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.18 — 21 de abril de 2026
+## Version actual: v4.19 — 22 de abril de 2026
 
 ## Registro de versiones
 
@@ -60,6 +60,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.16 | Sesión 21 abril (cierre) | 21 abril 2026 | Trigger trg_credito_inicial_campana: 1 crédito inicial al crear primera campaña. Vocabulario auditado: "Ir a la cola" → "Comentar", "Volver a la cola" → "Volver", "Volver a la cola" CTA → "Volver a comentar". Pendiente anotado: nav header faltante en /dashboard/campana/[campanaId]. |
 | v4.17 | Sesión 21 abril (cierre final) | 21 abril 2026 | Fix nav header en /dashboard/campana/[campanaId] — removido header custom que tapaba el del layout. Vocabulario "dashboard" → "inicio" en todos los textos visibles al usuario (6 ocurrencias). Fix destino botón back en registrar-video: /dashboard/intercambiar → /dashboard. |
 | v4.18 | Sesión 21 abril (documentación) | 21 abril 2026 | PROYECTO.md v4.7 — modelo de créditos v2 documentado: sin techo de créditos, 60 créditos de bienvenida, -30 por campaña, +1 por comentario dado, +1 por calificación recibida, campañas 30 días fijos. Eliminada sección 5E. Descartados borradores y crédito de compensación por simultaneidad. Pantalla detalle campaña: vocabulario intercambios→comentarios, card única Comentarios verificados, título con normalizeTitle. |
+| v4.19 | Sesión 22 abril | 22 abril 2026 | Panel admin /admin funcional: layout oscuro con sidebar, resumen con 3 stats, configuración editable con 7 parámetros, lista de usuarios. Helper admin-guard con gate por email (colfone@gmail.com). Bypass admin en auth/callback — va directo a /admin sin verificar canal. Migración admin_setup: columna es_admin en usuarios, tabla configuracion con seed de 7 parámetros. Fix cookies en server.ts (try/catch en setAll). Parámetro prompt=select_account en OAuth para forzar selección de cuenta. |
 
 ## Stack confirmado
 
@@ -646,8 +647,11 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
   - +1 crédito al calificar comentario
   - Expiración automática de campañas a los 30 días (pg_cron)
 - Email via Resend cuando créditos llegan a 0
-- Ecosistema administrativo — sesión dedicada:
-  - Panel de administración interno para el equipo de Comentalo (gestión de usuarios, baneos, monitoreo)
+- Ecosistema administrativo:
+  - Panel admin completado: resumen, configuración, usuarios
+  - Pendiente: conectar RPCs y endpoints a tabla configuracion para que los valores sean dinámicos
+  - Pendiente: módulo de campañas en /admin/campanas — lista de todas las campañas con estado, video, creador
+  - Pendiente: módulo de moderación — videos suspendidos, baneos
   - Pantalla de créditos del usuario: saldo actual + extracto de movimientos con fecha, descripción y monto (+/-) — similar a un estado de cuenta bancario
 
 ### Cambio estructural pendiente — Campañas por tiempo
