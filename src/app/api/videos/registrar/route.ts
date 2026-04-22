@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getConfigInt } from "@/lib/config/get-config";
 
 // --- YouTube ISO 8601 duration → seconds ---
 
@@ -30,11 +31,6 @@ function extractVideoId(url: string): string | null {
   }
   return null;
 }
-
-// --- Constants ---
-
-const MAX_VIDEOS_ACTIVOS = 2; // seccion 5.5 — plan base
-const VISTAS_PRIMERA_CAMPANA = 10; // seccion 5C.4 — regla de vistas
 
 export async function POST(request: Request) {
   // Auth check
@@ -137,17 +133,21 @@ export async function POST(request: Request) {
     );
   }
 
-  // Check 2 video limit (seccion 5.5)
+  // Parámetros configurables (configuracion table). Fallbacks = valores v2 legacy.
+  const maxVideosActivos = await getConfigInt("max_videos_activos", 2);
+  const vistasMinimas = await getConfigInt("vistas_minimas_registro_video", 10);
+
+  // Check limite de videos activos simultaneos (seccion 5.5)
   const { count: videosActivos } = await supabase
     .from("videos")
     .select("id", { count: "exact", head: true })
     .eq("usuario_id", usuario.id)
     .eq("estado", "activo");
 
-  if ((videosActivos ?? 0) >= MAX_VIDEOS_ACTIVOS) {
+  if ((videosActivos ?? 0) >= maxVideosActivos) {
     return NextResponse.json(
       {
-        error: `Ya tienes ${MAX_VIDEOS_ACTIVOS} videos activos. Completa las campanas de tus videos actuales antes de registrar uno nuevo.`,
+        error: `Ya tienes ${maxVideosActivos} videos activos. Completa las campanas de tus videos actuales antes de registrar uno nuevo.`,
       },
       { status: 409 }
     );
@@ -252,11 +252,11 @@ export async function POST(request: Request) {
     );
   }
 
-  // Check regla de vistas (seccion 5C.4) — primera campana necesita >= 10 vistas
+  // Check regla de vistas (seccion 5C.4) — primera campana requiere el minimo de vistas configurado
   let campanaCreada = false;
   let creditosInsuficientes = false;
 
-  if (vistas >= VISTAS_PRIMERA_CAMPANA) {
+  if (vistas >= vistasMinimas) {
     const serviceClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SECRET_KEY!
@@ -294,6 +294,6 @@ export async function POST(request: Request) {
       ? "Video registrado y primera campana lanzada."
       : creditosInsuficientes
         ? "Video registrado. No tienes créditos suficientes para abrir la campaña. Gana más créditos comentando videos y lánzala desde Mis campañas."
-        : "Video registrado. Se activara automaticamente cuando alcance 10 vistas en YouTube.",
+        : `Video registrado. Se activara automaticamente cuando alcance ${vistasMinimas} vistas en YouTube.`,
   });
 }

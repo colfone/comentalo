@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getConfigInt } from "@/lib/config/get-config";
 
 export async function POST(request: Request) {
   const cookieStore = await cookies();
@@ -118,6 +119,9 @@ export async function POST(request: Request) {
     0
   );
 
+  // TODO v2: este "+10" es legacy del modelo con intercambios_por_campana=10.
+  // Con campañas por tiempo, la regla de vistas requiere rediseño. No lo
+  // conectamos a configuracion para no cementar semántica confusa.
   const vistasRequeridas = totalPrevious + 10;
 
   if (video.vistas < vistasRequeridas) {
@@ -142,10 +146,10 @@ export async function POST(request: Request) {
       insertError.code === "P0001" &&
       insertError.message?.includes("Créditos insuficientes")
     ) {
+      const costoCampana = await getConfigInt("costo_campana_creditos", 30);
       return NextResponse.json(
         {
-          error:
-            "No tienes créditos suficientes para abrir esta campaña. Necesitas 30 💎 créditos.",
+          error: `No tienes créditos suficientes para abrir esta campaña. Necesitas ${costoCampana} 💎 créditos.`,
         },
         { status: 402 }
       );
