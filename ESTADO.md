@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.17 — 21 de abril de 2026
+## Version actual: v4.18 — 21 de abril de 2026
 
 ## Registro de versiones
 
@@ -59,6 +59,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.15 | Sesión 21 abril (continuación) | 21 abril 2026 | Deprecar /verificar-codigo con redirect a /dashboard o /login. Limpiar pg_cron procesar-verificaciones-pendientes desactivado. RPC aplicar_creditos_intercambio v3: reactivación automática de campañas del comentarista cuando saldo sube de 0 a 1. Fix filtro "En curso" en dashboard incluye estados abierta/pausada/activa. Fix RPC pausa todas las campañas del creador cuando saldo llega a 0. |
 | v4.16 | Sesión 21 abril (cierre) | 21 abril 2026 | Trigger trg_credito_inicial_campana: 1 crédito inicial al crear primera campaña. Vocabulario auditado: "Ir a la cola" → "Comentar", "Volver a la cola" → "Volver", "Volver a la cola" CTA → "Volver a comentar". Pendiente anotado: nav header faltante en /dashboard/campana/[campanaId]. |
 | v4.17 | Sesión 21 abril (cierre final) | 21 abril 2026 | Fix nav header en /dashboard/campana/[campanaId] — removido header custom que tapaba el del layout. Vocabulario "dashboard" → "inicio" en todos los textos visibles al usuario (6 ocurrencias). Fix destino botón back en registrar-video: /dashboard/intercambiar → /dashboard. |
+| v4.18 | Sesión 21 abril (documentación) | 21 abril 2026 | PROYECTO.md v4.7 — modelo de créditos v2 documentado: sin techo de créditos, 60 créditos de bienvenida, -30 por campaña, +1 por comentario dado, +1 por calificación recibida, campañas 30 días fijos. Eliminada sección 5E. Descartados borradores y crédito de compensación por simultaneidad. Pantalla detalle campaña: vocabulario intercambios→comentarios, card única Comentarios verificados, título con normalizeTitle. |
 
 ## Stack confirmado
 
@@ -638,8 +639,13 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 
 ### Pendientes inmediatos
 
+- Implementar modelo créditos v2 en código — sesión dedicada:
+  - Remover techo de 10 créditos del RPC
+  - Trigger 60 créditos al registrarse (reemplaza trg_credito_inicial_campana)
+  - Deducir 30 créditos al crear campaña
+  - +1 crédito al calificar comentario
+  - Expiración automática de campañas a los 30 días (pg_cron)
 - Email via Resend cuando créditos llegan a 0
-- Crédito inicial al crear primera campaña — trigger creado, pendiente prueba con usuario nuevo real
 
 ### Cambio estructural pendiente — Campañas por tiempo
 
