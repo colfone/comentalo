@@ -61,6 +61,23 @@ const UsersIcon = () => (
   </svg>
 );
 
+const MegaphoneIcon = () => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.8}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="m3 11 18-8v18L3 13z" />
+    <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+  </svg>
+);
+
 const ExitIcon = () => (
   <svg
     width={14}
@@ -140,6 +157,10 @@ export default async function AdminLayout({
             <Link href="/admin/usuarios" className={navLinkClass}>
               <UsersIcon />
               Usuarios
+            </Link>
+            <Link href="/admin/campanas" className={navLinkClass}>
+              <MegaphoneIcon />
+              Campañas
             </Link>
           </nav>
         </aside>
