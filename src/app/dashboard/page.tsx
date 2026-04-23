@@ -110,15 +110,15 @@ export default async function DashboardPage() {
     }
   }
 
-  // Stats: campanas completadas
-  let campanasCompletadas = 0;
+  // Stats: campanas activas (abiertas/activas, no terminales)
+  let campanasActivas = 0;
   if (videoIds.length > 0) {
-    const { data: completedCampanas } = await serviceClient
+    const { data: activeCampanas } = await serviceClient
       .from("campanas")
       .select("id")
       .in("video_id", videoIds)
-      .or("estado.eq.completada,estado.eq.calificada");
-    campanasCompletadas = completedCampanas?.length ?? 0;
+      .in("estado", ["abierta", "activa"]);
+    campanasActivas = activeCampanas?.length ?? 0;
   }
 
   return (
@@ -130,7 +130,7 @@ export default async function DashboardPage() {
       stats={{
         intercambiosDados: intercambiosDados ?? 0,
         intercambiosRecibidos,
-        campanasCompletadas,
+        campanasActivas,
       }}
     />
   );
