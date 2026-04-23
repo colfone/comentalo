@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.22 — 22 de abril de 2026
+## Version actual: v4.23 — 22 de abril de 2026
 
 ## Registro de versiones
 
@@ -64,6 +64,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.20 | Sesión 22 abril (modelo v2) | 22 abril 2026 | Modelo créditos v2 completamente implementado en código y DB: (1) techo 10 créditos removido — CHECK relajado a >=0, RPC sin LEAST; (2) trigger trg_creditos_bienvenida — 60 créditos al registrarse, lee de configuracion; (3) trigger trg_costo_crear_campana — descuenta 30 créditos al crear campaña, pausa si saldo llega a 0; (4) RPC aplicar_credito_calificacion — +1 al creador al calificar, reactiva campañas si saldo era 0; (5) columna expires_at en campanas, backfill 30 días, DEFAULT automático, RPC cerrar_campanas_vencidas, pg_cron diario 03:00 UTC. Endpoints lanzar y registrar manejan error créditos insuficientes con 402. Tabla configuracion actualizada: 10 parámetros del modelo v2. Panel admin /admin operativo con gate por email. |
 | v4.21 | Sesión 22 abril (configuracion dinámica) | 22 abril 2026 | Helper get-config.ts con cache 60s para leer tabla configuracion. Endpoints registrar y lanzar leen max_videos_activos y vistas_minimas_registro_video dinámicamente. Mensaje 402 interpola costo_campana_creditos. invalidateConfigCache() en PUT admin al guardar. Migración add_max_videos_activos. Feature Likes documentada en ESTADO.md. 8 de 10 parámetros de configuracion conectados al sistema real. |
 | v4.22 | Sesión 22 abril (cierre) | 22 abril 2026 | CLAUDE.md definitivo creado — instrucciones permanentes para Claude Code: iniciar sesión leyendo PROYECTO.md y ESTADO.md, arrancar servidor, reglas permanentes, patrones de código, proceso de migraciones, forma de trabajar y cierre de sesión. Feature Likes de YouTube documentada en ESTADO.md. |
+| v4.23 | Sesión 22 abril (pausa calificación) | 22 abril 2026 | RPC pausar_por_inactividad_calificacion: pausa campañas de creadores con 3+ comentarios sin calificar por más de 72h. pg_cron horario. RPC aplicar_credito_calificacion extendido con vía 2 de reactivación simétrica al cron — reactiva cuando old_unrated < max_sin_calificar. CLAUDE.md definitivo creado con instrucciones permanentes. |
 
 ## Stack confirmado
 
@@ -644,7 +645,6 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 ### Pendientes inmediatos
 
 - Prueba end-to-end modelo v2 — registrar usuario nuevo y verificar 60 créditos de bienvenida
-- Conectar horas_limite_calificacion y max_sin_calificar — lógica de pausa por inactividad de calificación (pg_cron + RPC)
 - Email via Resend cuando créditos llegan a 0
 - Ecosistema administrativo:
   - Panel admin completado: resumen, configuración, usuarios
