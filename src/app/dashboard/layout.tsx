@@ -62,6 +62,23 @@ const InboxIcon = () => (
     <path d="M5.5 5h13l3 8v6a2 2 0 0 1-2 2H4.5a2 2 0 0 1-2-2v-6z" />
   </svg>
 );
+const MegaphoneIcon = () => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.8}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1z" />
+    <path d="M14 7v10" />
+    <path d="M18 6a6 6 0 0 1 0 12" />
+  </svg>
+);
 const UserIcon = () => (
   <svg
     width={16}
@@ -174,6 +191,13 @@ export default async function DashboardLayout({
                 >
                   <InboxIcon />
                   Mi actividad
+                </Link>
+                <Link
+                  href="/dashboard/campanas"
+                  className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-medium text-[#5b5e60] transition-colors hover:bg-[#e9ebec] hover:text-[#2c2f30]"
+                >
+                  <MegaphoneIcon />
+                  Mis campañas
                 </Link>
                 <Link
                   href="/dashboard/perfil"
