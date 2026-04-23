@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.20 — 22 de abril de 2026
+## Version actual: v4.21 — 22 de abril de 2026
 
 ## Registro de versiones
 
@@ -62,6 +62,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.18 | Sesión 21 abril (documentación) | 21 abril 2026 | PROYECTO.md v4.7 — modelo de créditos v2 documentado: sin techo de créditos, 60 créditos de bienvenida, -30 por campaña, +1 por comentario dado, +1 por calificación recibida, campañas 30 días fijos. Eliminada sección 5E. Descartados borradores y crédito de compensación por simultaneidad. Pantalla detalle campaña: vocabulario intercambios→comentarios, card única Comentarios verificados, título con normalizeTitle. |
 | v4.19 | Sesión 22 abril | 22 abril 2026 | Panel admin /admin funcional: layout oscuro con sidebar, resumen con 3 stats, configuración editable con 7 parámetros, lista de usuarios. Helper admin-guard con gate por email (colfone@gmail.com). Bypass admin en auth/callback — va directo a /admin sin verificar canal. Migración admin_setup: columna es_admin en usuarios, tabla configuracion con seed de 7 parámetros. Fix cookies en server.ts (try/catch en setAll). Parámetro prompt=select_account en OAuth para forzar selección de cuenta. |
 | v4.20 | Sesión 22 abril (modelo v2) | 22 abril 2026 | Modelo créditos v2 completamente implementado en código y DB: (1) techo 10 créditos removido — CHECK relajado a >=0, RPC sin LEAST; (2) trigger trg_creditos_bienvenida — 60 créditos al registrarse, lee de configuracion; (3) trigger trg_costo_crear_campana — descuenta 30 créditos al crear campaña, pausa si saldo llega a 0; (4) RPC aplicar_credito_calificacion — +1 al creador al calificar, reactiva campañas si saldo era 0; (5) columna expires_at en campanas, backfill 30 días, DEFAULT automático, RPC cerrar_campanas_vencidas, pg_cron diario 03:00 UTC. Endpoints lanzar y registrar manejan error créditos insuficientes con 402. Tabla configuracion actualizada: 10 parámetros del modelo v2. Panel admin /admin operativo con gate por email. |
+| v4.21 | Sesión 22 abril (configuracion dinámica) | 22 abril 2026 | Helper get-config.ts con cache 60s para leer tabla configuracion. Endpoints registrar y lanzar leen max_videos_activos y vistas_minimas_registro_video dinámicamente. Mensaje 402 interpola costo_campana_creditos. invalidateConfigCache() en PUT admin al guardar. Migración add_max_videos_activos. Feature Likes documentada en ESTADO.md. 8 de 10 parámetros de configuracion conectados al sistema real. |
 
 ## Stack confirmado
 
@@ -643,6 +644,7 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 
 - Prueba end-to-end modelo v2 — registrar usuario nuevo y verificar 60 créditos de bienvenida
 - Conectar RPCs y endpoints a tabla configuracion para valores dinámicos
+- Conectar horas_limite_calificacion y max_sin_calificar — lógica de pausa por inactividad de calificación (pg_cron + RPC)
 - Email via Resend cuando créditos llegan a 0
 - Ecosistema administrativo:
   - Panel admin completado: resumen, configuración, usuarios
