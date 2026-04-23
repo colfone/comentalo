@@ -45,7 +45,27 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
   const [hardDeleteModal, setHardDeleteModal] =
     useState<HardDeleteModalState | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
+    null
+  );
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // El menú usa position: fixed para escapar el overflow-hidden del contenedor
+  // de la tabla. Calculamos coords del trigger al abrir.
+  function toggleMenu() {
+    setMenuOpen((open) => {
+      if (open) return false;
+      if (triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect();
+        setMenuPos({
+          top: rect.bottom + 4,
+          right: window.innerWidth - rect.right,
+        });
+      }
+      return true;
+    });
+  }
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -57,11 +77,17 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
     function handleEscape(e: KeyboardEvent) {
       if (e.key === "Escape") setMenuOpen(false);
     }
+    function handleScroll() {
+      setMenuOpen(false);
+    }
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleEscape);
+    // capture:true captura scroll de cualquier ancestor scrollable.
+    window.addEventListener("scroll", handleScroll, true);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("scroll", handleScroll, true);
     };
   }, [menuOpen]);
 
@@ -187,21 +213,26 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
 
   return (
     <>
-      <div className="relative inline-block" ref={menuRef}>
+      <div className="inline-block" ref={menuRef}>
         <button
-          onClick={() => setMenuOpen((o) => !o)}
+          ref={triggerRef}
+          onClick={toggleMenu}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          aria-label="Acciones"
-          className="rounded-md px-2 py-0.5 text-base font-bold leading-none text-[#5b5e60] transition-colors hover:bg-black/5"
+          className="inline-flex items-center gap-1 rounded-md border border-black/15 bg-white px-2 py-1 text-xs font-medium text-[#5b5e60] transition-colors hover:bg-black/5"
         >
-          ⋯
+          Acciones <span aria-hidden="true">▾</span>
         </button>
 
-        {menuOpen && (
+        {menuOpen && menuPos && (
           <div
             role="menu"
-            className="absolute right-0 top-full z-40 mt-1 w-44 overflow-hidden rounded-lg border border-black/10 bg-white shadow-lg"
+            style={{
+              position: "fixed",
+              top: menuPos.top,
+              right: menuPos.right,
+            }}
+            className="z-50 w-44 overflow-hidden rounded-lg border border-black/10 bg-white shadow-lg"
           >
             {estado === "activo" && (
               <>
