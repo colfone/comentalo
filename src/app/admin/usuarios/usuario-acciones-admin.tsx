@@ -47,6 +47,37 @@ type AjusteModalState = {
   error: string | null;
 };
 
+type Origen =
+  | "ajuste_admin"
+  | "bienvenida"
+  | "crear_campana"
+  | "comentar"
+  | "calificar";
+
+type Movimiento = {
+  id: string;
+  monto: number;
+  saldo_anterior: number;
+  saldo_nuevo: number;
+  origen: Origen;
+  motivo: string | null;
+  created_at: string;
+};
+
+type HistorialModalState = {
+  loading: boolean;
+  error: string | null;
+  movimientos: Movimiento[];
+};
+
+const ORIGEN_LABEL: Record<Origen, string> = {
+  ajuste_admin: "Ajuste admin",
+  bienvenida: "Bienvenida",
+  crear_campana: "Crear campaña",
+  comentar: "Comentar",
+  calificar: "Calificar",
+};
+
 export default function UsuarioAccionesAdmin({ usuario }: Props) {
   const router = useRouter();
   const [modal, setModal] = useState<ModalState | null>(null);
@@ -54,6 +85,8 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
     useState<HardDeleteModalState | null>(null);
   const [ajusteModal, setAjusteModal] =
     useState<AjusteModalState | null>(null);
+  const [historialModal, setHistorialModal] =
+    useState<HistorialModalState | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
     null
@@ -117,6 +150,42 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
   function closeAjuste() {
     if (ajusteModal?.loading) return;
     setAjusteModal(null);
+  }
+
+  async function openHistorial() {
+    setHistorialModal({ loading: true, error: null, movimientos: [] });
+    try {
+      const res = await fetch(
+        `/api/admin/usuarios/historial-creditos?usuario_id=${encodeURIComponent(
+          usuario.id
+        )}`
+      );
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setHistorialModal({
+          loading: false,
+          error: data.error ?? "Error al leer historial.",
+          movimientos: [],
+        });
+        return;
+      }
+      setHistorialModal({
+        loading: false,
+        error: null,
+        movimientos: (data.movimientos ?? []) as Movimiento[],
+      });
+    } catch (err) {
+      setHistorialModal({
+        loading: false,
+        error: err instanceof Error ? err.message : "Error de red.",
+        movimientos: [],
+      });
+    }
+  }
+
+  function closeHistorial() {
+    if (historialModal?.loading) return;
+    setHistorialModal(null);
   }
 
   async function handleConfirmAjuste() {
@@ -353,6 +422,16 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
                   className="block w-full px-3 py-2 text-left text-sm text-[#2c2f30] transition-colors hover:bg-black/5"
                 >
                   Ajustar créditos
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    openHistorial();
+                  }}
+                  className="block w-full px-3 py-2 text-left text-sm text-[#2c2f30] transition-colors hover:bg-black/5"
+                >
+                  Ver historial 💎
                 </button>
                 <div className="border-t border-black/10" />
               </>
@@ -605,6 +684,107 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
                 }}
               >
                 {ajusteModal.loading ? "Aplicando…" : "Confirmar →"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {historialModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={closeHistorial}
+        >
+          <div
+            className="w-full max-w-2xl rounded-xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-headline text-lg font-bold text-[#2c2f30]">
+              Historial de créditos
+            </h3>
+            <p className="mt-1 text-xs text-[#5b5e60]">
+              {nombre ?? "(sin nombre)"}
+            </p>
+
+            <div className="mt-4 max-h-[60vh] overflow-y-auto">
+              {historialModal.loading ? (
+                <div className="flex justify-center py-10">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#e9ebec] border-t-[#6200EE]" />
+                </div>
+              ) : historialModal.error ? (
+                <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800">
+                  {historialModal.error}
+                </div>
+              ) : historialModal.movimientos.length === 0 ? (
+                <p className="py-6 text-center text-sm text-[#5b5e60]">
+                  Sin movimientos registrados aún.
+                </p>
+              ) : (
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-black/10 text-left text-[11px] font-semibold uppercase tracking-wide text-[#9097a0]">
+                      <th className="py-2 pr-3">Fecha</th>
+                      <th className="py-2 pr-3">Monto</th>
+                      <th className="py-2 pr-3">Saldo resultante</th>
+                      <th className="py-2 pr-3">Origen</th>
+                      <th className="py-2">Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historialModal.movimientos.map((m) => {
+                      const fecha = new Date(m.created_at).toLocaleString(
+                        "es-LA",
+                        { dateStyle: "short", timeStyle: "short" }
+                      );
+                      const montoTxt =
+                        (m.monto > 0 ? "+" : "") + m.monto + " 💎";
+                      const montoCls =
+                        m.monto > 0
+                          ? "text-green-700"
+                          : m.monto < 0
+                            ? "text-red-700"
+                            : "text-[#2c2f30]";
+                      return (
+                        <tr
+                          key={m.id}
+                          className="border-b border-black/5 align-top"
+                        >
+                          <td className="py-2 pr-3 text-[13px] tabular-nums text-[#5b5e60]">
+                            {fecha}
+                          </td>
+                          <td
+                            className={`py-2 pr-3 text-[13px] font-semibold tabular-nums ${montoCls}`}
+                          >
+                            {montoTxt}
+                          </td>
+                          <td className="py-2 pr-3 text-[13px] tabular-nums text-[#2c2f30]">
+                            {m.saldo_nuevo} 💎
+                          </td>
+                          <td className="py-2 pr-3 text-[13px] text-[#2c2f30]">
+                            {ORIGEN_LABEL[m.origen]}
+                          </td>
+                          <td
+                            className="max-w-[220px] truncate py-2 text-[13px] text-[#5b5e60]"
+                            title={m.motivo ?? undefined}
+                          >
+                            {m.motivo ?? "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={closeHistorial}
+                disabled={historialModal.loading}
+                className="rounded-lg border border-black/15 bg-white px-3 py-1.5 text-sm text-[#2c2f30] transition-colors hover:bg-black/5 disabled:opacity-40"
+              >
+                Cerrar
               </button>
             </div>
           </div>
