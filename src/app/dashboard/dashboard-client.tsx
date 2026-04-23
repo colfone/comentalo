@@ -450,7 +450,7 @@ export default function DashboardClient({
             ) : (
               <div className="rounded-3xl border border-black/5 bg-white p-12 text-center">
                 <p className="text-sm text-[#595c5d]">
-                  {tab === "curso" ? "No tienes videos en curso." : "No tienes videos completados."}
+                  {tab === "curso" ? "No tienes campañas activas." : "No tienes videos completados."}
                 </p>
               </div>
             )}
