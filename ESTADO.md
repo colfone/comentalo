@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.23 — 22 de abril de 2026
+## Version actual: v4.24 — 22 de abril de 2026
 
 ## Registro de versiones
 
@@ -65,6 +65,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.21 | Sesión 22 abril (configuracion dinámica) | 22 abril 2026 | Helper get-config.ts con cache 60s para leer tabla configuracion. Endpoints registrar y lanzar leen max_videos_activos y vistas_minimas_registro_video dinámicamente. Mensaje 402 interpola costo_campana_creditos. invalidateConfigCache() en PUT admin al guardar. Migración add_max_videos_activos. Feature Likes documentada en ESTADO.md. 8 de 10 parámetros de configuracion conectados al sistema real. |
 | v4.22 | Sesión 22 abril (cierre) | 22 abril 2026 | CLAUDE.md definitivo creado — instrucciones permanentes para Claude Code: iniciar sesión leyendo PROYECTO.md y ESTADO.md, arrancar servidor, reglas permanentes, patrones de código, proceso de migraciones, forma de trabajar y cierre de sesión. Feature Likes de YouTube documentada en ESTADO.md. |
 | v4.23 | Sesión 22 abril (pausa calificación) | 22 abril 2026 | RPC pausar_por_inactividad_calificacion: pausa campañas de creadores con 3+ comentarios sin calificar por más de 72h. pg_cron horario. RPC aplicar_credito_calificacion extendido con vía 2 de reactivación simétrica al cron — reactiva cuando old_unrated < max_sin_calificar. CLAUDE.md definitivo creado con instrucciones permanentes. |
+| v4.24 | Sesión 22 abril (moderación) | 22 abril 2026 | Acciones de moderación en /admin/usuarios: endpoint POST /api/admin/usuarios/moderar (suspender/reactivar/banear/eliminar), badge de estado coloreado con tooltip, modal con motivo y campo hasta para suspensiones. Columnas estado/estado_motivo/estado_hasta en tabla usuarios. Prueba end-to-end modelo v2 exitosa — usuario nuevo recibe 100 créditos (valor actual de creditos_bienvenida en configuracion). Banner Scope actual eliminado de /admin/configuracion. |
 
 ## Stack confirmado
 
@@ -644,7 +645,6 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 
 ### Pendientes inmediatos
 
-- Prueba end-to-end modelo v2 — registrar usuario nuevo y verificar 60 créditos de bienvenida
 - Auto-expiración de suspensiones temporales — pg_cron que pasa usuarios de `suspendido` a `activo` cuando `estado_hasta < now()`
 - Enforcement de estados de usuario — bloquear login/acciones para suspendido/baneado/eliminado, filtrar de colas e intercambios
 - Email via Resend cuando créditos llegan a 0
