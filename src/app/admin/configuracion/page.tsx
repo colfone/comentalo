@@ -23,13 +23,6 @@ export default async function ConfiguracionPage() {
         fecha y admin que lo hizo.
       </p>
 
-      <div className="mt-4 rounded-lg border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        <strong>Scope actual:</strong> editar estos valores los guarda en la
-        tabla <code>configuracion</code>, pero los RPCs y endpoints todavía
-        leen los valores hardcodeados. Conectar los consumidores a esta tabla
-        es un paso posterior.
-      </div>
-
       {error && (
         <div className="mt-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
           Error al cargar parámetros: {error.message}
