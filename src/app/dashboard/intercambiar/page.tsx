@@ -184,7 +184,7 @@ export default function ColaPage() {
         else if (data.error_code === "LIMITE_PENDIENTES_ALCANZADO")
           setBlocked("No puedes comentar más videos en este momento. Intenta más tarde.");
         else if (data.error_code === "USUARIO_SIN_VIDEO_ACTIVO")
-          setBlocked(data.mensaje);
+          setBlocked("Debes registrar al menos un video activo antes de comentar.");
         else setBlocked(data.mensaje || "Error inesperado.");
         return;
       }
