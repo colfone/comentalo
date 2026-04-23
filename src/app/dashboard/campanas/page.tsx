@@ -116,31 +116,6 @@ export default function MisCampanasPage() {
     }
   }
 
-  async function lanzarCampana(videoId: string) {
-    setActionPending(videoId);
-    setActionError(null);
-    setActionSuccess(null);
-    try {
-      const res = await fetch("/api/campanas/lanzar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ video_id: videoId }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setActionError(data.error || "No se pudo lanzar la campaña.");
-        return;
-      }
-      // Crear campaña descuenta créditos → refresh del header.
-      router.refresh();
-      setRefreshKey((k) => k + 1);
-    } catch {
-      setActionError("Error de conexión.");
-    } finally {
-      setActionPending(null);
-    }
-  }
-
   // Auto-dismiss del success toast a los 4s.
   useEffect(() => {
     if (!actionSuccess) return;
@@ -282,7 +257,9 @@ export default function MisCampanasPage() {
                         {normalizeTitle(v.titulo)}
                       </div>
                       <div className="mt-1 text-[13px] text-[#5b5e60]">
-                        {v.intercambios_recibidos}/10 comentarios · {formatSubs(v.vistas)} vistas
+                        {v.campana_id
+                          ? `${v.intercambios_recibidos} comentarios recibidos · ${formatSubs(v.vistas)} vistas`
+                          : `Sin campaña activa · ${formatSubs(v.vistas)} vistas`}
                       </div>
                     </div>
 
@@ -296,12 +273,10 @@ export default function MisCampanasPage() {
 
                     {/* Acciones — sección 5D de PROYECTO.md */}
                     <CampanaAcciones
-                      videoId={v.id}
                       campanaId={v.campana_id}
                       campanaEstado={v.campana_estado}
                       intercambiosRecibidos={v.intercambios_recibidos}
                       actionPending={actionPending}
-                      onLanzar={() => lanzarCampana(v.id)}
                       onPausar={() => pedirConfirmacion("pausar", v.campana_id)}
                       onActivar={() => pedirConfirmacion("activar", v.campana_id)}
                       onFinalizar={() => pedirConfirmacion("finalizar", v.campana_id)}
@@ -348,51 +323,30 @@ function chipForEstado(estado: string): { label: string; bg: string; color: stri
 }
 
 // --- Subcomponente de acciones — sección 5D de PROYECTO.md ---
-// Siempre renderiza. Sin campaña → solo "Lanzar campaña". Con campaña →
-// Pausar/Activar/Finalizar/Eliminar siempre visibles; habilitados según
-// estado (activa, pausada, terminal) e intercambios_recibidos.
+// Sin campaña → no renderiza (solo el chip de estado queda visible).
+// Con campaña → Pausar/Activar/Finalizar/Eliminar siempre visibles;
+// habilitados según estado (activa, pausada, terminal) e intercambios_recibidos.
 
 function CampanaAcciones({
-  videoId,
   campanaId,
   campanaEstado,
   intercambiosRecibidos,
   actionPending,
-  onLanzar,
   onPausar,
   onActivar,
   onFinalizar,
   onEliminar,
 }: {
-  videoId: string;
   campanaId: string | null;
   campanaEstado: string | null;
   intercambiosRecibidos: number;
   actionPending: string | null;
-  onLanzar: () => void;
   onPausar: () => void;
   onActivar: () => void;
   onFinalizar: () => void;
   onEliminar: () => void;
 }) {
-  const sinCampana = !campanaId || !campanaEstado;
-
-  // Sin campaña — solo botón de lanzar.
-  if (sinCampana) {
-    const pendiente = actionPending === videoId;
-    return (
-      <div className="flex shrink-0 flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          onClick={onLanzar}
-          disabled={pendiente}
-          className={`rounded-full bg-[rgba(98,0,238,0.1)] px-3.5 py-1.5 text-[13px] font-medium text-[#6200EE] transition-colors hover:bg-[rgba(98,0,238,0.16)] ${pendiente ? "opacity-40 cursor-not-allowed" : ""}`}
-        >
-          Lanzar campaña
-        </button>
-      </div>
-    );
-  }
+  if (!campanaId || !campanaEstado) return null;
 
   const esActiva = campanaEstado === "activa" || campanaEstado === "abierta";
   const esPausada = campanaEstado === "pausada";
