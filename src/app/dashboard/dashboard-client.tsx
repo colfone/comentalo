@@ -58,11 +58,11 @@ interface Props {
 }
 
 function getReputationLevel(promedio: number, activo: boolean) {
-  if (!activo) return { nivel: "sin_activar", label: "Sin activar" };
-  if (promedio >= 4.0) return { nivel: "verde", label: "Verde" };
-  if (promedio >= 3.0) return { nivel: "amarillo", label: "Amarillo" };
-  if (promedio >= 2.0) return { nivel: "naranja", label: "Naranja" };
-  return { nivel: "rojo", label: "Rojo" };
+  if (!activo) return { nivel: "sin_activar", label: "Sin activar", dot: "#dcdedf" };
+  if (promedio >= 4.0) return { nivel: "verde", label: "Verde", dot: "#22c55e" };
+  if (promedio >= 3.0) return { nivel: "amarillo", label: "Amarillo", dot: "#eab308" };
+  if (promedio >= 2.0) return { nivel: "naranja", label: "Naranja", dot: "#f97316" };
+  return { nivel: "rojo", label: "Rojo", dot: "#ef4444" };
 }
 
 function getInitials(name: string | null): string {
@@ -297,19 +297,22 @@ export default function DashboardClient({
                 </svg>
               </div>
               <p className="text-xs text-[#595c5d]">Reputacion</p>
-              <p className="mt-1 font-headline text-2xl font-extrabold text-[#2c2f30]">
-                {reputacion.activo ? (
-                  <>
-                    {promedioEstrellas}
-                    <span className="text-[#E87722]">★</span>
-                  </>
-                ) : (
-                  "—"
-                )}
-              </p>
+              <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#eff1f2] px-3 py-1 text-xs font-medium text-[#2c2f30]">
+                <span
+                  className="h-[8px] w-[8px] rounded-full"
+                  style={{ background: repLevel.dot, boxShadow: `0 0 0 3px ${repLevel.dot}33` }}
+                />
+                {repLevel.label}
+              </div>
+              {reputacion.activo && (
+                <p className="mt-2 font-headline text-2xl font-extrabold text-[#2c2f30]">
+                  {promedioEstrellas}
+                  <span className="text-[#E87722]">★</span>
+                </p>
+              )}
               {!reputacion.activo && (
-                <p className="mt-0.5 text-xs text-[#595c5d]">
-                  Comenta más para activarla
+                <p className="mt-2 text-xs text-[#595c5d]">
+                  {reputacion.total_calificados}/20 calificados
                 </p>
               )}
             </div>
