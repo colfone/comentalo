@@ -210,15 +210,16 @@ export default async function DashboardLayout({
 
               <div className="flex-1" />
 
-              {/* Badge créditos */}
-              <div
-                className="inline-flex items-center gap-1 rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold"
+              {/* Badge créditos — link al historial */}
+              <Link
+                href="/dashboard/creditos"
+                className="inline-flex items-center gap-1 rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[#f5f6f7]"
                 style={{ color: "#6200EE" }}
-                aria-label={`${saldoCreditos} créditos`}
+                aria-label={`${saldoCreditos} créditos — ver historial`}
               >
                 <span aria-hidden="true">💎</span>
                 <span className="tabular-nums">{saldoCreditos}</span>
-              </div>
+              </Link>
 
               {/* Avatar */}
               {avatarUrl ? (

@@ -281,6 +281,12 @@ export default function PerfilPage() {
               </div>
             </div>
           </div>
+          <a
+            href="/dashboard/creditos"
+            className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-[#6200EE]/30 px-4 py-2 text-[13px] font-semibold text-[#6200EE] transition-colors hover:bg-[#6200EE]/5"
+          >
+            Ver historial →
+          </a>
         </div>
 
         {/* ===== CUENTA ===== */}
