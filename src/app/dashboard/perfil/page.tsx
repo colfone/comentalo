@@ -165,12 +165,14 @@ export default function PerfilPage() {
   });
   const [refreshKey, setRefreshKey] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<{ action: CampanaActionId; campanaId: string } | null>(null);
 
   async function accionCampana(campanaId: string, endpoint: string) {
     setActionPending(campanaId);
     setActionError(null);
+    setActionSuccess(null);
     try {
       const res = await fetch(endpoint, {
         method: "POST",
@@ -182,6 +184,17 @@ export default function PerfilPage() {
         setActionError(data.error || "No se pudo completar la acción.");
         return;
       }
+      // Toast de reembolso para eliminar. router.refresh() invalida el
+      // Router Cache del layout → badge de créditos del header refleja saldo nuevo.
+      if (endpoint === "/api/campanas/eliminar") {
+        const reembolso = typeof data.reembolso === "number" ? data.reembolso : 0;
+        setActionSuccess(
+          reembolso > 0
+            ? `Campaña eliminada. Se restituyeron ${reembolso} 💎 créditos.`
+            : "Campaña eliminada."
+        );
+        router.refresh();
+      }
       setRefreshKey((k) => k + 1);
     } catch {
       setActionError("Error de conexión.");
@@ -189,6 +202,13 @@ export default function PerfilPage() {
       setActionPending(null);
     }
   }
+
+  // Auto-dismiss del success toast a los 4s.
+  useEffect(() => {
+    if (!actionSuccess) return;
+    const t = setTimeout(() => setActionSuccess(null), 4000);
+    return () => clearTimeout(t);
+  }, [actionSuccess]);
 
   function pedirConfirmacion(action: CampanaActionId, campanaId: string | null) {
     if (!campanaId) return;
@@ -398,6 +418,12 @@ export default function PerfilPage() {
           {actionError && (
             <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-[#c43535]">
               {actionError}
+            </div>
+          )}
+
+          {actionSuccess && (
+            <div className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-2.5 text-sm text-green-800">
+              {actionSuccess}
             </div>
           )}
 
