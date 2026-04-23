@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type EstadoUsuario =
   | "activo"
@@ -44,6 +44,26 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
   const [modal, setModal] = useState<ModalState | null>(null);
   const [hardDeleteModal, setHardDeleteModal] =
     useState<HardDeleteModalState | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [menuOpen]);
 
   function openHardDelete() {
     setHardDeleteModal({ loading: false, error: null });
@@ -159,9 +179,6 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
 
   const { estado, nombre } = usuario;
 
-  const botonBase =
-    "rounded-md px-2 py-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40";
-
   const motivoRequerido =
     modal?.accion === "banear" || modal?.accion === "eliminar";
   const confirmDisabled =
@@ -170,39 +187,76 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
 
   return (
     <>
-      <div className="flex flex-wrap gap-1.5">
-        {estado === "activo" && (
-          <>
-            <button
-              onClick={() => openModal("suspender")}
-              className={`${botonBase} bg-amber-100 text-amber-800 hover:bg-amber-200`}
-            >
-              Suspender
-            </button>
-            <button
-              onClick={() => openModal("banear")}
-              className={`${botonBase} bg-red-100 text-red-800 hover:bg-red-200`}
-            >
-              Banear
-            </button>
-          </>
-        )}
-        {(estado === "suspendido" || estado === "baneado") && (
-          <button
-            onClick={() => openModal("reactivar")}
-            className={`${botonBase} bg-green-100 text-green-800 hover:bg-green-200`}
-          >
-            Reactivar
-          </button>
-        )}
-        {/* Hard delete: siempre visible, irreversible */}
+      <div className="relative inline-block" ref={menuRef}>
         <button
-          onClick={openHardDelete}
-          className={`${botonBase} bg-red-600 text-white hover:bg-red-700`}
-          title="Borra usuario de la DB y auth.users (irreversible)"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          aria-label="Acciones"
+          className="rounded-md px-2 py-0.5 text-base font-bold leading-none text-[#5b5e60] transition-colors hover:bg-black/5"
         >
-          Eliminar cuenta
+          ⋯
         </button>
+
+        {menuOpen && (
+          <div
+            role="menu"
+            className="absolute right-0 top-full z-40 mt-1 w-44 overflow-hidden rounded-lg border border-black/10 bg-white shadow-lg"
+          >
+            {estado === "activo" && (
+              <>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    openModal("suspender");
+                  }}
+                  className="block w-full px-3 py-2 text-left text-sm text-[#2c2f30] transition-colors hover:bg-black/5"
+                >
+                  Suspender
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    openModal("banear");
+                  }}
+                  className="block w-full px-3 py-2 text-left text-sm text-[#2c2f30] transition-colors hover:bg-black/5"
+                >
+                  Banear
+                </button>
+                <div className="border-t border-black/10" />
+              </>
+            )}
+
+            {(estado === "suspendido" || estado === "baneado") && (
+              <>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    openModal("reactivar");
+                  }}
+                  className="block w-full px-3 py-2 text-left text-sm text-[#2c2f30] transition-colors hover:bg-black/5"
+                >
+                  Reactivar
+                </button>
+                <div className="border-t border-black/10" />
+              </>
+            )}
+
+            <button
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false);
+                openHardDelete();
+              }}
+              className="block w-full px-3 py-2 text-left text-sm text-red-700 transition-colors hover:bg-red-50"
+            >
+              Eliminar cuenta
+            </button>
+          </div>
+        )}
       </div>
 
       {modal && (
