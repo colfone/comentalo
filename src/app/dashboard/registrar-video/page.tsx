@@ -248,6 +248,10 @@ export default function CrearCampanaPage() {
       const data = await res.json();
       if (!res.ok) { setSubmitError(data.error || "Error al registrar."); setSubmitting(false); return; }
       setResult(data); setStep("success");
+      // Invalida el Router Cache para que el header del layout refetche saldo_creditos
+      // (bajó por trg_costo_crear_campana). Sin esto, al navegar a /dashboard/* el
+      // header reusa el saldo viejo del cache.
+      if (data.campana_creada) router.refresh();
     } catch { setSubmitError("Error de conexión."); } finally { setSubmitting(false); }
   }
 
