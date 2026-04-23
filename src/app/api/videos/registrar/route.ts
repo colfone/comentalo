@@ -136,18 +136,32 @@ export async function POST(request: Request) {
   // Parámetros configurables (configuracion table). Fallbacks = valores v2 legacy.
   const vistasMinimas = await getConfigInt("vistas_minimas_registro_video", 10);
 
-  // Check if video is already registered
+  // Check if video already exists + si tiene una campaña viva.
+  // RLS (videos_select_own) filtra a los videos del usuario autenticado,
+  // así que si existe una fila es suya. El embed de campanas lista todas
+  // sus campañas (RLS campanas_select_creador) — nos interesa si alguna
+  // está en estado "vivo" (bloquea relanzar).
   const { data: videoExistente } = await supabase
     .from("videos")
-    .select("id")
+    .select("id, campanas(estado)")
     .eq("youtube_video_id", videoId)
     .maybeSingle();
 
+  let videoRowId: string | null = null;
+
   if (videoExistente) {
-    return NextResponse.json(
-      { error: "Este video ya esta registrado en Comentalo." },
-      { status: 409 }
-    );
+    const tieneCampanaViva = (
+      (videoExistente.campanas ?? []) as { estado: string }[]
+    ).some((c) => ["abierta", "activa", "pausada"].includes(c.estado));
+
+    if (tieneCampanaViva) {
+      return NextResponse.json(
+        { error: "Este video ya tiene una campaña activa." },
+        { status: 409 }
+      );
+    }
+    // Sin campaña viva → reutilizamos la fila en lugar de insertar duplicado.
+    videoRowId = videoExistente.id;
   }
 
   // Fetch video metadata from YouTube API
@@ -209,30 +223,37 @@ export async function POST(request: Request) {
     video.contentDetails?.duration || "PT0S"
   );
 
-  // Insert video
-  const { data: nuevoVideo, error: insertError } = await supabase
-    .from("videos")
-    .insert({
-      usuario_id: usuario.id,
-      youtube_video_id: videoId,
-      titulo,
-      vistas,
-      estado: "activo",
-      intercambios_disponibles: 10,
-      descripcion: body.descripcion || null,
-      tipo_intercambio: body.tipo_intercambio || null,
-      tono: body.tono || null,
-      duracion_segundos: duracionSegundos,
-    })
-    .select("id")
-    .single();
+  // Insert video — salvo que ya exista fila sin campaña viva (relanzamiento).
+  let finalVideoId: string;
 
-  if (insertError) {
-    console.error("Error inserting video:", insertError);
-    return NextResponse.json(
-      { error: "Error al registrar el video. Intenta de nuevo." },
-      { status: 500 }
-    );
+  if (videoRowId) {
+    finalVideoId = videoRowId;
+  } else {
+    const { data: nuevoVideo, error: insertError } = await supabase
+      .from("videos")
+      .insert({
+        usuario_id: usuario.id,
+        youtube_video_id: videoId,
+        titulo,
+        vistas,
+        estado: "activo",
+        intercambios_disponibles: 10,
+        descripcion: body.descripcion || null,
+        tipo_intercambio: body.tipo_intercambio || null,
+        tono: body.tono || null,
+        duracion_segundos: duracionSegundos,
+      })
+      .select("id")
+      .single();
+
+    if (insertError) {
+      console.error("Error inserting video:", insertError);
+      return NextResponse.json(
+        { error: "Error al registrar el video. Intenta de nuevo." },
+        { status: 500 }
+      );
+    }
+    finalVideoId = nuevoVideo.id;
   }
 
   // Check regla de vistas (seccion 5C.4) — primera campana requiere el minimo de vistas configurado
@@ -246,7 +267,7 @@ export async function POST(request: Request) {
     );
 
     const { error: campanaError } = await serviceClient.from("campanas").insert({
-      video_id: nuevoVideo.id,
+      video_id: finalVideoId,
       estado: "abierta",
       intercambios_completados: 0,
     });
@@ -267,7 +288,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    video_id: nuevoVideo.id,
+    video_id: finalVideoId,
     titulo,
     vistas,
     duracion_segundos: duracionSegundos,

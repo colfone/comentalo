@@ -21,7 +21,7 @@ interface VideoItem {
   likes: number;
   comentarios: number;
   duracion_segundos: number;
-  ya_registrado: boolean;
+  en_campana: boolean;
   comentarios_desactivados: boolean;
 }
 
@@ -78,9 +78,9 @@ export async function GET(request: Request) {
       .single();
 
     if (cache && new Date(cache.expires_at) > new Date()) {
-      // Cache valid — still need to mark ya_registrado against current DB state
+      // Cache valid — still need to mark en_campana against current DB state
       const cachedVideos = cache.videos as VideoItem[];
-      const enriched = await markRegistered(supabase, cachedVideos);
+      const enriched = await markInCampaign(supabase, cachedVideos);
       return NextResponse.json({ videos: enriched, from_cache: true });
     }
   }
@@ -145,7 +145,7 @@ export async function GET(request: Request) {
       likes: parseInt(v.statistics?.likeCount || "0", 10),
       comentarios: parseInt(v.statistics?.commentCount || "0", 10),
       duracion_segundos: parseDuration(v.contentDetails?.duration || "PT0S"),
-      ya_registrado: false,
+      en_campana: false,
       comentarios_desactivados: v.statistics?.commentCount == null,
     })
   );
@@ -161,32 +161,38 @@ export async function GET(request: Request) {
     { onConflict: "usuario_id" }
   );
 
-  // --- Mark already registered ---
-  const enriched = await markRegistered(supabase, videos);
+  // --- Mark videos that currently have a live campaign ---
+  const enriched = await markInCampaign(supabase, videos);
 
   return NextResponse.json({ videos: enriched, from_cache: false });
 }
 
-// --- Helper: mark videos already registered in Comentalo ---
+// --- Helper: mark videos with a live campaign (abierta/activa/pausada) ---
+// Un video puede existir en la tabla sin campaña viva (todas finalizadas o
+// eliminadas). Solo marcamos los que tienen al menos una campaña en un
+// estado que bloquea relanzar.
 
-async function markRegistered(
+async function markInCampaign(
   supabase: ReturnType<typeof createServerClient>,
   videos: VideoItem[]
 ): Promise<VideoItem[]> {
   if (videos.length === 0) return videos;
 
   const ids = videos.map((v) => v.id);
-  const { data: registered } = await supabase
+  const { data } = await supabase
     .from("videos")
-    .select("youtube_video_id")
-    .in("youtube_video_id", ids);
+    .select("youtube_video_id, campanas!inner(estado)")
+    .in("youtube_video_id", ids)
+    .in("campanas.estado", ["abierta", "activa", "pausada"]);
 
-  const registeredSet = new Set(
-    (registered || []).map((r: { youtube_video_id: string }) => r.youtube_video_id)
+  const inCampaignSet = new Set(
+    (data || []).map(
+      (r: { youtube_video_id: string }) => r.youtube_video_id
+    )
   );
 
   return videos.map((v) => ({
     ...v,
-    ya_registrado: registeredSet.has(v.id),
+    en_campana: inCampaignSet.has(v.id),
   }));
 }

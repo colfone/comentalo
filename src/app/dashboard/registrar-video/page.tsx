@@ -62,7 +62,7 @@ interface YouTubeVideo {
   likes: number;
   comentarios: number;
   duracion_segundos: number;
-  ya_registrado: boolean;
+  en_campana: boolean;
   comentarios_desactivados: boolean;
 }
 
@@ -237,7 +237,7 @@ export default function CrearCampanaPage() {
         likes: 0,
         comentarios: 0,
         duracion_segundos: 0,
-        ya_registrado: false,
+        en_campana: false,
         comentarios_desactivados: false,
       };
       setSelectedVideo(verified);
@@ -246,7 +246,7 @@ export default function CrearCampanaPage() {
   }
 
   function handleSelectVideo(video: YouTubeVideo) {
-    if (video.ya_registrado || video.comentarios_desactivados || video.comentarios === 0) return;
+    if (video.en_campana || video.comentarios_desactivados || video.comentarios === 0) return;
     setSelectedVideo(video);
     setYoutubeUrl("");
     setLinkError(null);
@@ -381,7 +381,7 @@ export default function CrearCampanaPage() {
               <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
                 {misVideos.map((video) => {
                   const disabled =
-                    video.ya_registrado ||
+                    video.en_campana ||
                     video.comentarios_desactivados ||
                     video.comentarios === 0;
                   return (
@@ -409,14 +409,14 @@ export default function CrearCampanaPage() {
                             {formatDuration(video.duracion_segundos)}
                           </span>
                         )}
-                        {video.ya_registrado && (
+                        {video.en_campana && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                             <span className="rounded-full bg-green-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
-                              Ya registrado
+                              En campaña
                             </span>
                           </div>
                         )}
-                        {!video.ya_registrado && video.comentarios_desactivados && (
+                        {!video.en_campana && video.comentarios_desactivados && (
                           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/60">
                             <span className="rounded-full bg-red-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
                               Comentarios desactivados
@@ -424,7 +424,7 @@ export default function CrearCampanaPage() {
                             <p className="text-[10px] text-white/80">No se puede registrar en Comentalo</p>
                           </div>
                         )}
-                        {!video.ya_registrado && !video.comentarios_desactivados && video.comentarios === 0 && (
+                        {!video.en_campana && !video.comentarios_desactivados && video.comentarios === 0 && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/60">
                             <span className="rounded-full bg-[#E87722] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
                               Sin comentarios
@@ -447,7 +447,7 @@ export default function CrearCampanaPage() {
                         >
                           {normalizeTitle(video.titulo)}
                         </h3>
-                        {!video.ya_registrado && !video.comentarios_desactivados && video.comentarios === 0 ? (
+                        {!video.en_campana && !video.comentarios_desactivados && video.comentarios === 0 ? (
                           <p className="text-xs font-medium text-[#E87722]">
                             Agrega al menos 1 comentario en YouTube para habilitar este video.
                           </p>
