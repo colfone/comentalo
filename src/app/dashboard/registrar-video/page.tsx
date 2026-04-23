@@ -170,8 +170,21 @@ export default function CrearCampanaPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<RegistroResult | null>(null);
+  const [costoCampana, setCostoCampana] = useState<number | null>(null);
 
   useEffect(() => { fetchVideos(false); }, []);
+
+  // Costo dinámico de crear campaña (configuracion.costo_campana_creditos).
+  // Silencio ante fallos — el usuario puede proceder igual; el API rechaza con
+  // 402 si no alcanza el saldo.
+  useEffect(() => {
+    fetch("/api/config/costo-campana")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data && typeof data.costo === "number") setCostoCampana(data.costo);
+      })
+      .catch(() => {});
+  }, []);
 
   async function fetchVideos(refresh: boolean) {
     if (refresh) setRefreshing(true); else setLoadingVideos(true);
@@ -575,6 +588,12 @@ export default function CrearCampanaPage() {
             </div>
 
             {submitError && <p className="mb-4 text-sm text-red-500">{submitError}</p>}
+
+            {costoCampana !== null && (
+              <p className="mb-3 text-sm text-[#5b5e60]">
+                💎 Se descontarán <strong>{costoCampana} créditos</strong> de tu saldo al crear esta campaña.
+              </p>
+            )}
 
             <button
               type="button"
