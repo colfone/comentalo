@@ -5,18 +5,21 @@ import { NextResponse } from "next/server";
 
 // POST /api/campanas/eliminar
 // Body: { campana_id }
-// Solo si la campaña tiene 0 intercambios verificados. Sección 5D.
-// DELETE CASCADE borra intercambios pendientes asociados — es aceptable
-// porque si no hay verificados, ningún comentarista ganó un intercambio.
+// Delega toda la lógica (ownership, validación de estado, validación de
+// intercambios_completados, DELETE y reembolso) al RPC
+// eliminar_campana_con_reembolso (migración 20260422230000). Si la campaña
+// tiene 0 intercambios verificados, se borra y se reembolsa
+// costo_campana_creditos al creador; si tiene >=1, bloquea.
 
-type CampanaOwnership = {
-  id: string;
-  estado: string;
-  intercambios_completados: number;
-  videos: { usuario_id: string } | null;
+type RpcErrorCode = "no_encontrada" | "tiene_comentarios" | "estado_invalido";
+
+type RpcResponse = {
+  ok: boolean;
+  error?: RpcErrorCode;
+  mensaje?: string;
+  reembolso?: number;
+  saldo_nuevo?: number;
 };
-
-const ESTADOS_QUE_PERMITEN_ELIMINAR = ["abierta", "activa", "pausada"];
 
 export async function POST(request: Request) {
   const cookieStore = await cookies();
@@ -58,40 +61,33 @@ export async function POST(request: Request) {
     process.env.SUPABASE_SECRET_KEY!
   );
 
-  const { data: campana } = await service
-    .from("campanas")
-    .select("id, estado, intercambios_completados, videos!inner(usuario_id)")
-    .eq("id", body.campana_id)
-    .maybeSingle<CampanaOwnership>();
+  const { data: rpcResult, error: rpcError } = await service.rpc(
+    "eliminar_campana_con_reembolso",
+    { p_campana_id: body.campana_id, p_usuario_id: usuario.id }
+  );
 
-  if (!campana) return NextResponse.json({ ok: false, error: "Campaña no encontrada" }, { status: 404 });
-  if (campana.videos?.usuario_id !== usuario.id) {
-    return NextResponse.json({ ok: false, error: "No tienes acceso a esta campaña" }, { status: 403 });
+  if (rpcError) {
+    console.error("Error llamando eliminar_campana_con_reembolso:", rpcError);
+    return NextResponse.json(
+      { ok: false, error: "Error interno al eliminar la campaña." },
+      { status: 500 }
+    );
   }
 
-  if (!ESTADOS_QUE_PERMITEN_ELIMINAR.includes(campana.estado)) {
-    return NextResponse.json({
-      ok: false,
-      error: `No se puede eliminar una campaña en estado ${campana.estado}.`,
-    });
+  const result = rpcResult as RpcResponse;
+
+  if (!result.ok) {
+    // no_encontrada → 404. tiene_comentarios + estado_invalido → 409.
+    const status = result.error === "no_encontrada" ? 404 : 409;
+    return NextResponse.json(
+      { ok: false, error: result.mensaje ?? "Error al eliminar la campaña." },
+      { status }
+    );
   }
 
-  if (campana.intercambios_completados > 0) {
-    return NextResponse.json({
-      ok: false,
-      error: "No se puede eliminar una campaña que ya recibió comentarios verificados.",
-    });
-  }
-
-  const { error: deleteError } = await service
-    .from("campanas")
-    .delete()
-    .eq("id", campana.id);
-
-  if (deleteError) {
-    console.error("Error eliminando campaña:", deleteError);
-    return NextResponse.json({ ok: false, error: "No se pudo eliminar la campaña." }, { status: 500 });
-  }
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    reembolso: result.reembolso,
+    saldo_nuevo: result.saldo_nuevo,
+  });
 }
