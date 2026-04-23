@@ -217,12 +217,24 @@ export default function DashboardClient({
           <div className="flex items-center gap-5">
             {/* Avatar large */}
             <div className="relative">
-              <div
-                className="flex h-20 w-20 items-center justify-center rounded-3xl text-2xl font-extrabold text-white"
-                style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
-              >
-                {initials}
-              </div>
+              {usuario.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={usuario.avatar_url}
+                  alt={usuario.nombre ?? "Avatar del canal"}
+                  width={80}
+                  height={80}
+                  referrerPolicy="no-referrer"
+                  className="h-20 w-20 rounded-3xl object-cover"
+                />
+              ) : (
+                <div
+                  className="flex h-20 w-20 items-center justify-center rounded-3xl text-2xl font-extrabold text-white"
+                  style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+                >
+                  {initials}
+                </div>
+              )}
               <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-green-500">
                 <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
