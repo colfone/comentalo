@@ -16,6 +16,7 @@ type Props = {
     id: string;
     nombre: string | null;
     estado: EstadoUsuario;
+    saldo_creditos: number;
   };
 };
 
@@ -39,11 +40,20 @@ type HardDeleteModalState = {
   error: string | null;
 };
 
+type AjusteModalState = {
+  monto: string; // input crudo; parseamos al enviar
+  motivo: string;
+  loading: boolean;
+  error: string | null;
+};
+
 export default function UsuarioAccionesAdmin({ usuario }: Props) {
   const router = useRouter();
   const [modal, setModal] = useState<ModalState | null>(null);
   const [hardDeleteModal, setHardDeleteModal] =
     useState<HardDeleteModalState | null>(null);
+  const [ajusteModal, setAjusteModal] =
+    useState<AjusteModalState | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
     null
@@ -98,6 +108,66 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
   function closeHardDelete() {
     if (hardDeleteModal?.loading) return;
     setHardDeleteModal(null);
+  }
+
+  function openAjuste() {
+    setAjusteModal({ monto: "", motivo: "", loading: false, error: null });
+  }
+
+  function closeAjuste() {
+    if (ajusteModal?.loading) return;
+    setAjusteModal(null);
+  }
+
+  async function handleConfirmAjuste() {
+    if (!ajusteModal) return;
+    const montoNum = parseInt(ajusteModal.monto, 10);
+    if (!Number.isFinite(montoNum) || montoNum === 0) {
+      setAjusteModal({
+        ...ajusteModal,
+        error: "Ingresá un número entero distinto de 0.",
+      });
+      return;
+    }
+
+    setAjusteModal({ ...ajusteModal, loading: true, error: null });
+
+    const motivoTrim = ajusteModal.motivo.trim();
+
+    try {
+      const res = await fetch("/api/admin/usuarios/ajustar-creditos", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          usuario_id: usuario.id,
+          monto: montoNum,
+          motivo: motivoTrim.length > 0 ? motivoTrim : undefined,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setAjusteModal((m) =>
+          m
+            ? { ...m, loading: false, error: data.error ?? "Error desconocido." }
+            : null
+        );
+        return;
+      }
+
+      setAjusteModal(null);
+      router.refresh();
+    } catch (err) {
+      setAjusteModal((m) =>
+        m
+          ? {
+              ...m,
+              loading: false,
+              error: err instanceof Error ? err.message : "Error de red.",
+            }
+          : null
+      );
+    }
   }
 
   async function handleHardDelete() {
@@ -256,21 +326,33 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
                 >
                   Banear
                 </button>
-                <div className="border-t border-black/10" />
               </>
             )}
 
             {(estado === "suspendido" || estado === "baneado") && (
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  openModal("reactivar");
+                }}
+                className="block w-full px-3 py-2 text-left text-sm text-[#2c2f30] transition-colors hover:bg-black/5"
+              >
+                Reactivar
+              </button>
+            )}
+
+            {estado !== "eliminado" && (
               <>
                 <button
                   role="menuitem"
                   onClick={() => {
                     setMenuOpen(false);
-                    openModal("reactivar");
+                    openAjuste();
                   }}
                   className="block w-full px-3 py-2 text-left text-sm text-[#2c2f30] transition-colors hover:bg-black/5"
                 >
-                  Reactivar
+                  Ajustar créditos
                 </button>
                 <div className="border-t border-black/10" />
               </>
@@ -428,6 +510,101 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
                 className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {hardDeleteModal.loading ? "Eliminando…" : "Sí, eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ajusteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={closeAjuste}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-headline text-lg font-bold text-[#2c2f30]">
+              Ajustar créditos
+            </h3>
+            <p className="mt-1 text-xs text-[#5b5e60]">
+              {nombre ?? "(sin nombre)"}
+            </p>
+
+            <div className="mt-3 rounded-lg bg-[#f5f5f7] px-3 py-2 text-sm text-[#2c2f30]">
+              Saldo actual: <strong>{usuario.saldo_creditos} 💎</strong>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-xs font-semibold text-[#5b5e60]">
+                Cantidad (+/-) <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="number"
+                step={1}
+                value={ajusteModal.monto}
+                onChange={(e) =>
+                  setAjusteModal((m) =>
+                    m ? { ...m, monto: e.target.value, error: null } : null
+                  )
+                }
+                placeholder="Ej: 50 (suma) o -30 (resta)"
+                disabled={ajusteModal.loading}
+                className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm font-mono focus:border-[#6200EE] focus:outline-none disabled:opacity-50"
+              />
+              <p className="mt-1 text-[11px] text-[#9097a0]">
+                Positivo suma, negativo resta. El saldo resultante no puede quedar negativo.
+              </p>
+            </div>
+
+            <div className="mt-3">
+              <label className="block text-xs font-semibold text-[#5b5e60]">
+                Motivo (opcional)
+              </label>
+              <textarea
+                value={ajusteModal.motivo}
+                onChange={(e) =>
+                  setAjusteModal((m) =>
+                    m ? { ...m, motivo: e.target.value } : null
+                  )
+                }
+                placeholder="Razón del ajuste"
+                rows={2}
+                maxLength={500}
+                disabled={ajusteModal.loading}
+                className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm focus:border-[#6200EE] focus:outline-none disabled:opacity-50"
+              />
+            </div>
+
+            {ajusteModal.error && (
+              <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800">
+                {ajusteModal.error}
+              </div>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeAjuste}
+                disabled={ajusteModal.loading}
+                className="rounded-lg border border-black/15 bg-white px-3 py-1.5 text-sm text-[#2c2f30] transition-colors hover:bg-black/5 disabled:opacity-40"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAjuste}
+                disabled={
+                  ajusteModal.loading ||
+                  ajusteModal.monto.trim().length === 0
+                }
+                className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+                style={{
+                  background: "linear-gradient(135deg, #6200EE, #ac8eff)",
+                }}
+              >
+                {ajusteModal.loading ? "Aplicando…" : "Confirmar →"}
               </button>
             </div>
           </div>

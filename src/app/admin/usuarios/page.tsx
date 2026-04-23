@@ -184,6 +184,7 @@ export default async function AdminUsuariosPage() {
                       id: u.id,
                       nombre: u.nombre,
                       estado: u.estado,
+                      saldo_creditos: u.saldo_creditos ?? 0,
                     }}
                   />
                 </td>
