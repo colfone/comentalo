@@ -1,6 +1,9 @@
 import { requireAdminForPage } from "@/lib/supabase/admin-guard";
+import UsuarioAccionesAdmin, {
+  type EstadoUsuario,
+} from "./usuario-acciones-admin";
 
-// Lista de usuarios con saldo, campañas activas, fecha registro.
+// Lista de usuarios con saldo, campañas activas, fecha registro, estado.
 // Sin paginación en esta iteración — la base es chica.
 //
 // Conteo de campañas activas: nested select `campanas.videos(usuario_id)`
@@ -19,7 +22,33 @@ type UsuarioFila = {
   saldo_creditos: number | null;
   created_at: string;
   es_admin: boolean;
+  estado: EstadoUsuario;
+  estado_motivo: string | null;
+  estado_hasta: string | null;
 };
+
+const ESTADO_LABEL: Record<EstadoUsuario, string> = {
+  activo: "Activo",
+  suspendido: "Suspendido",
+  baneado: "Baneado",
+  eliminado: "Eliminado",
+};
+
+const ESTADO_CLASSES: Record<EstadoUsuario, string> = {
+  activo: "bg-green-100 text-green-800",
+  suspendido: "bg-amber-100 text-amber-800",
+  baneado: "bg-red-100 text-red-800",
+  eliminado: "bg-gray-200 text-gray-600",
+};
+
+function formatEstadoTooltip(u: UsuarioFila): string | undefined {
+  const parts: string[] = [];
+  if (u.estado_motivo) parts.push(`Motivo: ${u.estado_motivo}`);
+  if (u.estado_hasta) {
+    parts.push(`Hasta: ${new Date(u.estado_hasta).toLocaleString("es-AR")}`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : undefined;
+}
 
 export default async function AdminUsuariosPage() {
   const { serviceClient } = await requireAdminForPage();
@@ -28,7 +57,7 @@ export default async function AdminUsuariosPage() {
     serviceClient
       .from("usuarios")
       .select(
-        "id, nombre, avatar_url, canal_url, saldo_creditos, created_at, es_admin"
+        "id, nombre, avatar_url, canal_url, saldo_creditos, created_at, es_admin, estado, estado_motivo, estado_hasta"
       )
       .order("created_at", { ascending: false }),
     serviceClient
@@ -69,7 +98,9 @@ export default async function AdminUsuariosPage() {
               <th className="px-4 py-3 text-left">Canal</th>
               <th className="px-4 py-3 text-right">Saldo</th>
               <th className="px-4 py-3 text-right">Campañas activas</th>
+              <th className="px-4 py-3 text-left">Estado</th>
               <th className="px-4 py-3 text-left">Registrado</th>
+              <th className="px-4 py-3 text-left">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -136,8 +167,25 @@ export default async function AdminUsuariosPage() {
                 <td className="px-4 py-3 text-right tabular-nums">
                   {countPorUsuario.get(u.id) ?? 0}
                 </td>
+                <td className="px-4 py-3">
+                  <span
+                    title={formatEstadoTooltip(u)}
+                    className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${ESTADO_CLASSES[u.estado]}`}
+                  >
+                    {ESTADO_LABEL[u.estado]}
+                  </span>
+                </td>
                 <td className="px-4 py-3 text-xs text-[#5b5e60]">
                   {new Date(u.created_at).toLocaleDateString("es-AR")}
+                </td>
+                <td className="px-4 py-3">
+                  <UsuarioAccionesAdmin
+                    usuario={{
+                      id: u.id,
+                      nombre: u.nombre,
+                      estado: u.estado,
+                    }}
+                  />
                 </td>
               </tr>
             ))}

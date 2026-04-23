@@ -32,6 +32,7 @@ function createSupabaseServiceClient(): SupabaseClient {
 
 export type AdminContext = {
   serviceClient: SupabaseClient;
+  authEmail: string | null;
 };
 
 export async function requireAdminForPage(): Promise<AdminContext> {
@@ -45,7 +46,10 @@ export async function requireAdminForPage(): Promise<AdminContext> {
 
   if (!isAdminEmail(session.user.email)) redirect("/dashboard");
 
-  return { serviceClient: createSupabaseServiceClient() };
+  return {
+    serviceClient: createSupabaseServiceClient(),
+    authEmail: session.user.email ?? null,
+  };
 }
 
 export type AdminApiResult =
@@ -78,6 +82,9 @@ export async function requireAdminForApi(): Promise<AdminApiResult> {
 
   return {
     ok: true,
-    ctx: { serviceClient: createSupabaseServiceClient() },
+    ctx: {
+      serviceClient: createSupabaseServiceClient(),
+      authEmail: user.email ?? null,
+    },
   };
 }

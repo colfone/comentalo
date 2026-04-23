@@ -645,6 +645,8 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 ### Pendientes inmediatos
 
 - Prueba end-to-end modelo v2 — registrar usuario nuevo y verificar 60 créditos de bienvenida
+- Auto-expiración de suspensiones temporales — pg_cron que pasa usuarios de `suspendido` a `activo` cuando `estado_hasta < now()`
+- Enforcement de estados de usuario — bloquear login/acciones para suspendido/baneado/eliminado, filtrar de colas e intercambios
 - Email via Resend cuando créditos llegan a 0
 - Ecosistema administrativo:
   - Panel admin completado: resumen, configuración, usuarios
