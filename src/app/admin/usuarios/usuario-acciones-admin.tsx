@@ -34,9 +34,55 @@ const TITULO_MODAL: Record<Accion, string> = {
   eliminar: "Eliminar usuario",
 };
 
+type HardDeleteModalState = {
+  loading: boolean;
+  error: string | null;
+};
+
 export default function UsuarioAccionesAdmin({ usuario }: Props) {
   const router = useRouter();
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [hardDeleteModal, setHardDeleteModal] =
+    useState<HardDeleteModalState | null>(null);
+
+  function openHardDelete() {
+    setHardDeleteModal({ loading: false, error: null });
+  }
+
+  function closeHardDelete() {
+    if (hardDeleteModal?.loading) return;
+    setHardDeleteModal(null);
+  }
+
+  async function handleHardDelete() {
+    if (!hardDeleteModal) return;
+    setHardDeleteModal({ loading: true, error: null });
+
+    try {
+      const res = await fetch("/api/admin/usuarios/eliminar-cuenta", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ usuario_id: usuario.id }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setHardDeleteModal({
+          loading: false,
+          error: data.error ?? "Error desconocido.",
+        });
+        return;
+      }
+
+      setHardDeleteModal(null);
+      router.refresh();
+    } catch (err) {
+      setHardDeleteModal({
+        loading: false,
+        error: err instanceof Error ? err.message : "Error de red.",
+      });
+    }
+  }
 
   function openModal(accion: Accion) {
     setModal({
@@ -149,9 +195,14 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
             Reactivar
           </button>
         )}
-        {estado === "eliminado" && (
-          <span className="text-xs text-[#9097a0]">—</span>
-        )}
+        {/* Hard delete: siempre visible, irreversible */}
+        <button
+          onClick={openHardDelete}
+          className={`${botonBase} bg-red-600 text-white hover:bg-red-700`}
+          title="Borra usuario de la DB y auth.users (irreversible)"
+        >
+          Eliminar cuenta
+        </button>
       </div>
 
       {modal && (
@@ -243,6 +294,55 @@ export default function UsuarioAccionesAdmin({ usuario }: Props) {
                 style={{ background: "#6200EE" }}
               >
                 {modal.loading ? "Aplicando…" : "Confirmar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {hardDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={closeHardDelete}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-headline text-lg font-bold text-red-700">
+              Eliminar cuenta
+            </h3>
+            <p className="mt-3 text-sm text-[#2c2f30]">
+              ¿Eliminar cuenta de{" "}
+              <strong>{nombre ?? "(sin nombre)"}</strong>? Esta acción es
+              irreversible.
+            </p>
+            <p className="mt-2 text-xs text-[#5b5e60]">
+              Borra la fila de <code>usuarios</code> (con cascade a videos,
+              campañas e intercambios) y también elimina la cuenta de{" "}
+              <code>auth.users</code>.
+            </p>
+
+            {hardDeleteModal.error && (
+              <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800">
+                {hardDeleteModal.error}
+              </div>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={closeHardDelete}
+                disabled={hardDeleteModal.loading}
+                className="rounded-lg border border-black/15 bg-white px-3 py-1.5 text-sm text-[#2c2f30] transition-colors hover:bg-black/5 disabled:opacity-40"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleHardDelete}
+                disabled={hardDeleteModal.loading}
+                className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {hardDeleteModal.loading ? "Eliminando…" : "Sí, eliminar"}
               </button>
             </div>
           </div>
