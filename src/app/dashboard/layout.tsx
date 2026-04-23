@@ -231,6 +231,36 @@ export default async function DashboardLayout({
         </header>
       )}
 
+      {user && saldoCreditos === 0 && (
+        <div className="border-b border-amber-200 bg-amber-50">
+          <div className="mx-auto max-w-[1240px] px-6 py-4">
+            <div className="flex items-start gap-4 sm:items-center">
+              <div className="text-3xl leading-none" aria-hidden="true">
+                💎
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-headline text-base font-bold text-amber-900">
+                  Tus créditos llegaron a 0
+                </p>
+                <p className="mt-0.5 text-sm text-amber-800">
+                  Tus campañas están pausadas. Comenta videos de otros
+                  creadores para ganar créditos y reactivarlas automáticamente.
+                </p>
+              </div>
+              <Link
+                href="/dashboard/intercambiar"
+                className="inline-flex shrink-0 items-center gap-1 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
+                style={{
+                  background: "linear-gradient(135deg, #6200EE, #ac8eff)",
+                }}
+              >
+                Ir a comentar →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {children}
 
       {mostrarModal && canalInfo && <VerificacionCanalModal canal={canalInfo} />}
