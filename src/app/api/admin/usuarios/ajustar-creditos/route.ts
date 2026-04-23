@@ -75,31 +75,27 @@ export async function POST(request: Request) {
     motivoLimpio = trimmed.length > 0 ? trimmed : null;
   }
 
-  // Resolver usuarios.id del admin para audit trail + bloqueo auto-ajuste
-  if (!authEmail) {
-    return NextResponse.json(
-      { ok: false, error: "Email del admin no disponible." },
-      { status: 500 }
-    );
-  }
-  const { data: adminRow } = await serviceClient
-    .from("usuarios")
-    .select("id")
-    .eq("email", authEmail)
-    .maybeSingle();
+  // Resolver usuarios.id del admin (opcional — si no tiene fila, audit queda
+  // sin admin_id). Útil para admins que nunca se registraron como creadores.
+  let adminId: string | null = null;
+  if (authEmail) {
+    const { data: adminRow } = await serviceClient
+      .from("usuarios")
+      .select("id")
+      .eq("email", authEmail)
+      .maybeSingle();
 
-  if (!adminRow?.id) {
-    return NextResponse.json(
-      { ok: false, error: "Admin no resuelto en la DB." },
-      { status: 500 }
-    );
-  }
-
-  if (adminRow.id === usuario_id) {
-    return NextResponse.json(
-      { ok: false, error: "No puedes ajustar tus propios créditos." },
-      { status: 400 }
-    );
+    if (adminRow?.id) {
+      adminId = adminRow.id;
+      // Bloqueo auto-ajuste solo aplica si el admin tiene fila. Sin fila no
+      // hay forma de que usuario_id matchee al admin.
+      if (adminId === usuario_id) {
+        return NextResponse.json(
+          { ok: false, error: "No puedes ajustar tus propios créditos." },
+          { status: 400 }
+        );
+      }
+    }
   }
 
   // RPC atómica
@@ -108,7 +104,7 @@ export async function POST(request: Request) {
     {
       p_usuario_id: usuario_id,
       p_monto: monto,
-      p_admin_id: adminRow.id,
+      p_admin_id: adminId,
       p_motivo: motivoLimpio,
     }
   );
