@@ -137,7 +137,6 @@ export default function DashboardClient({
   const [tab, setTab] = useState<"curso" | "completados">("curso");
   const [reactivando, setReactivando] = useState<string | null>(null);
   const [reactivarError, setReactivarError] = useState<string | null>(null);
-  const [eliminando, setEliminando] = useState<string | null>(null);
   const [lanzando, setLanzando] = useState<string | null>(null);
 
   const repLevel = getReputationLevel(reputacion.promedio_estrellas, reputacion.activo);
@@ -185,17 +184,6 @@ export default function DashboardClient({
       if (!data.ok) { setReactivarError(data.error); return; }
       setVideos((prev) => prev.map((v) => v.id === videoId ? { ...v, estado: "activo" } : v));
     } catch { setReactivarError("Error de conexion."); } finally { setReactivando(null); }
-  }
-
-  async function handleEliminar(videoId: string) {
-    if (!confirm("¿Estas seguro? Esta accion no se puede deshacer.")) return;
-    setEliminando(videoId);
-    try {
-      const res = await fetch("/api/videos/eliminar", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ video_id: videoId }) });
-      const data = await res.json();
-      if (!res.ok || !data.ok) { alert(data.error || "Error al eliminar."); return; }
-      setVideos((prev) => prev.filter((v) => v.id !== videoId));
-    } catch { alert("Error de conexion."); } finally { setEliminando(null); }
   }
 
   async function handleLanzarCampana(videoId: string) {
@@ -381,11 +369,6 @@ export default function DashboardClient({
                               : "bg-gray-100 text-gray-600"
                             }`}>{activeCampana?.estado === "pausada" ? "Pausada" : video.estado}</span>
                           </div>
-                          {video.puede_eliminar && (
-                            <button onClick={() => handleEliminar(video.id)} disabled={eliminando === video.id} className="mt-1 text-[10px] text-red-400 hover:underline disabled:opacity-50">
-                              Eliminar
-                            </button>
-                          )}
                         </div>
                       </div>
 
