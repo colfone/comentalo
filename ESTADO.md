@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.26 — 22 de abril de 2026
+## Version actual: v4.27 — 22 de abril de 2026
 
 ## Registro de versiones
 
@@ -68,6 +68,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.24 | Sesión 22 abril (moderación) | 22 abril 2026 | Acciones de moderación en /admin/usuarios: endpoint POST /api/admin/usuarios/moderar (suspender/reactivar/banear/eliminar), badge de estado coloreado con tooltip, modal con motivo y campo hasta para suspensiones. Columnas estado/estado_motivo/estado_hasta en tabla usuarios. Prueba end-to-end modelo v2 exitosa — usuario nuevo recibe 100 créditos (valor actual de creditos_bienvenida en configuracion). Banner Scope actual eliminado de /admin/configuracion. |
 | v4.25 | Sesión 22 abril (menú acciones admin) | 22 abril 2026 | Botón "Eliminar cuenta" hard delete en /admin/usuarios — endpoint /api/admin/usuarios/eliminar-cuenta con reverse-order delete (auth.users primero). Menú desplegable "Acciones ▾" con position:fixed reemplaza botones individuales — muestra Suspender/Banear/Eliminar cuenta según estado del usuario. |
 | v4.26 | Sesión 22 abril (UX dashboard) | 22 abril 2026 | Banner ámbar en layout /dashboard/* cuando saldo = 0 — "Tus créditos llegaron a 0" con CTA "Ir a comentar →". Modal de confirmación antes de crear campaña con costo dinámico desde configuracion. Endpoint GET /api/config/costo-campana. router.refresh() al crear campaña para actualizar header. Fix avatar real del canal en hero del dashboard. Fix texto "No tienes campañas activas.". Resumen dashboard actualizado: "Comentarios realizados", "Campañas activas" (query filtrada por estado abierta/activa), reputación muestra "Comenta más para activarla" cuando inactiva. |
+| v4.27 | Sesión 22 abril (cierre) | 22 abril 2026 | Reembolso de créditos al eliminar campaña: RPC eliminar_campana_con_reembolso (migración 20260422230000) — atómico con CTE, reembolsa costo_campana_creditos al dueño si intercambios_completados = 0, bloquea si >= 1. Endpoint /api/campanas/eliminar refactorizado para delegar al RPC; expone `reembolso` y `saldo_nuevo`. Toast verde en /dashboard/perfil — "Se restituyeron X 💎 créditos." con auto-dismiss 4s + router.refresh() para actualizar header. Fix: botón "Eliminar" legacy del home (dashboard-client.tsx) removido — usaba confirm() nativo y llamaba /api/videos/eliminar sin reembolso; la eliminación correcta ya vive en /dashboard/perfil. Ajuste manual de créditos desde panel admin: tabla movimientos_creditos (migración 20260422240000) con audit trail — columnas usuario_id, monto, saldo_anterior, saldo_nuevo, origen, motivo, admin_id, created_at; CHECK con 5 origins (ajuste_admin + bienvenida + crear_campana + comentar + calificar) ready para futuro logging. RPC ajustar_creditos_admin con FOR UPDATE lock previene race entre admins. Endpoint POST /api/admin/usuarios/ajustar-creditos con validaciones y bloqueo auto-ajuste. Modal "Ajustar créditos" en dropdown Acciones ▾ (para todos los estados excepto eliminado): muestra saldo actual, input +/-, motivo opcional. Fix: admin sin fila en usuarios (auth pero nunca creó canal) — adminId queda null, audit trail sin puntero al admin pero el ajuste funciona. |
 
 ## Stack confirmado
 
@@ -647,15 +648,15 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 
 ### Pendientes inmediatos
 
-- Reembolso de créditos al eliminar campaña — si intercambios_completados = 0 al momento de eliminar, devolver costo_campana_creditos al creador. Si ya recibió al menos 1 comentario, sin reembolso.
 - Auto-expiración de suspensiones temporales — pg_cron que pasa usuarios de `suspendido` a `activo` cuando `estado_hasta < now()`
 - Enforcement de estados de usuario — bloquear login/acciones para suspendido/baneado/eliminado, filtrar de colas e intercambios
 - Email via Resend cuando créditos llegan a 0
 - Ecosistema administrativo:
-  - Panel admin completado: resumen, configuración, usuarios
+  - Panel admin completado: resumen, configuración, usuarios, ajuste manual de créditos con audit trail
   - Pendiente: módulo de campañas en /admin/campanas — lista de todas las campañas con estado, video, creador
   - Pendiente: módulo de moderación — videos suspendidos, baneos
-  - Pantalla de créditos del usuario: saldo actual + extracto de movimientos con fecha, descripción y monto (+/-) — similar a un estado de cuenta bancario
+  - Pendiente: historial de créditos en /admin/usuarios (modal "Ver historial 💎") — iniciado pero no completado. Endpoint + UI planificados, falta implementación
+  - Pantalla de créditos del usuario: saldo actual + extracto de movimientos con fecha, descripción y monto (+/-) — similar a un estado de cuenta bancario. Tabla `movimientos_creditos` ya existe (v4.27); falta UI + wiring de los otros 4 origins (bienvenida, crear_campana, comentar, calificar) para empezar a loggear
 
 ### Cambio estructural pendiente — Campañas por tiempo
 
