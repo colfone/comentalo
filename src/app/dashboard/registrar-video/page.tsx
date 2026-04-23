@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 // Crear campaña — flujo 2 pasos: selecciona video / pega link → configura campaña
 // Prototipo Design: screens/RegisterVideo.jsx + App.jsx Shell
@@ -70,6 +71,7 @@ interface RegistroResult {
   titulo: string;
   vistas: number;
   campana_creada: boolean;
+  creditos_insuficientes?: boolean;
   mensaje: string;
 }
 
@@ -171,6 +173,7 @@ export default function CrearCampanaPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<RegistroResult | null>(null);
   const [costoCampana, setCostoCampana] = useState<number | null>(null);
+  const [saldoActual, setSaldoActual] = useState<number | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => { fetchVideos(false); }, []);
@@ -185,6 +188,23 @@ export default function CrearCampanaPage() {
         if (data && typeof data.costo === "number") setCostoCampana(data.costo);
       })
       .catch(() => {});
+  }, []);
+
+  // Saldo actual para gate del modal de confirmación. RLS permite select own.
+  useEffect(() => {
+    (async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("usuarios")
+        .select("saldo_creditos")
+        .eq("auth_id", user.id)
+        .maybeSingle();
+      if (data && typeof data.saldo_creditos === "number") {
+        setSaldoActual(data.saldo_creditos);
+      }
+    })();
   }, []);
 
   async function fetchVideos(refresh: boolean) {
@@ -663,6 +683,17 @@ export default function CrearCampanaPage() {
                     Tu campaña está activa. Ya puedes recibir comentarios.
                   </p>
                 </div>
+              ) : result.creditos_insuficientes ? (
+                <div className="mt-4 rounded-xl bg-amber-50 p-4">
+                  <p className="text-sm font-medium text-amber-900">
+                    Registramos tu video, pero no pudimos crear la campaña:
+                    te faltan créditos.
+                  </p>
+                  <p className="mt-1 text-xs text-amber-800">
+                    Podés lanzar la campaña más tarde desde Mis campañas
+                    cuando tengas saldo.
+                  </p>
+                </div>
               ) : (
                 <div className="mt-4 rounded-xl bg-[#fff4e8] p-4">
                   <p className="text-sm font-medium text-[#E87722]">
@@ -693,57 +724,129 @@ export default function CrearCampanaPage() {
         )}
       </main>
 
-      {showConfirmModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => {
-            if (!submitting) setShowConfirmModal(false);
-          }}
-        >
+      {showConfirmModal && (() => {
+        const costo = costoCampana ?? 30;
+        // Si saldoActual aún no cargó (null) damos el beneficio de la duda
+        // — el backend sigue siendo defensa redundante vía trigger.
+        const saldoSuficiente = saldoActual === null || saldoActual >= costo;
+        return (
           <div
-            className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => {
+              if (!submitting) setShowConfirmModal(false);
+            }}
           >
-            <h3 className="font-headline text-lg font-bold text-[#2c2f30]">
-              Crear campaña
-            </h3>
-            <div className="mt-3 space-y-2 text-sm text-[#2c2f30]">
-              <p>
-                💎 Se descontarán{" "}
-                <strong>{costoCampana ?? 30} créditos</strong> de tu saldo.
-              </p>
-              <p>
-                Tu campaña estará activa 30 días y recibirá comentarios reales
-                de la comunidad.
-              </p>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowConfirmModal(false)}
-                disabled={submitting}
-                className="rounded-lg border border-black/15 bg-white px-3 py-1.5 text-sm text-[#2c2f30] transition-colors hover:bg-black/5 disabled:opacity-40"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowConfirmModal(false);
-                  handleSubmit();
-                }}
-                disabled={submitting}
-                className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-                style={{
-                  background: "linear-gradient(135deg, #6200EE, #ac8eff)",
-                }}
-              >
-                Confirmar →
-              </button>
+            <div
+              className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {saldoSuficiente ? (
+                <>
+                  <h3 className="font-headline text-lg font-bold text-[#2c2f30]">
+                    Crear campaña
+                  </h3>
+                  <div className="mt-3 space-y-2 text-sm text-[#2c2f30]">
+                    {saldoActual !== null && (
+                      <p>
+                        💎 Tu saldo actual:{" "}
+                        <strong>{saldoActual} créditos</strong>
+                      </p>
+                    )}
+                    <p>
+                      Se descontarán <strong>{costo} créditos</strong> al
+                      confirmar.
+                    </p>
+                    {saldoActual !== null && (
+                      <p className="text-[#5b5e60]">
+                        Saldo después:{" "}
+                        <strong className="text-[#2c2f30]">
+                          {saldoActual - costo} créditos
+                        </strong>
+                      </p>
+                    )}
+                    <p className="pt-1 text-[#5b5e60]">
+                      Tu campaña estará activa 30 días y recibirá comentarios
+                      reales de la comunidad.
+                    </p>
+                  </div>
+                  <div className="mt-5 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmModal(false)}
+                      disabled={submitting}
+                      className="rounded-lg border border-black/15 bg-white px-3 py-1.5 text-sm text-[#2c2f30] transition-colors hover:bg-black/5 disabled:opacity-40"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowConfirmModal(false);
+                        handleSubmit();
+                      }}
+                      disabled={submitting}
+                      className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #6200EE, #ac8eff)",
+                      }}
+                    >
+                      Confirmar →
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="font-headline text-lg font-bold text-[#2c2f30]">
+                    Créditos insuficientes
+                  </h3>
+                  <div className="mt-3 space-y-2 text-sm text-[#2c2f30]">
+                    <p>
+                      💎 Tu saldo actual:{" "}
+                      <strong>{saldoActual} créditos</strong>
+                    </p>
+                    <p>
+                      Necesitás <strong>{costo} créditos</strong> para crear
+                      esta campaña.
+                    </p>
+                    <p className="pt-1 text-[#5b5e60]">
+                      Ganá créditos comentando videos de otros creadores o
+                      comprá un paquete.
+                    </p>
+                  </div>
+                  <div className="mt-5 flex flex-wrap justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmModal(false)}
+                      className="rounded-lg border border-black/15 bg-white px-3 py-1.5 text-sm text-[#2c2f30] transition-colors hover:bg-black/5"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/dashboard/comprar")}
+                      className="rounded-lg border border-[#6200EE] bg-white px-3 py-1.5 text-sm font-semibold text-[#6200EE] transition-colors hover:bg-[rgba(98,0,238,0.06)]"
+                    >
+                      Comprar créditos →
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/dashboard/intercambiar")}
+                      className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #6200EE, #ac8eff)",
+                      }}
+                    >
+                      Ir a comentar →
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
