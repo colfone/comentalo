@@ -5,7 +5,7 @@ Control de versiones interno del estado tecnico del proyecto.
 Fuente de verdad tecnica — refleja unicamente lo que existe en el codigo.
 Para la vision del producto, ver PROYECTO.md v4.1.
 
-## Version actual: v4.25 — 22 de abril de 2026
+## Version actual: v4.26 — 22 de abril de 2026
 
 ## Registro de versiones
 
@@ -67,6 +67,7 @@ Para la vision del producto, ver PROYECTO.md v4.1.
 | v4.23 | Sesión 22 abril (pausa calificación) | 22 abril 2026 | RPC pausar_por_inactividad_calificacion: pausa campañas de creadores con 3+ comentarios sin calificar por más de 72h. pg_cron horario. RPC aplicar_credito_calificacion extendido con vía 2 de reactivación simétrica al cron — reactiva cuando old_unrated < max_sin_calificar. CLAUDE.md definitivo creado con instrucciones permanentes. |
 | v4.24 | Sesión 22 abril (moderación) | 22 abril 2026 | Acciones de moderación en /admin/usuarios: endpoint POST /api/admin/usuarios/moderar (suspender/reactivar/banear/eliminar), badge de estado coloreado con tooltip, modal con motivo y campo hasta para suspensiones. Columnas estado/estado_motivo/estado_hasta en tabla usuarios. Prueba end-to-end modelo v2 exitosa — usuario nuevo recibe 100 créditos (valor actual de creditos_bienvenida en configuracion). Banner Scope actual eliminado de /admin/configuracion. |
 | v4.25 | Sesión 22 abril (menú acciones admin) | 22 abril 2026 | Botón "Eliminar cuenta" hard delete en /admin/usuarios — endpoint /api/admin/usuarios/eliminar-cuenta con reverse-order delete (auth.users primero). Menú desplegable "Acciones ▾" con position:fixed reemplaza botones individuales — muestra Suspender/Banear/Eliminar cuenta según estado del usuario. |
+| v4.26 | Sesión 22 abril (UX campañas) | 22 abril 2026 | Modal de confirmación antes de crear campaña — muestra costo dinámico de créditos desde configuracion. Endpoint GET /api/config/costo-campana público. router.refresh() al crear campaña para actualizar header de créditos inmediatamente. Fix texto "No tienes campañas activas." en dashboard. Fix vocabulario "antes de comentar" en cola vacía. |
 
 ## Stack confirmado
 
