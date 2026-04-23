@@ -671,14 +671,23 @@ export default function CrearCampanaPage() {
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={() => router.push("/dashboard/intercambiar")}
-                className="mt-6 inline-flex rounded-xl px-8 py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
-                style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
-              >
-                Ir a comentar
-              </button>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.push("/dashboard/campanas")}
+                  className="inline-flex rounded-xl border border-[#6200EE] bg-white px-8 py-3 text-sm font-semibold text-[#6200EE] transition-colors hover:bg-[rgba(98,0,238,0.06)]"
+                >
+                  Ir a mis campañas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/dashboard/intercambiar")}
+                  className="inline-flex rounded-xl px-8 py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
+                  style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
+                >
+                  Ir a comentar
+                </button>
+              </div>
             </div>
           </div>
         )}
