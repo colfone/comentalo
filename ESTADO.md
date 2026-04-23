@@ -646,6 +646,7 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 
 ### Pendientes inmediatos
 
+- Reembolso de créditos al eliminar campaña — si intercambios_completados = 0 al momento de eliminar, devolver costo_campana_creditos al creador. Si ya recibió al menos 1 comentario, sin reembolso.
 - Auto-expiración de suspensiones temporales — pg_cron que pasa usuarios de `suspendido` a `activo` cuando `estado_hasta < now()`
 - Enforcement de estados de usuario — bloquear login/acciones para suspendido/baneado/eliminado, filtrar de colas e intercambios
 - Email via Resend cuando créditos llegan a 0
