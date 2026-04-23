@@ -134,24 +134,7 @@ export async function POST(request: Request) {
   }
 
   // Parámetros configurables (configuracion table). Fallbacks = valores v2 legacy.
-  const maxVideosActivos = await getConfigInt("max_videos_activos", 2);
   const vistasMinimas = await getConfigInt("vistas_minimas_registro_video", 10);
-
-  // Check limite de videos activos simultaneos (seccion 5.5)
-  const { count: videosActivos } = await supabase
-    .from("videos")
-    .select("id", { count: "exact", head: true })
-    .eq("usuario_id", usuario.id)
-    .eq("estado", "activo");
-
-  if ((videosActivos ?? 0) >= maxVideosActivos) {
-    return NextResponse.json(
-      {
-        error: `Ya tienes ${maxVideosActivos} videos activos. Completa las campanas de tus videos actuales antes de registrar uno nuevo.`,
-      },
-      { status: 409 }
-    );
-  }
 
   // Check if video is already registered
   const { data: videoExistente } = await supabase

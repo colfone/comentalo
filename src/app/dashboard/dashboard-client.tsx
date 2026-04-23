@@ -141,8 +141,6 @@ export default function DashboardClient({
 
   const repLevel = getReputationLevel(reputacion.promedio_estrellas, reputacion.activo);
   const promedioEstrellas = Number(reputacion.promedio_estrellas || 0).toFixed(1);
-  const videosActivos = videos.filter((v) => v.estado === "activo");
-  const puedeRegistrar = videosActivos.length < 2;
   const initials = getInitials(usuario.nombre);
 
   // Filtered videos by tab
@@ -455,16 +453,9 @@ export default function DashboardClient({
               </div>
             )}
 
-            {/* Register / limit */}
-            {puedeRegistrar ? (
-              <a href="/dashboard/registrar-video" className="mt-4 block rounded-xl border-2 border-dashed border-[#6200EE]/20 py-4 text-center text-sm font-semibold text-[#6200EE] transition-colors hover:border-[#6200EE]/40 hover:bg-[#6200EE]/5">
-                + Crear campaña
-              </a>
-            ) : (
-              <div className="mt-4 rounded-xl bg-[#eff1f2] p-4 text-center">
-                <p className="text-xs text-[#595c5d]">Ya tienes 2 videos activos. Completa las campanas actuales para registrar otro.</p>
-              </div>
-            )}
+            <a href="/dashboard/registrar-video" className="mt-4 block rounded-xl border-2 border-dashed border-[#6200EE]/20 py-4 text-center text-sm font-semibold text-[#6200EE] transition-colors hover:border-[#6200EE]/40 hover:bg-[#6200EE]/5">
+              + Crear campaña
+            </a>
 
             {/* Manifesto banner */}
             <div className="mt-6 overflow-hidden rounded-3xl p-6" style={{ background: "linear-gradient(135deg, #6200EE10, #E8772210)" }}>
