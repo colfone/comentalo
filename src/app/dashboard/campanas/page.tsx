@@ -159,11 +159,13 @@ export default function MisCampanasPage() {
           created_at: string;
           campanas: { id: string; estado: string; intercambios_completados: number; created_at: string }[];
         };
+        // `campanas!inner(...)` fuerza INNER JOIN: solo devuelve videos
+        // con al menos una campaña. Videos sin campaña quedan fuera.
         const { data: misVideos } = await supabase
           .from("videos")
           .select(`
             id, youtube_video_id, titulo, vistas, estado, created_at,
-            campanas ( id, estado, intercambios_completados, created_at )
+            campanas!inner ( id, estado, intercambios_completados, created_at )
           `)
           .eq("usuario_id", u.id)
           .order("created_at", { ascending: false });
@@ -257,9 +259,7 @@ export default function MisCampanasPage() {
                         {normalizeTitle(v.titulo)}
                       </div>
                       <div className="mt-1 text-[13px] text-[#5b5e60]">
-                        {v.campana_id
-                          ? `${v.intercambios_recibidos} comentarios recibidos · ${formatSubs(v.vistas)} vistas`
-                          : `Sin campaña activa · ${formatSubs(v.vistas)} vistas`}
+                        {v.intercambios_recibidos} comentarios recibidos · {formatSubs(v.vistas)} vistas
                       </div>
                     </div>
 
