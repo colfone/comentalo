@@ -774,6 +774,10 @@ Se vendera capacidad adicional de intercambio — no intercambios en si mismos. 
 | **Estrategia de lanzamiento — Beta gratuita con limites originales** La V1 se lanza 100% gratuita sin pasarela de pagos, pero manteniendo los limites originales del plan base: 2 videos activos y 10 intercambios por campana. La capacidad adicional se desbloquea mediante gamificacion — programa de referidos, logros por calificaciones perfectas — no mediante pago. Esto elimina entre un 30% y 40% de complejidad tecnica del MVP, permite conseguir masa critica sin friccion, y evita el efecto anclaje de regalar limites altos que despues no se pueden bajar. |
 | --- |
 
+## **7.2b Placeholder en V1 — /dashboard/comprar**
+
+La ruta /dashboard/comprar existe en el MVP como pagina "Proximamente" sin logica de pagos. Se creo como destino coherente de los CTAs "Comprar creditos" que aparecen en el modal de creacion de campana cuando el usuario no tiene creditos suficientes. No implementa pasarela, producto, ni transaccion — solo muestra que la compra sera una opcion futura y redirige al usuario a ganar creditos por via colaborativa ("Ganar creditos comentando →"). Al activarse la Fase 2, esta ruta dejara de ser placeholder y conectara con el modelo de pagos descripto en las secciones 7.3–7.5.
+
 ## **7.3 [BACKLOG FASE 2] Modelo de Pagos Futuro**
 
 Las secciones 7.3, 7.4 y 7.5 describen el modelo de monetizacion que se implementara en la Fase 2 de la plataforma, una vez validada la beta gratuita con masa critica real. NO forman parte del MVP ni deben programarse en V1.
