@@ -1,5 +1,3 @@
-Reemplaza el contenido completo de CLAUDE.md en la raíz del proyecto con exactamente este contenido:
-
 # CLAUDE.md — comentalo.com
 
 ## Al iniciar cualquier sesión
@@ -60,5 +58,3 @@ git add -A && git commit -m "tipo: descripción" && git push origin master
 - `PROYECTO.md` — visión del producto, reglas de negocio, vocabulario oficial
 - `ESTADO.md` — estado técnico real, migraciones aplicadas, pendientes
 - `Credenciales.txt` — credenciales del proyecto (NUNCA subir a GitHub)
-
-Luego haz commit y push con mensaje "docs: CLAUDE.md definitivo — instrucciones permanentes para Claude Code"
