@@ -643,7 +643,6 @@ RLS habilitado. Politicas: `notificaciones_select_own`, `notificaciones_update_o
 ### Pendientes inmediatos
 
 - Prueba end-to-end modelo v2 — registrar usuario nuevo y verificar 60 créditos de bienvenida
-- Conectar RPCs y endpoints a tabla configuracion para valores dinámicos
 - Conectar horas_limite_calificacion y max_sin_calificar — lógica de pausa por inactividad de calificación (pg_cron + RPC)
 - Email via Resend cuando créditos llegan a 0
 - Ecosistema administrativo:
