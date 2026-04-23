@@ -171,6 +171,7 @@ export default function CrearCampanaPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<RegistroResult | null>(null);
   const [costoCampana, setCostoCampana] = useState<number | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => { fetchVideos(false); }, []);
 
@@ -601,7 +602,7 @@ export default function CrearCampanaPage() {
 
             <button
               type="button"
-              onClick={handleSubmit}
+              onClick={() => setShowConfirmModal(true)}
               disabled={submitting}
               className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white transition-transform hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
               style={{ background: "linear-gradient(135deg, #6200EE, #ac8eff)" }}
@@ -682,6 +683,58 @@ export default function CrearCampanaPage() {
           </div>
         )}
       </main>
+
+      {showConfirmModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => {
+            if (!submitting) setShowConfirmModal(false);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-headline text-lg font-bold text-[#2c2f30]">
+              Crear campaña
+            </h3>
+            <div className="mt-3 space-y-2 text-sm text-[#2c2f30]">
+              <p>
+                💎 Se descontarán{" "}
+                <strong>{costoCampana ?? 30} créditos</strong> de tu saldo.
+              </p>
+              <p>
+                Tu campaña estará activa 30 días y recibirá comentarios reales
+                de la comunidad.
+              </p>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(false)}
+                disabled={submitting}
+                className="rounded-lg border border-black/15 bg-white px-3 py-1.5 text-sm text-[#2c2f30] transition-colors hover:bg-black/5 disabled:opacity-40"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  handleSubmit();
+                }}
+                disabled={submitting}
+                className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+                style={{
+                  background: "linear-gradient(135deg, #6200EE, #ac8eff)",
+                }}
+              >
+                Confirmar →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
