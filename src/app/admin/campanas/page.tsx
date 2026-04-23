@@ -234,7 +234,7 @@ export default async function AdminCampanasPage({
                   <td className="px-4 py-3 text-right tabular-nums">
                     {c.intercambios_completados}
                   </td>
-                  <td className="px-4 py-3 text-xs text-[#5b5e60]">
+                  <td className="whitespace-nowrap px-4 py-3 text-xs text-[#5b5e60]">
                     {new Date(c.created_at).toLocaleDateString("es-AR")}
                   </td>
                 </tr>
