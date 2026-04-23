@@ -116,6 +116,31 @@ export default function MisCampanasPage() {
     }
   }
 
+  async function lanzarCampana(videoId: string) {
+    setActionPending(videoId);
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      const res = await fetch("/api/campanas/lanzar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ video_id: videoId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setActionError(data.error || "No se pudo lanzar la campaña.");
+        return;
+      }
+      // Crear campaña descuenta créditos → refresh del header.
+      router.refresh();
+      setRefreshKey((k) => k + 1);
+    } catch {
+      setActionError("Error de conexión.");
+    } finally {
+      setActionPending(null);
+    }
+  }
+
   // Auto-dismiss del success toast a los 4s.
   useEffect(() => {
     if (!actionSuccess) return;
@@ -271,10 +296,12 @@ export default function MisCampanasPage() {
 
                     {/* Acciones — sección 5D de PROYECTO.md */}
                     <CampanaAcciones
+                      videoId={v.id}
                       campanaId={v.campana_id}
                       campanaEstado={v.campana_estado}
                       intercambiosRecibidos={v.intercambios_recibidos}
                       actionPending={actionPending}
+                      onLanzar={() => lanzarCampana(v.id)}
                       onPausar={() => pedirConfirmacion("pausar", v.campana_id)}
                       onActivar={() => pedirConfirmacion("activar", v.campana_id)}
                       onFinalizar={() => pedirConfirmacion("finalizar", v.campana_id)}
@@ -321,75 +348,103 @@ function chipForEstado(estado: string): { label: string; bg: string; color: stri
 }
 
 // --- Subcomponente de acciones — sección 5D de PROYECTO.md ---
+// Siempre renderiza. Sin campaña → solo "Lanzar campaña". Con campaña →
+// Pausar/Activar/Finalizar/Eliminar siempre visibles; habilitados según
+// estado (activa, pausada, terminal) e intercambios_recibidos.
 
 function CampanaAcciones({
+  videoId,
   campanaId,
   campanaEstado,
   intercambiosRecibidos,
   actionPending,
+  onLanzar,
   onPausar,
   onActivar,
   onFinalizar,
   onEliminar,
 }: {
+  videoId: string;
   campanaId: string | null;
   campanaEstado: string | null;
   intercambiosRecibidos: number;
   actionPending: string | null;
+  onLanzar: () => void;
   onPausar: () => void;
   onActivar: () => void;
   onFinalizar: () => void;
   onEliminar: () => void;
 }) {
-  if (!campanaId || !campanaEstado) return null;
+  const sinCampana = !campanaId || !campanaEstado;
+
+  // Sin campaña — solo botón de lanzar.
+  if (sinCampana) {
+    const pendiente = actionPending === videoId;
+    return (
+      <div className="flex shrink-0 flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          onClick={onLanzar}
+          disabled={pendiente}
+          className={`rounded-full bg-[rgba(98,0,238,0.1)] px-3.5 py-1.5 text-[13px] font-medium text-[#6200EE] transition-colors hover:bg-[rgba(98,0,238,0.16)] ${pendiente ? "opacity-40 cursor-not-allowed" : ""}`}
+        >
+          Lanzar campaña
+        </button>
+      </div>
+    );
+  }
 
   const esActiva = campanaEstado === "activa" || campanaEstado === "abierta";
   const esPausada = campanaEstado === "pausada";
-  if (!esActiva && !esPausada) return null;
+  const pendiente = actionPending === campanaId;
+  const puedeEliminarPorIntercambios = intercambiosRecibidos === 0;
 
-  const puedeEliminar = intercambiosRecibidos === 0;
-  const deshabilitado = actionPending === campanaId;
+  // Reglas:
+  // - activa/abierta: Pausar on, Activar off, Finalizar on, Eliminar si 0 intercambios
+  // - pausada: Pausar off, Activar on, Finalizar on, Eliminar si 0 intercambios
+  // - terminal (completada/calificada/finalizada): todos off
+  const pausarHabilitado = esActiva && !pendiente;
+  const activarHabilitado = esPausada && !pendiente;
+  const finalizarHabilitado = (esActiva || esPausada) && !pendiente;
+  const eliminarHabilitado =
+    (esActiva || esPausada) && puedeEliminarPorIntercambios && !pendiente;
+
+  const disabledCls = "opacity-40 cursor-not-allowed";
 
   return (
     <div className="flex shrink-0 flex-wrap justify-end gap-2">
-      {esActiva && (
-        <button
-          type="button"
-          onClick={onPausar}
-          disabled={deshabilitado}
-          className="rounded-full bg-[#e3e5e6] px-3.5 py-1.5 text-[13px] font-medium text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30] disabled:opacity-50"
-        >
-          Pausar
-        </button>
-      )}
-      {esPausada && (
-        <button
-          type="button"
-          onClick={onActivar}
-          disabled={deshabilitado}
-          className="rounded-full bg-[rgba(98,0,238,0.1)] px-3.5 py-1.5 text-[13px] font-medium text-[#6200EE] transition-colors hover:bg-[rgba(98,0,238,0.16)] disabled:opacity-50"
-        >
-          Activar
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={onPausar}
+        disabled={!pausarHabilitado}
+        className={`rounded-full bg-[#e3e5e6] px-3.5 py-1.5 text-[13px] font-medium text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30] ${!pausarHabilitado ? disabledCls : ""}`}
+      >
+        Pausar
+      </button>
+      <button
+        type="button"
+        onClick={onActivar}
+        disabled={!activarHabilitado}
+        className={`rounded-full bg-[rgba(98,0,238,0.1)] px-3.5 py-1.5 text-[13px] font-medium text-[#6200EE] transition-colors hover:bg-[rgba(98,0,238,0.16)] ${!activarHabilitado ? disabledCls : ""}`}
+      >
+        Activar
+      </button>
       <button
         type="button"
         onClick={onFinalizar}
-        disabled={deshabilitado}
-        className="rounded-full bg-[#e3e5e6] px-3.5 py-1.5 text-[13px] font-medium text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30] disabled:opacity-50"
+        disabled={!finalizarHabilitado}
+        className={`rounded-full bg-[#e3e5e6] px-3.5 py-1.5 text-[13px] font-medium text-[#5b5e60] transition-colors hover:bg-[#dcdedf] hover:text-[#2c2f30] ${!finalizarHabilitado ? disabledCls : ""}`}
       >
         Finalizar
       </button>
-      {puedeEliminar && (
-        <button
-          type="button"
-          onClick={onEliminar}
-          disabled={deshabilitado}
-          className="rounded-full bg-[#fde4e4] px-3.5 py-1.5 text-[13px] font-medium text-[#c43535] transition-colors hover:bg-[#fbd0d0] disabled:opacity-50"
-        >
-          Eliminar
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={onEliminar}
+        disabled={!eliminarHabilitado}
+        className={`rounded-full bg-[#fde4e4] px-3.5 py-1.5 text-[13px] font-medium text-[#c43535] transition-colors hover:bg-[#fbd0d0] ${!eliminarHabilitado ? disabledCls : ""}`}
+      >
+        Eliminar
+      </button>
     </div>
   );
 }
