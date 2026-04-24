@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "./server";
+import { isAdminEmail } from "@/lib/admin-emails";
 
 // Gate de acceso para /admin y /api/admin/*. Autoriza por email: el usuario
 // autenticado debe estar en ADMIN_EMAILS. Sin lookup a la tabla usuarios —
@@ -15,13 +16,13 @@ import { createSupabaseServerClient } from "./server";
 // Nota sobre auth: en páginas usamos getSession() para evitar el refresh de
 // cookie que rompe en layouts de Next 16. En route handlers usamos getUser()
 // porque sí pueden escribir cookies.
+//
+// isAdminEmail se reexporta desde @/lib/admin-emails para no forzar a los
+// consumidores server-side a cambiar el import path. Client components
+// deben importar directamente de @/lib/admin-emails (este archivo trae
+// server-only deps via ./server).
 
-const ADMIN_EMAILS = new Set<string>(["colfone@gmail.com"]);
-
-export function isAdminEmail(email: string | null | undefined): boolean {
-  if (!email) return false;
-  return ADMIN_EMAILS.has(email.toLowerCase());
-}
+export { isAdminEmail };
 
 function createSupabaseServiceClient(): SupabaseClient {
   return createClient(

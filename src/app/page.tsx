@@ -1,6 +1,7 @@
 "use client";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { isAdminEmail } from "@/lib/admin-emails";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -31,8 +32,11 @@ export default function Home() {
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) router.replace("/dashboard");
-      else setChecking(false);
+      if (!user) {
+        setChecking(false);
+        return;
+      }
+      router.replace(isAdminEmail(user.email) ? "/admin" : "/dashboard");
     });
   }, [router]);
 
