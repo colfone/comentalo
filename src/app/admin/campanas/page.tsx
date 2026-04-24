@@ -138,7 +138,7 @@ export default async function AdminCampanasPage({
         </div>
       )}
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-black/10 bg-white">
+      <div className="mt-6 overflow-hidden overflow-x-auto rounded-xl border border-black/10 bg-white">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-black/10 bg-[#f5f5f7] text-xs font-semibold uppercase tracking-wider text-[#5b5e60]">
