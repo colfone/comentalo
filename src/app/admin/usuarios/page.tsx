@@ -63,7 +63,7 @@ export default async function AdminUsuariosPage() {
     serviceClient
       .from("campanas")
       .select("id, videos(usuario_id)")
-      .in("estado", ["abierta", "activa"]),
+      .eq("estado", "activa"),
   ]);
 
   const usuarios: UsuarioFila[] = (usuariosRes.data ?? []) as UsuarioFila[];

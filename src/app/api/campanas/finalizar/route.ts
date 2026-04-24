@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 
 // POST /api/campanas/finalizar
 // Body: { campana_id }
-// Activa/abierta/pausada → finalizada (terminal, no reversible). Sección 5D.
+// Activa/pausada → finalizada (terminal, no reversible). Sección 5D.
 
 type CampanaOwnership = {
   id: string;
@@ -13,7 +13,7 @@ type CampanaOwnership = {
   videos: { usuario_id: string } | null;
 };
 
-const ESTADOS_QUE_PERMITEN_FINALIZAR = ["abierta", "activa", "pausada"];
+const ESTADOS_QUE_PERMITEN_FINALIZAR = ["activa", "pausada"];
 
 export async function POST(request: Request) {
   const cookieStore = await cookies();

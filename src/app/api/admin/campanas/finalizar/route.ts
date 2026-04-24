@@ -4,10 +4,10 @@ import { requireAdminForApi } from "@/lib/supabase/admin-guard";
 // POST /api/admin/campanas/finalizar
 // Body: { campana_id }
 // Versión admin del endpoint de usuario: requireAdminForApi + sin check
-// de ownership. Transición abierta/activa/pausada → finalizada (terminal
+// de ownership. Transición activa/pausada → finalizada (terminal
 // no reversible) + closed_at = now().
 
-const ESTADOS_QUE_PERMITEN_FINALIZAR = ["abierta", "activa", "pausada"];
+const ESTADOS_QUE_PERMITEN_FINALIZAR = ["activa", "pausada"];
 
 export async function POST(request: Request) {
   const auth = await requireAdminForApi();

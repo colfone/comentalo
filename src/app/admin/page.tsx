@@ -14,7 +14,7 @@ export default async function AdminResumenPage() {
     serviceClient
       .from("campanas")
       .select("id", { count: "exact", head: true })
-      .in("estado", ["abierta", "activa"]),
+      .eq("estado", "activa"),
     serviceClient.from("usuarios").select("saldo_creditos"),
   ]);
 

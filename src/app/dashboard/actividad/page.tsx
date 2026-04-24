@@ -586,10 +586,10 @@ function RecibiendoCard({
     campana.intercambios.length > 0 &&
     campana.intercambios.every((i) => (i.estrellas ?? 0) > 0);
   const cerrando = cerrandoCampanaId === campana.campana_id;
-  // El endpoint /api/campanas/finalizar solo acepta abierta/activa/pausada.
+  // El endpoint /api/campanas/finalizar solo acepta activa/pausada.
   const puedeCerrar =
     todosCalificados &&
-    ["abierta", "activa", "pausada"].includes(campana.campana_estado);
+    ["activa", "pausada"].includes(campana.campana_estado);
 
   return (
     <article className="rounded-3xl bg-white p-5">

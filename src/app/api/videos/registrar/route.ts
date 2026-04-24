@@ -152,7 +152,7 @@ export async function POST(request: Request) {
   if (videoExistente) {
     const tieneCampanaViva = (
       (videoExistente.campanas ?? []) as { estado: string }[]
-    ).some((c) => ["abierta", "activa", "pausada"].includes(c.estado));
+    ).some((c) => ["activa", "pausada"].includes(c.estado));
 
     if (tieneCampanaViva) {
       return NextResponse.json(
@@ -268,7 +268,7 @@ export async function POST(request: Request) {
 
     const { error: campanaError } = await serviceClient.from("campanas").insert({
       video_id: finalVideoId,
-      estado: "abierta",
+      estado: "activa",
       intercambios_completados: 0,
     });
 

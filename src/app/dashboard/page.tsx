@@ -117,7 +117,7 @@ export default async function DashboardPage() {
       .from("campanas")
       .select("id")
       .in("video_id", videoIds)
-      .in("estado", ["abierta", "activa"]);
+      .eq("estado", "activa");
     campanasActivas = activeCampanas?.length ?? 0;
   }
 

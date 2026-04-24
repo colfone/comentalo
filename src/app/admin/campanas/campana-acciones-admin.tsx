@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 // cierre por click fuera/Escape/scroll. Pausar y Activar son inline; Finalizar
 // abre un modal de confirmación porque es terminal e irreversible.
 
-export type EstadoCampanaActiva = "abierta" | "activa" | "pausada" | "finalizada";
+export type EstadoCampanaActiva = "activa" | "pausada" | "finalizada";
 
 type Accion = "pausar" | "activar" | "finalizar";
 
@@ -146,7 +146,7 @@ export default function CampanaAccionesAdmin({ campanaId, estado }: Props) {
     }
   }
 
-  const esActiva = estado === "abierta" || estado === "activa";
+  const esActiva = estado === "activa";
   const esPausada = estado === "pausada";
 
   return (

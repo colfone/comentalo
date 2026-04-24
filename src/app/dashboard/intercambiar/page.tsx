@@ -257,7 +257,7 @@ export default function ColaPage() {
         .not("estrellas", "is", null);
       const totalCalificados = calificados?.length ?? 0;
 
-      // Campañas activas (estado abierta) de todos los videos del usuario
+      // Campañas activas de todos los videos del usuario
       const { data: misVideos } = await supabase
         .from("videos")
         .select("id")
@@ -269,7 +269,7 @@ export default function ColaPage() {
           .from("campanas")
           .select("*", { count: "exact", head: true })
           .in("video_id", videoIds)
-          .eq("estado", "abierta");
+          .eq("estado", "activa");
         campanasActivas = activas ?? 0;
       }
 

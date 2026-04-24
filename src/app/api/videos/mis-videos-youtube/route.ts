@@ -167,7 +167,7 @@ export async function GET(request: Request) {
   return NextResponse.json({ videos: enriched, from_cache: false });
 }
 
-// --- Helper: mark videos with a live campaign (abierta/activa/pausada) ---
+// --- Helper: mark videos with a live campaign (activa/pausada) ---
 // Un video puede existir en la tabla sin campaña viva (todas finalizadas o
 // eliminadas). Solo marcamos los que tienen al menos una campaña en un
 // estado que bloquea relanzar.
@@ -183,7 +183,7 @@ async function markInCampaign(
     .from("videos")
     .select("youtube_video_id, campanas!inner(estado)")
     .in("youtube_video_id", ids)
-    .in("campanas.estado", ["abierta", "activa", "pausada"]);
+    .in("campanas.estado", ["activa", "pausada"]);
 
   const inCampaignSet = new Set(
     (data || []).map(

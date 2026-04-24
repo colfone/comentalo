@@ -4,11 +4,10 @@ import CampanaAccionesAdmin from "./campana-acciones-admin";
 
 // Lista global de campañas. Read-only en esta iteración.
 //
-// estado CHECK admite 4 valores: abierta/activa (vivos, se muestran
-// como "Activa"), pausada y finalizada. Los legacy completada/calificada
-// fueron removidos en la migración 20260423200000.
+// estado CHECK admite 3 valores: activa (vivo), pausada y finalizada. La
+// dualidad 'abierta' ↔ 'activa' fue consolidada en la migración 20260424120000.
 
-type EstadoCampana = "abierta" | "activa" | "pausada" | "finalizada";
+type EstadoCampana = "activa" | "pausada" | "finalizada";
 
 type CampanaFila = {
   id: string;
@@ -26,14 +25,12 @@ type CampanaFila = {
 };
 
 const ESTADO_LABEL: Record<EstadoCampana, string> = {
-  abierta: "Activa",
   activa: "Activa",
   pausada: "Pausada",
   finalizada: "Finalizada",
 };
 
 const ESTADO_CLASSES: Record<EstadoCampana, string> = {
-  abierta: "bg-green-100 text-green-800",
   activa: "bg-green-100 text-green-800",
   pausada: "bg-amber-100 text-amber-800",
   finalizada: "bg-gray-200 text-gray-700",
@@ -47,7 +44,7 @@ const TABS: ReadonlyArray<{
   estados: ReadonlyArray<EstadoCampana> | null;
 }> = [
   { id: "todas", label: "Todas", estados: null },
-  { id: "activas", label: "Activas", estados: ["abierta", "activa"] },
+  { id: "activas", label: "Activas", estados: ["activa"] },
   { id: "pausadas", label: "Pausadas", estados: ["pausada"] },
   { id: "finalizadas", label: "Finalizadas", estados: ["finalizada"] },
 ];

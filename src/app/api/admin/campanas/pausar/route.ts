@@ -5,7 +5,7 @@ import { requireAdminForApi } from "@/lib/supabase/admin-guard";
 // Body: { campana_id }
 // Versión admin del endpoint de usuario: requireAdminForApi + sin check
 // de ownership. El admin puede actuar sobre cualquier campaña.
-// Transición abierta/activa → pausada.
+// Transición activa → pausada.
 
 export async function POST(request: Request) {
   const auth = await requireAdminForApi();
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (campana.estado !== "abierta" && campana.estado !== "activa") {
+  if (campana.estado !== "activa") {
     return NextResponse.json({
       ok: false,
       error: `Solo se pueden pausar campañas activas. Estado actual: ${campana.estado}.`,

@@ -348,13 +348,13 @@ function CampanaAcciones({
 }) {
   if (!campanaId || !campanaEstado) return null;
 
-  const esActiva = campanaEstado === "activa" || campanaEstado === "abierta";
+  const esActiva = campanaEstado === "activa";
   const esPausada = campanaEstado === "pausada";
   const pendiente = actionPending === campanaId;
   const puedeEliminarPorIntercambios = intercambiosRecibidos === 0;
 
   // Reglas:
-  // - activa/abierta: Pausar on, Activar off, Finalizar on, Eliminar si 0 intercambios
+  // - activa: Pausar on, Activar off, Finalizar on, Eliminar si 0 intercambios
   // - pausada: Pausar off, Activar on, Finalizar on, Eliminar si 0 intercambios
   // - finalizada (terminal): todos off
   const pausarHabilitado = esActiva && !pendiente;

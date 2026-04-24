@@ -96,12 +96,12 @@ export async function POST(request: Request) {
     .from("campanas")
     .select("id")
     .eq("video_id", video.id)
-    .eq("estado", "abierta")
+    .eq("estado", "activa")
     .maybeSingle();
 
   if (openCampana) {
     return NextResponse.json(
-      { error: "Ya hay una campana abierta para este video." },
+      { error: "Ya hay una campana activa para este video." },
       { status: 409 }
     );
   }
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
     .from("campanas")
     .insert({
       video_id: video.id,
-      estado: "abierta",
+      estado: "activa",
       intercambios_completados: 0,
     });
 

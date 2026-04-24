@@ -145,7 +145,7 @@ export default function DashboardClient({
 
   // Filtered videos by tab
   const videosEnCurso = videos.filter((v) =>
-    v.campanas.some((c) => c.estado === "abierta" || c.estado === "pausada" || c.estado === "activa")
+    v.campanas.some((c) => c.estado === "activa" || c.estado === "pausada")
   );
   const videosCompletados = videos.filter((v) =>
     v.campanas.some((c) => c.estado === "finalizada")
@@ -343,7 +343,7 @@ export default function DashboardClient({
             {filteredVideos.length > 0 ? (
               <div className="grid gap-4 xl:grid-cols-2">
                 {filteredVideos.map((video) => {
-                  const activeCampana = video.campanas.find((c) => c.estado === "abierta") || video.campanas[0];
+                  const activeCampana = video.campanas.find((c) => c.estado === "activa") || video.campanas[0];
                   const progress = activeCampana ? (activeCampana.intercambios_completados / 10) * 100 : 0;
 
                   return (

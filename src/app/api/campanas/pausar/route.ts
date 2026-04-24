@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 
 // POST /api/campanas/pausar
 // Body: { campana_id }
-// Activa/abierta → pausada. Sección 5D de PROYECTO.md.
+// Activa → pausada. Sección 5D de PROYECTO.md.
 
 type CampanaOwnership = {
   id: string;
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "No tienes acceso a esta campaña" }, { status: 403 });
   }
 
-  if (campana.estado !== "abierta" && campana.estado !== "activa") {
+  if (campana.estado !== "activa") {
     return NextResponse.json({
       ok: false,
       error: `Solo se pueden pausar campañas activas. Estado actual: ${campana.estado}.`,
