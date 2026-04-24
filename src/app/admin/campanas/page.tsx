@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAdminForPage } from "@/lib/supabase/admin-guard";
+import CampanaAccionesAdmin from "./campana-acciones-admin";
 
 // Lista global de campañas. Read-only en esta iteración.
 //
@@ -146,6 +147,7 @@ export default async function AdminCampanasPage({
               <th className="px-4 py-3 text-left">Estado</th>
               <th className="px-4 py-3 text-right">Comentarios</th>
               <th className="px-4 py-3 text-left">Creada</th>
+              <th className="px-4 py-3 text-left">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -223,13 +225,16 @@ export default async function AdminCampanasPage({
                   <td className="whitespace-nowrap px-4 py-3 text-xs text-[#5b5e60]">
                     {new Date(c.created_at).toLocaleDateString("es-AR")}
                   </td>
+                  <td className="px-4 py-3">
+                    <CampanaAccionesAdmin campanaId={c.id} estado={c.estado} />
+                  </td>
                 </tr>
               );
             })}
             {campanas.length === 0 && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="px-4 py-10 text-center text-sm text-[#9097a0]"
                 >
                   No hay campañas en esta vista.
