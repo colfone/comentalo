@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 // Paso 2 / 3 — Verificar canal (prototipo Design)
 // Colores: primary #6200EE, gradient 135deg #6200EE → #ac8eff
@@ -129,8 +130,21 @@ export default function VerificarCanalPage() {
             Comentalo
           </span>
         </div>
-        <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#8a8d8f]">
-          Paso 2 / 3
+        <div className="flex items-center gap-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#8a8d8f]">
+            Paso 2 / 3
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              const supabase = createSupabaseBrowserClient();
+              await supabase.auth.signOut();
+              router.replace("/login");
+            }}
+            className="inline-flex items-center gap-2 rounded-full bg-[#e3e5e6] px-4 py-2 text-[13px] font-medium text-[#5b5e60] transition-colors hover:bg-[#fde4e4] hover:text-[#c43535]"
+          >
+            Cerrar sesión
+          </button>
         </div>
       </div>
 
