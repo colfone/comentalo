@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import VerificacionCanalModal from "./verificacion-canal-modal";
 import CampanaNotificaciones from "@/components/dashboard/CampanaNotificaciones";
+import EstadoEliminadoSignOut from "./estado-eliminado-signout";
+import EstadoBloqueo from "./estado-bloqueo";
 
 // Layout compartido del dashboard: header fijo + gate de verificación.
 //
@@ -119,12 +121,15 @@ export default async function DashboardLayout({
   let saldoCreditos = 0;
   let avatarUrl: string | null = null;
   let nombre: string | null = null;
+  let estado: "activo" | "suspendido" | "baneado" | "eliminado" = "activo";
+  let estadoMotivo: string | null = null;
+  let estadoHasta: string | null = null;
 
   if (user) {
     const { data: usuario, error } = await supabase
       .from("usuarios")
       .select(
-        "canal_verificado, nombre, avatar_url, canal_url, suscriptores_al_registro, saldo_creditos"
+        "canal_verificado, nombre, avatar_url, canal_url, suscriptores_al_registro, saldo_creditos, estado, estado_motivo, estado_hasta"
       )
       .eq("auth_id", user.id)
       .maybeSingle();
@@ -133,6 +138,17 @@ export default async function DashboardLayout({
       saldoCreditos = usuario.saldo_creditos ?? 0;
       avatarUrl = usuario.avatar_url ?? null;
       nombre = usuario.nombre ?? null;
+
+      const estadoDb = usuario.estado;
+      if (
+        estadoDb === "suspendido" ||
+        estadoDb === "baneado" ||
+        estadoDb === "eliminado"
+      ) {
+        estado = estadoDb;
+        estadoMotivo = usuario.estado_motivo ?? null;
+        estadoHasta = usuario.estado_hasta ?? null;
+      }
 
       if (usuario.canal_verificado === false) {
         mostrarModal = true;
@@ -144,6 +160,24 @@ export default async function DashboardLayout({
         };
       }
     }
+  }
+
+  // Gate de estado: usuarios no-activos no acceden al dashboard.
+  // eliminado → signOut silencioso + redirect a /login (client island).
+  // suspendido / baneado → pantalla de bloqueo total, sin header ni children.
+  // Fail-open: si la query falla o no hay fila de usuarios, estado queda en
+  // "activo" y se aplica el flujo normal (mismo criterio que canal_verificado).
+  if (user && estado !== "activo") {
+    if (estado === "eliminado") {
+      return <EstadoEliminadoSignOut />;
+    }
+    return (
+      <EstadoBloqueo
+        estado={estado}
+        motivo={estadoMotivo}
+        hasta={estadoHasta}
+      />
+    );
   }
 
   const initial = (nombre ?? "C").trim().charAt(0).toUpperCase() || "C";
