@@ -213,22 +213,6 @@ export async function POST(request: Request) {
     console.error("Error aplicando crédito por calificar:", creditoError);
   }
 
-  // Check if all 10 verified intercambios in this campaign are now calificados
-  const { count: sinCalificar } = await serviceClient
-    .from("intercambios")
-    .select("id", { count: "exact", head: true })
-    .eq("campana_id", campana.id)
-    .eq("estado", "verificado")
-    .is("estrellas", null);
-
-  if ((sinCalificar ?? 0) === 0 && campana.estado === "completada") {
-    // All calificados — move campaign to 'calificada'
-    await serviceClient
-      .from("campanas")
-      .update({ estado: "calificada" })
-      .eq("id", campana.id);
-  }
-
   // Recalculate commentator's reputation
   await serviceClient.rpc("calcular_reputacion", {
     p_comentarista_id: intercambio.comentarista_id,

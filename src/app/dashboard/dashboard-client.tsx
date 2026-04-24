@@ -148,7 +148,7 @@ export default function DashboardClient({
     v.campanas.some((c) => c.estado === "abierta" || c.estado === "pausada" || c.estado === "activa")
   );
   const videosCompletados = videos.filter((v) =>
-    v.campanas.some((c) => c.estado === "completada" || c.estado === "calificada")
+    v.campanas.some((c) => c.estado === "finalizada")
   );
   const filteredVideos = tab === "curso" ? videosEnCurso : videosCompletados;
 
@@ -405,25 +405,16 @@ export default function DashboardClient({
                           </div>
                           <div className="mt-3 flex items-center justify-between">
                             <span className={`text-xs font-medium ${
-                              activeCampana.estado === "completada" ? "text-[#E87722]"
-                              : activeCampana.estado === "pausada" ? "text-[#E87722]"
-                              : activeCampana.estado === "calificada" ? "text-green-600"
-                              : "text-[#595c5d]"
+                              activeCampana.estado === "pausada" ? "text-[#E87722]" : "text-[#595c5d]"
                             }`}>
-                              {activeCampana.estado === "abierta" ? "En curso"
-                              : activeCampana.estado === "pausada" ? "Pausada"
-                              : activeCampana.estado === "completada" ? "Esperando calificacion"
-                              : "Calificada"}
+                              {activeCampana.estado === "pausada" ? "Pausada"
+                              : activeCampana.estado === "finalizada" ? "Finalizada"
+                              : "En curso"}
                             </span>
                             <a href={`/dashboard/campana/${activeCampana.id}`} className="rounded-lg bg-[#eff1f2] px-3 py-1.5 text-xs font-medium text-[#6200EE] transition-colors hover:bg-[#e0e3e4]">
                               Ver detalle →
                             </a>
                           </div>
-                          {activeCampana.estado === "completada" && (
-                            <a href={`/dashboard/calificar/${activeCampana.id}`} className="mt-2 block rounded-xl bg-[#E87722] py-2.5 text-center text-xs font-semibold text-white transition-colors hover:bg-[#d06a1a]">
-                              Calificar intercambios
-                            </a>
-                          )}
                         </div>
                       )}
 

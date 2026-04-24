@@ -356,7 +356,7 @@ function CampanaAcciones({
   // Reglas:
   // - activa/abierta: Pausar on, Activar off, Finalizar on, Eliminar si 0 intercambios
   // - pausada: Pausar off, Activar on, Finalizar on, Eliminar si 0 intercambios
-  // - terminal (completada/calificada/finalizada): todos off
+  // - finalizada (terminal): todos off
   const pausarHabilitado = esActiva && !pendiente;
   const activarHabilitado = esPausada && !pendiente;
   const finalizarHabilitado = (esActiva || esPausada) && !pendiente;

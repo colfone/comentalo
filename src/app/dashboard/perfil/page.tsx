@@ -135,7 +135,7 @@ export default function PerfilPage() {
           .from("campanas")
           .select("*, videos!inner(usuario_id)", { count: "exact", head: true })
           .eq("videos.usuario_id", u.id)
-          .in("estado", ["completada", "calificada"]);
+          .eq("estado", "finalizada");
 
         setStats({
           comentariosTotales: (comentariosTotales ?? 0).toString(),

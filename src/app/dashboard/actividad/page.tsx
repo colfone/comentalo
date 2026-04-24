@@ -587,8 +587,6 @@ function RecibiendoCard({
     campana.intercambios.every((i) => (i.estrellas ?? 0) > 0);
   const cerrando = cerrandoCampanaId === campana.campana_id;
   // El endpoint /api/campanas/finalizar solo acepta abierta/activa/pausada.
-  // Si backend auto-transicionó a "calificada" al último rating, ocultamos
-  // el botón — la campaña ya está cerrada funcionalmente.
   const puedeCerrar =
     todosCalificados &&
     ["abierta", "activa", "pausada"].includes(campana.campana_estado);

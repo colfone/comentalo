@@ -3,17 +3,11 @@ import { requireAdminForPage } from "@/lib/supabase/admin-guard";
 
 // Lista global de campañas. Read-only en esta iteración.
 //
-// estado CHECK vive con vocabulario dual desde v4.10: abierta/activa se
-// muestran como Activas; completada/calificada/finalizada como Finalizadas;
-// pausada va sola.
+// estado CHECK admite 4 valores: abierta/activa (vivos, se muestran
+// como "Activa"), pausada y finalizada. Los legacy completada/calificada
+// fueron removidos en la migración 20260423200000.
 
-type EstadoCampana =
-  | "abierta"
-  | "activa"
-  | "pausada"
-  | "completada"
-  | "calificada"
-  | "finalizada";
+type EstadoCampana = "abierta" | "activa" | "pausada" | "finalizada";
 
 type CampanaFila = {
   id: string;
@@ -34,8 +28,6 @@ const ESTADO_LABEL: Record<EstadoCampana, string> = {
   abierta: "Activa",
   activa: "Activa",
   pausada: "Pausada",
-  completada: "Finalizada",
-  calificada: "Finalizada",
   finalizada: "Finalizada",
 };
 
@@ -43,8 +35,6 @@ const ESTADO_CLASSES: Record<EstadoCampana, string> = {
   abierta: "bg-green-100 text-green-800",
   activa: "bg-green-100 text-green-800",
   pausada: "bg-amber-100 text-amber-800",
-  completada: "bg-gray-200 text-gray-700",
-  calificada: "bg-gray-200 text-gray-700",
   finalizada: "bg-gray-200 text-gray-700",
 };
 
@@ -58,11 +48,7 @@ const TABS: ReadonlyArray<{
   { id: "todas", label: "Todas", estados: null },
   { id: "activas", label: "Activas", estados: ["abierta", "activa"] },
   { id: "pausadas", label: "Pausadas", estados: ["pausada"] },
-  {
-    id: "finalizadas",
-    label: "Finalizadas",
-    estados: ["completada", "calificada", "finalizada"],
-  },
+  { id: "finalizadas", label: "Finalizadas", estados: ["finalizada"] },
 ];
 
 // Duplicado del mismo helper presente en /dashboard/** — NFKC + emojis/banderas + sentence case.

@@ -208,12 +208,12 @@ export default function CampanaDetallePage() {
   const filtered = tab === "verificados" ? verificados : intercambios;
 
   const campanaLabel =
-    campana?.estado === "abierta"
+    campana?.estado === "abierta" || campana?.estado === "activa"
       ? "CAMPAÑA ACTIVA"
-      : campana?.estado === "completada"
-      ? "CAMPAÑA COMPLETADA"
-      : campana?.estado === "calificada"
-      ? "CAMPAÑA CALIFICADA"
+      : campana?.estado === "pausada"
+      ? "CAMPAÑA PAUSADA"
+      : campana?.estado === "finalizada"
+      ? "CAMPAÑA FINALIZADA"
       : "CAMPAÑA";
 
   return (
