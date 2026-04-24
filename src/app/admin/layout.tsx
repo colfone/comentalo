@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAdminForPage } from "@/lib/supabase/admin-guard";
+import AdminSignOutButton from "./admin-signout-button";
 
 // Layout del panel admin. Gate via requireAdminForPage() — redirige si no
 // corresponde. Chrome distinto del dashboard de usuario: banda superior
@@ -78,24 +79,6 @@ const MegaphoneIcon = () => (
   </svg>
 );
 
-const ExitIcon = () => (
-  <svg
-    width={14}
-    height={14}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={1.8}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-    <path d="m16 17 5-5-5-5" />
-    <path d="M21 12H9" />
-  </svg>
-);
-
 export default async function AdminLayout({
   children,
 }: {
@@ -131,13 +114,7 @@ export default async function AdminLayout({
 
             <div className="flex-1" />
 
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-[#c7c9cc] transition-colors hover:bg-white/5 hover:text-white"
-            >
-              <ExitIcon />
-              Salir del panel
-            </Link>
+            <AdminSignOutButton />
           </div>
         </div>
       </header>
